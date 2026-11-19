@@ -4,11 +4,11 @@
 //! (`postgres://user:password@localhost:5432/ownership`). The URL is never
 //! printed, because it can contain a password.
 
+use super::find_xml_files;
 use oe_store::{LoadReport, PrepareError, Prepared, Sidecar};
 use std::path::{Path, PathBuf};
 
 const DEFAULT_BATCH: usize = 500;
-const UNPARSED_DIR: &str = "unparsed";
 
 fn database_url() -> Result<String, String> {
     std::env::var("DATABASE_URL").map_err(|_| {
@@ -87,31 +87,6 @@ pub fn parse_load_args(args: &[String]) -> Result<LoadArgs, String> {
     }
     parsed.folder = folder.ok_or("db-load needs a folder, for example data/form4")?;
     Ok(parsed)
-}
-
-/// Every `.xml` under `root`, sorted, skipping the `unparsed` folder.
-fn find_xml_files(root: &Path) -> Result<Vec<PathBuf>, String> {
-    fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
-        for entry in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
-            let path = entry.map_err(|e| e.to_string())?.path();
-            if path.is_dir() {
-                if path.file_name().is_some_and(|n| n == UNPARSED_DIR) {
-                    continue;
-                }
-                walk(&path, out)?;
-            } else if path
-                .extension()
-                .is_some_and(|x| x.eq_ignore_ascii_case("xml"))
-            {
-                out.push(path);
-            }
-        }
-        Ok(())
-    }
-    let mut files = Vec::new();
-    walk(root, &mut files)?;
-    files.sort();
-    Ok(files)
 }
 
 /// Why a file was not prepared, for the summary.
@@ -211,6 +186,7 @@ pub fn load(args: &[String]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::UNPARSED_DIR;
 
     #[test]
     fn load_args() {

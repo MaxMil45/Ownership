@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData>
+    <submissionType>144</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0001718588</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <issuerInfo>
+      <issuerCik>0001086222</issuerCik>
+      <issuerName>AKAMAI TECHNOLOGIES INC</issuerName>
+      <secFileNumber>000-27275</secFileNumber>
+      <issuerAddress>
+        <com:street1>145 BROADWAY</com:street1>
+        <com:city>CAMBRIDGE</com:city>
+        <com:stateOrCountry>MA</com:stateOrCountry>
+        <com:zipCode>02142</com:zipCode>
+      </issuerAddress>
+      <issuerContactPhone>6174443000</issuerContactPhone>
+      <nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>Ahola Aaron</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+      <relationshipsToIssuer>
+        <relationshipToIssuer>Officer</relationshipToIssuer>
+      </relationshipsToIssuer>
+    </issuerInfo>
+    <securitiesInformation>
+      <securitiesClassTitle>Common</securitiesClassTitle>
+      <brokerOrMarketmakerDetails>
+        <name>Charles Schwab &amp; Co., Inc.</name>
+        <address>
+          <com:street1>3000 Schwab Way</com:street1>
+          <com:city>Westlake</com:city>
+          <com:stateOrCountry>TX</com:stateOrCountry>
+          <com:zipCode>76262</com:zipCode>
+        </address>
+      </brokerOrMarketmakerDetails>
+      <noOfUnitsSold>1103</noOfUnitsSold>
+      <aggregateMarketValue>120977.00</aggregateMarketValue>
+      <noOfUnitsOutstanding>151530300</noOfUnitsOutstanding>
+      <approxSaleDate>03/12/2024</approxSaleDate>
+      <securitiesExchangeName>NASDAQ</securitiesExchangeName>
+    </securitiesInformation>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Common</securitiesClassTitle>
+      <acquiredDate>03/01/2024</acquiredDate>
+      <natureOfAcquisitionTransaction>Restricted Stock Lapse</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>Akamai Technologies, Inc.</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>1103</amountOfSecuritiesAcquired>
+      <paymentDate>03/01/2024</paymentDate>
+      <natureOfPayment>Equity Compensation</natureOfPayment>
+    </securitiesToBeSold>
+    <nothingToReportFlagOnSecuritiesSoldInPast3Months>N</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+    <securitiesSoldInPast3Months>
+      <sellerDetails>
+        <name>Aaron Ahola TTEE</name>
+        <address>
+          <com:street1>145 BROADWAY</com:street1>
+          <com:city>CAMBRIDGE</com:city>
+          <com:stateOrCountry>MA</com:stateOrCountry>
+          <com:zipCode>02142</com:zipCode>
+        </address>
+      </sellerDetails>
+      <securitiesClassTitle>AKAMAI TECHNOLOGIES INC</securitiesClassTitle>
+      <saleDate>03/11/2024</saleDate>
+      <amountOfSecuritiesSold>9841</amountOfSecuritiesSold>
+      <grossProceeds>1089792.00</grossProceeds>
+    </securitiesSoldInPast3Months>
+    <remarks>Shares were sold in account titled AARON AHOLA REVOCABLE TRUST.</remarks>
+    <noticeSignature>
+      <noticeDate>03/12/2024</noticeDate>
+      <planAdoptionDates>
+        <planAdoptionDate>12/11/2023</planAdoptionDate>
+      </planAdoptionDates>
+      <signature>Aaron Ahola TTEE</signature>
+    </noticeSignature>
+  </formData>
+</edgarSubmission>

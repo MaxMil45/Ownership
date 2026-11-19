@@ -1,0 +1,6 @@
+accession=0000950170-25-108268
+form=144
+known_on=2025-08-13
+accepted_eastern=2025-08-13T19:30:03
+company_cik=0001830043
+url=https://www.sec.gov/Archives/edgar/data/1870649/0000950170-25-108268.txt

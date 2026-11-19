@@ -35,7 +35,7 @@ Three more sources, all measured on real data (November 2026):
 Things to know:
 
 - **A Form 4 is listed once per filer** (the issuer and each reporting owner), all with the same accession number. Count accession numbers, not rows. Any of the CIKs works in the `.txt` path.
-- The index columns are: form type (first 17 characters, may contain spaces such as `SC 13D`), company name, CIK, date filed (`YYYYMMDD`), file path. All 4,269 rows of 2026-11-18 followed this shape.
+- The index columns are: form type (may contain spaces such as `SC 13D`), company name, CIK, date filed (`YYYYMMDD`), file path. **The width of the form-type column changes over time and the header does not say:** 12 characters in the files checked from 2015-03-12 to 2024-03-12, 17 in 2025-08-13 and 2026-11-18. A parser that assumes one width misreads the other (it read 2023 Form 144 rows as form `144         Zoom`, found no filings, and reported 1 to 3 unreadable rows). `oe-edgar` finds the company column from the data: the position where almost every row starts a word. Checked on eight dates from 2015 to 2025: no unreadable rows, and Form 4 filing counts of about half the row count, as expected.
 - **The submission header's `<ACCEPTANCE-DATETIME>` is US Eastern**, unlike the submissions API's UTC. Header `20261005184245` is API `2026-10-05T22:42:45Z`. Checked to the second on filings either side of the November 2025 clock change (EDT and EST). Its date part is `known_on` directly.
 - The feed's `<updated>` carries an explicit offset (`-05:00`).
 - Some Form 4s have no transaction rows, only holdings (for example directors reporting RSU holdings). That is not a parse failure.

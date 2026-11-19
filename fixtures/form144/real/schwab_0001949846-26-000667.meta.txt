@@ -1,0 +1,6 @@
+accession=0001949846-26-000667
+form=144
+known_on=2026-11-18
+accepted_eastern=2026-11-18T12:05:40
+company_cik=0000316709
+url=https://www.sec.gov/Archives/edgar/data/316709/0001949846-26-000667.txt

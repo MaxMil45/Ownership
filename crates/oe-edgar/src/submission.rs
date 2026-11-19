@@ -22,6 +22,10 @@ pub struct FullSubmission {
     pub accepted_eastern: String,
     /// The `<ownershipDocument>` element, if the submission contains one.
     pub ownership_xml: Option<String>,
+    /// The content of the first `<XML>` block of the first document, whatever
+    /// the form (an `<edgarSubmission>` for Form 144, an `<ownershipDocument>`
+    /// for Forms 3/4/5), with its XML declaration, followed by a newline.
+    pub primary_xml: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,11 +85,19 @@ pub fn parse_full_submission(text: &str) -> Result<FullSubmission, SubmissionErr
         Some(format!("<?xml version=\"1.0\"?>\n{}\n", &text[start..end]))
     });
 
+    let primary_xml = text.find("<DOCUMENT>").and_then(|doc| {
+        let body = &text[doc..];
+        let start = body.find("<XML>")? + "<XML>".len();
+        let end = body[start..].find("</XML>")? + start;
+        Some(format!("{}\n", body[start..end].trim()))
+    });
+
     Ok(FullSubmission {
         accession: field("ACCESSION NUMBER:")?,
         form: field("CONFORMED SUBMISSION TYPE:")?,
         accepted_eastern,
         ownership_xml,
+        primary_xml,
     })
 }
 
@@ -131,6 +143,24 @@ mod tests {
         assert!(xml.starts_with("<?xml version=\"1.0\"?>\n<ownershipDocument>"));
         assert!(xml.trim_end().ends_with("</ownershipDocument>"));
         assert!(!xml.contains("<XML>") && !xml.contains("</DOCUMENT>"));
+    }
+
+    #[test]
+    fn primary_xml_is_the_first_xml_block_for_any_form() {
+        let s = parse_full_submission(&fixture()).unwrap();
+        let xml = s.primary_xml.unwrap();
+        assert!(xml.starts_with("<?xml version=\"1.0\"?>\n<ownershipDocument>"));
+        assert!(xml.ends_with("</ownershipDocument>\n"));
+
+        // A Form 144 style body: a different root element.
+        let text = "<SEC-DOCUMENT>x.txt : 1\n<SEC-HEADER>x\n<ACCEPTANCE-DATETIME>20261118160631\nACCESSION NUMBER:\t\t0001950047-26-011275\nCONFORMED SUBMISSION TYPE:\t144\n</SEC-HEADER>\n<DOCUMENT>\n<TYPE>144\n<TEXT>\n<XML>\n<?xml version=\"1.0\"?><edgarSubmission><x/></edgarSubmission>\n</XML>\n</TEXT>\n</DOCUMENT>\n";
+        let s = parse_full_submission(text).unwrap();
+        assert_eq!(s.form, "144");
+        assert_eq!(
+            s.primary_xml.as_deref(),
+            Some("<?xml version=\"1.0\"?><edgarSubmission><x/></edgarSubmission>\n")
+        );
+        assert!(s.ownership_xml.is_none());
     }
 
     #[test]

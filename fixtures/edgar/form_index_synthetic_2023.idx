@@ -1,0 +1,17 @@
+Description:           Daily Index of EDGAR Dissemination Feed by Form Type
+Last Data Received:    Jun 14, 2023
+Comments:              synthetic sample in the OLDER layout: the form-type column is 12 wide, not 17
+
+
+
+
+Form Type   Company Name                                                  CIK         Date Filed  File Name
+---------------------------------------------------------------------------------------------------------------------------------------------
+1-A         Synthetic Fund Holdings, Inc.                                 9999930     20230614    edgar/data/9999930/0009999930-23-000001.txt
+1-A POS     Example Motors Corp                                           9999931     20230614    edgar/data/9999931/0009999931-23-000002.txt
+144         Synthetic Widgets Inc                                         9999901     20230614    edgar/data/9999901/0009999911-23-000003.txt
+144         Officer Bravo                                                 9999911     20230614    edgar/data/9999911/0009999911-23-000003.txt
+144/A       Gadget Holdings Corp                                          9999902     20230614    edgar/data/9999902/0009999912-23-000004.txt
+4           Synthetic Widgets Inc                                         9999901     20230614    edgar/data/9999901/0009999901-23-000005.txt
+DEF 14A     Gadget Holdings Corp                                          9999902     20230614    edgar/data/9999902/0009999902-23-000006.txt
+NT 10-Q/A   Late Filer 2 Inc                                              9999940     20230614    edgar/data/9999940/0009999940-23-000007.txt

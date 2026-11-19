@@ -1,0 +1,6 @@
+accession=0001921094-24-000372
+form=144
+known_on=2024-03-12
+accepted_eastern=2024-03-12T16:03:27
+company_cik=0001086222
+url=https://www.sec.gov/Archives/edgar/data/1086222/0001921094-24-000372.txt

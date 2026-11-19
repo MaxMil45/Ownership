@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData>
+    <submissionType>144</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0001224105</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <issuerInfo>
+      <issuerCik>0000006281</issuerCik>
+      <issuerName>ANALOG DEVICES INC</issuerName>
+      <secFileNumber>001-07819</secFileNumber>
+      <issuerAddress>
+        <com:street1>ONE ANALOG WAY</com:street1>
+        <com:city>WILMINGTON</com:city>
+        <com:stateOrCountry>MA</com:stateOrCountry>
+        <com:zipCode>01887</com:zipCode>
+      </issuerAddress>
+      <issuerContactPhone>7813294700</issuerContactPhone>
+      <nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>SICCHITANO KENTON J</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+      <relationshipsToIssuer>
+        <relationshipToIssuer>Director</relationshipToIssuer>
+      </relationshipsToIssuer>
+    </issuerInfo>
+    <securitiesInformation>
+      <securitiesClassTitle>Common</securitiesClassTitle>
+      <brokerOrMarketmakerDetails>
+        <name>Fidelity Brokerage Services LLC</name>
+        <address>
+          <com:street1>900 Salem Street</com:street1>
+          <com:city>Smithfield</com:city>
+          <com:stateOrCountry>RI</com:stateOrCountry>
+          <com:zipCode>02917</com:zipCode>
+        </address>
+      </brokerOrMarketmakerDetails>
+      <noOfUnitsSold>8460</noOfUnitsSold>
+      <aggregateMarketValue>1628576.23</aggregateMarketValue>
+      <noOfUnitsOutstanding>501418304</noOfUnitsOutstanding>
+      <approxSaleDate>06/14/2023</approxSaleDate>
+      <securitiesExchangeName>NASDAQ</securitiesExchangeName>
+    </securitiesInformation>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Common</securitiesClassTitle>
+      <acquiredDate>06/14/2023</acquiredDate>
+      <natureOfAcquisitionTransaction>Option Granted - 03/11/2015</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>8460</amountOfSecuritiesAcquired>
+      <paymentDate>06/14/2023</paymentDate>
+      <natureOfPayment>Cash</natureOfPayment>
+    </securitiesToBeSold>
+    <nothingToReportFlagOnSecuritiesSoldInPast3Months>Y</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+    <noticeSignature>
+      <noticeDate>06/14/2023</noticeDate>
+      <signature>/s/ Ryan Riviere, as a duly authorized representative of Fidelity Brokerage Services LLC, as attorney-in-fact for Kenton J. Sicchitano</signature>
+    </noticeSignature>
+  </formData>
+</edgarSubmission>

@@ -1,0 +1,6 @@
+accession=0002007317-25-000867
+form=144
+known_on=2025-08-13
+accepted_eastern=2025-08-13T18:57:13
+company_cik=0000906553
+url=https://www.sec.gov/Archives/edgar/data/906553/0002007317-25-000867.txt

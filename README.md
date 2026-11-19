@@ -20,7 +20,9 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | Rate-limited EDGAR client (SEC fair-access rules) | `oe-edgar` | Done; run against the real SEC |
 | SEC submissions API (with older history pages) and ticker list (dependency-free JSON reader) | `oe-edgar` | Done, tested on synthetic JSON and run live |
 | Daily form index, latest-filings feed, complete submission files | `oe-edgar` | Done, tested on synthetic samples and run live |
-| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `fetch` |
+| Form 144 (planned insider sale) parser | `oe-form144` | Done; reads 274 real filings; 17 real fixtures |
+| `insider.planned_sale@1` rule | `oe-events` | Done, tested on real filings (spec in `events/specs/`) |
+| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `db-*`, `fetch` |
 
 ## Quick start (Windows)
 
@@ -47,6 +49,11 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
    cargo run -p oe-cli -- follow
    ```
    `daily-form4` reads the EDGAR daily index (a day has about 800 Form 4s; `--all` takes them all). `follow` polls the latest-filings feed every 30 seconds until you press Ctrl-C (`--polls 2` stops after two polls). Both save into `data/form4/<issuer CIK>/` and skip filings already saved.
+6. **Planned sales (Form 144).** Insiders file Form 144 before selling restricted or control shares, so it comes before the Form 4:
+   ```powershell
+   cargo run -p oe-cli -- daily-form144 2026-11-18 --all
+   cargo run -p oe-cli -- planned-sales data/form144
+   ```n   `planned-sales` lists the `insider.planned_sale@1` events: notices by officers, directors and 10% holders worth at least $1,000,000 (change it with `--min-value`), with whether the sale is under a 10b5-1 plan. `db-load` is for Form 4 folders (`data/form4`) only; Form 144 is not in the database yet.
 
 On macOS or Linux, install Rust with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` and use `export OE_USER_AGENT="..."` instead.
 
@@ -80,6 +87,7 @@ Use `docker-compose` (with a hyphen) if `docker compose` says "unknown command".
 crates/
   oe-core/      shared types: Date, Cik, Accession, OwnershipDocument
   oe-form4/     Form 3/4/5 parser and a small XML tokenizer
+  oe-form144/   Form 144 (notice of proposed sale) parser
   oe-ledger/    append-only, point-in-time fact store
   oe-events/    versioned event rules (insider.cluster_buy@1)
   oe-edgar/     polite EDGAR HTTP client with rate limiting

@@ -16,8 +16,43 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 const DEFAULT_ROOT: &str = "data/form4";
+const DEFAULT_ROOT_144: &str = "data/form144";
 /// Folder (under the output root) for filings whose XML the parser rejected.
 const UNPARSED_DIR: &str = "unparsed";
+
+/// Which kind of filing a command downloads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// Forms 3/4/5: an `<ownershipDocument>`.
+    Ownership,
+    /// Form 144: an `<edgarSubmission>`.
+    Form144,
+}
+
+impl Kind {
+    fn default_root(self) -> &'static str {
+        match self {
+            Kind::Ownership => DEFAULT_ROOT,
+            Kind::Form144 => DEFAULT_ROOT_144,
+        }
+    }
+
+    fn forms(self, include_amendments: bool) -> &'static [&'static str] {
+        match (self, include_amendments) {
+            (Kind::Ownership, false) => &["4"],
+            (Kind::Ownership, true) => &["4", "4/A"],
+            (Kind::Form144, false) => &["144"],
+            (Kind::Form144, true) => &["144", "144/A"],
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Kind::Ownership => "Form 4",
+            Kind::Form144 => "Form 144",
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Arguments
@@ -31,12 +66,12 @@ pub struct DailyArgs {
     pub include_amendments: bool,
 }
 
-pub fn parse_daily_args(args: &[String]) -> Result<DailyArgs, String> {
+pub fn parse_daily_args(args: &[String], default_root: &str) -> Result<DailyArgs, String> {
     let mut date = None;
     let mut parsed = DailyArgs {
         date: Date::from_ymd(1970, 1, 1).expect("valid date"),
         limit: Some(25),
-        out: PathBuf::from(DEFAULT_ROOT),
+        out: PathBuf::from(default_root),
         include_amendments: false,
     };
     let mut it = args.iter();
@@ -65,7 +100,7 @@ pub fn parse_daily_args(args: &[String]) -> Result<DailyArgs, String> {
             other => return Err(format!("unexpected argument {other:?}")),
         }
     }
-    parsed.date = date.ok_or("daily-form4 needs a date like 2026-11-18")?;
+    parsed.date = date.ok_or("a date like 2026-11-18 is needed")?;
     Ok(parsed)
 }
 
@@ -117,14 +152,6 @@ pub fn parse_follow_args(args: &[String]) -> Result<FollowArgs, String> {
     Ok(parsed)
 }
 
-fn wanted_forms(include_amendments: bool) -> &'static [&'static str] {
-    if include_amendments {
-        &["4", "4/A"]
-    } else {
-        &["4"]
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Saving one filing
 
@@ -158,32 +185,92 @@ enum Saved {
     NoOwnershipXml(String),
 }
 
-/// Downloads one filing's complete submission text, and saves its ownership
-/// XML plus a sidecar under `root/<issuer CIK>/`.
-fn save_filing(client: &EdgarClient, url: &str, root: &Path) -> Result<Saved, String> {
+/// What parsing a downloaded filing gave: the issuer's CIK (for the folder
+/// name) and a one-line description, or the parser's error message.
+struct ParsedFiling {
+    issuer_cik: Option<String>,
+    summary: Result<String, String>,
+}
+
+fn parse_ownership(accession: &str, xml: &str) -> ParsedFiling {
+    match oe_form4::parse(xml) {
+        Ok(doc) => {
+            let codes: Vec<&str> = doc.transactions.iter().map(|t| t.code.as_str()).collect();
+            ParsedFiling {
+                issuer_cik: Some(doc.issuer.cik.to_string()),
+                summary: Ok(format!(
+                    "{accession}  Form {}  {:<6} {:<28} codes [{}]",
+                    doc.document_type,
+                    doc.issuer.ticker.as_deref().unwrap_or("-"),
+                    doc.owners.first().map_or("?", |o| o.name.as_str()),
+                    codes.join(" ")
+                )),
+            }
+        }
+        Err(e) => ParsedFiling {
+            issuer_cik: None,
+            summary: Err(e.to_string()),
+        },
+    }
+}
+
+fn parse_form144(accession: &str, xml: &str) -> ParsedFiling {
+    match oe_form144::parse(xml) {
+        Ok(f) => ParsedFiling {
+            issuer_cik: Some(f.issuer_cik.to_string()),
+            summary: Ok(format!(
+                "{accession}  Form {}  {:<28.28} {:<24.24} {:>12} units ${:>12.0}  {}",
+                f.submission_type,
+                f.issuer_name,
+                f.seller_name,
+                f.total_units()
+                    .map_or("-".to_string(), |u| format!("{u:.0}")),
+                f.total_market_value().unwrap_or(0.0),
+                if f.under_plan() { "plan" } else { "no plan" }
+            )),
+        },
+        Err(e) => ParsedFiling {
+            issuer_cik: None,
+            summary: Err(e.to_string()),
+        },
+    }
+}
+
+/// Downloads one filing's complete submission text, and saves its XML plus a
+/// sidecar under `root/<issuer CIK>/`.
+fn save_filing(client: &EdgarClient, url: &str, root: &Path, kind: Kind) -> Result<Saved, String> {
     let text = client.get_text(url).map_err(|e| e.to_string())?;
     let sub = parse_full_submission(&text).map_err(|e| format!("{url}: {e}"))?;
-    let Some(xml) = sub.ownership_xml.as_deref() else {
+    let xml = match kind {
+        Kind::Ownership => sub.ownership_xml.as_deref(),
+        Kind::Form144 => sub.primary_xml.as_deref(),
+    };
+    let Some(xml) = xml else {
         return Ok(Saved::NoOwnershipXml(format!(
-            "{} is form {}, not an ownership filing",
-            sub.accession, sub.form
+            "{} is form {}, with no {} XML in it",
+            sub.accession,
+            sub.form,
+            kind.label()
         )));
     };
 
-    let parsed = oe_form4::parse(xml);
-    let dir = match &parsed {
-        Ok(doc) => root.join(doc.issuer.cik.to_string()),
-        Err(_) => root.join(UNPARSED_DIR),
+    let ParsedFiling {
+        issuer_cik: company_cik,
+        summary,
+    } = match kind {
+        Kind::Ownership => parse_ownership(&sub.accession, xml),
+        Kind::Form144 => parse_form144(&sub.accession, xml),
+    };
+    let dir = match &company_cik {
+        Some(cik) => root.join(cik),
+        None => root.join(UNPARSED_DIR),
     };
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let xml_path = dir.join(format!("{}.xml", sub.accession));
     std::fs::write(&xml_path, xml).map_err(|e| format!("{}: {e}", xml_path.display()))?;
 
     let known_on = sub.known_on().map(|d| d.to_string()).unwrap_or_default();
-    let company_cik = parsed
-        .as_ref()
-        .map(|d| d.issuer.cik.to_string())
-        .unwrap_or_default();
+    let company_cik = company_cik.unwrap_or_default();
     let meta = render_meta(&[
         ("accession", &sub.accession),
         ("form", &sub.form),
@@ -196,18 +283,8 @@ fn save_filing(client: &EdgarClient, url: &str, root: &Path) -> Result<Saved, St
     std::fs::write(meta_path(&xml_path), meta)
         .map_err(|e| format!("{}: {e}", xml_path.display()))?;
 
-    Ok(match parsed {
-        Ok(doc) => {
-            let codes: Vec<&str> = doc.transactions.iter().map(|t| t.code.as_str()).collect();
-            Saved::Parsed(format!(
-                "{}  Form {}  {:<6} {:<28} codes [{}]",
-                sub.accession,
-                doc.document_type,
-                doc.issuer.ticker.as_deref().unwrap_or("-"),
-                doc.owners.first().map_or("?", |o| o.name.as_str()),
-                codes.join(" ")
-            ))
-        }
+    Ok(match summary {
+        Ok(line) => Saved::Parsed(line),
         Err(e) => Saved::ParserFailed(format!(
             "{}: saved to {}, but the parser failed: {e}  <- keep this file, it is a new test case",
             sub.accession,
@@ -224,7 +301,15 @@ fn client() -> Result<EdgarClient, String> {
 // oe daily-form4
 
 pub fn daily_form4(args: &[String]) -> Result<(), String> {
-    let args = parse_daily_args(args)?;
+    daily(args, Kind::Ownership)
+}
+
+pub fn daily_form144(args: &[String]) -> Result<(), String> {
+    daily(args, Kind::Form144)
+}
+
+fn daily(args: &[String], kind: Kind) -> Result<(), String> {
+    let args = parse_daily_args(args, kind.default_root())?;
     let client = client()?;
 
     let url = daily_index_url(args.date);
@@ -244,17 +329,15 @@ pub fn daily_form4(args: &[String]) -> Result<(), String> {
             index.skipped
         );
     }
-    let filings = index.unique_filings(wanted_forms(args.include_amendments));
+    let forms = kind.forms(args.include_amendments);
+    let filings = index.unique_filings(forms);
     println!(
-        "{}: {} rows in the index, {} Form 4 filing(s){}",
+        "{}: {} rows in the index, {} {} filing(s) ({})",
         args.date,
         index.entries.len(),
         filings.len(),
-        if args.include_amendments {
-            " (including 4/A)"
-        } else {
-            ""
-        }
+        kind.label(),
+        forms.join(", ")
     );
 
     let mut known = saved_accessions(&args.out);
@@ -269,7 +352,7 @@ pub fn daily_form4(args: &[String]) -> Result<(), String> {
             skipped += 1;
             continue;
         }
-        match save_filing(&client, &entry.url(), &args.out) {
+        match save_filing(&client, &entry.url(), &args.out, kind) {
             Ok(Saved::Parsed(line)) => {
                 println!("  {line}");
                 saved += 1;
@@ -300,7 +383,7 @@ pub fn daily_form4(args: &[String]) -> Result<(), String> {
 pub fn follow(args: &[String]) -> Result<(), String> {
     let args = parse_follow_args(args)?;
     let client = client()?;
-    let forms = wanted_forms(args.include_amendments);
+    let forms = Kind::Ownership.forms(args.include_amendments);
     let mut known = saved_accessions(&args.out);
     println!(
         "following the EDGAR latest-filings feed every {}s; {} filing(s) already saved in {}",
@@ -351,7 +434,7 @@ fn poll_once(
             "https://www.sec.gov/Archives/edgar/data/{}/{}.txt",
             entry.cik, entry.accession
         );
-        match save_filing(client, &url, root) {
+        match save_filing(client, &url, root, Kind::Ownership) {
             Ok(Saved::Parsed(line)) => {
                 println!("  {line}  (feed time {})", entry.updated);
                 known.insert(entry.accession.clone());
@@ -381,12 +464,10 @@ mod tests {
 
     #[test]
     fn daily_args() {
-        let a = parse_daily_args(&args(&[
-            "2026-11-18",
-            "--limit",
-            "5",
-            "--include-amendments",
-        ]))
+        let a = parse_daily_args(
+            &args(&["2026-11-18", "--limit", "5", "--include-amendments"]),
+            DEFAULT_ROOT,
+        )
         .unwrap();
         assert_eq!(a.date, Date::from_ymd(2026, 11, 18).unwrap());
         assert_eq!(a.limit, Some(5));
@@ -394,20 +475,31 @@ mod tests {
         assert_eq!(a.out, PathBuf::from("data/form4"));
 
         assert_eq!(
-            parse_daily_args(&args(&["2026-11-18"])).unwrap().limit,
+            parse_daily_args(&args(&["2026-11-18"]), DEFAULT_ROOT)
+                .unwrap()
+                .limit,
             Some(25)
         );
         assert_eq!(
-            parse_daily_args(&args(&["--all", "2026-11-18"]))
+            parse_daily_args(&args(&["--all", "2026-11-18"]), DEFAULT_ROOT)
                 .unwrap()
                 .limit,
             None
         );
-        assert!(parse_daily_args(&[]).is_err());
-        assert!(parse_daily_args(&args(&["yesterday"])).is_err());
-        assert!(parse_daily_args(&args(&["2026-13-01"])).is_err());
-        assert!(parse_daily_args(&args(&["2026-11-18", "--limit", "0"])).is_err());
-        assert!(parse_daily_args(&args(&["2026-11-18", "2026-11-19"])).is_err());
+        assert!(parse_daily_args(&[], DEFAULT_ROOT).is_err());
+        // Form 144 downloads go to their own folder by default.
+        assert_eq!(
+            parse_daily_args(&args(&["2026-11-18"]), Kind::Form144.default_root())
+                .unwrap()
+                .out,
+            PathBuf::from("data/form144")
+        );
+        assert_eq!(Kind::Ownership.forms(true), ["4", "4/A"]);
+        assert_eq!(Kind::Form144.forms(false), ["144"]);
+        assert!(parse_daily_args(&args(&["yesterday"]), DEFAULT_ROOT).is_err());
+        assert!(parse_daily_args(&args(&["2026-13-01"]), DEFAULT_ROOT).is_err());
+        assert!(parse_daily_args(&args(&["2026-11-18", "--limit", "0"]), DEFAULT_ROOT).is_err());
+        assert!(parse_daily_args(&args(&["2026-11-18", "2026-11-19"]), DEFAULT_ROOT).is_err());
     }
 
     #[test]

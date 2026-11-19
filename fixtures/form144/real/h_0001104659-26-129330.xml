@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData>
+    <submissionType>144</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <!-- Field: Pseudo-Tag; ID: Name; Data: Jin Hui -->
+          <cik>0001992454</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <issuerInfo>
+      <issuerCik>0001483994</issuerCik>
+      <issuerName>H World Group Ltd</issuerName>
+      <secFileNumber>001-34656</secFileNumber>
+      <issuerAddress>
+        <com:street1>NO. 1299 FENGHUA ROAD</com:street1>
+        <com:street2>JIADING DISTRICT</com:street2>
+        <com:city>SHANGHAI</com:city>
+        <com:stateOrCountry>F4</com:stateOrCountry>
+        <com:zipCode>201803</com:zipCode>
+      </issuerAddress>
+      <issuerContactPhone>86-021-6195-2011</issuerContactPhone>
+      <nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>JIN HUI</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+      <relationshipsToIssuer>
+        <relationshipToIssuer>AFFILIATE</relationshipToIssuer>
+      </relationshipsToIssuer>
+    </issuerInfo>
+    <securitiesInformation>
+      <securitiesClassTitle>Ordinary Shares (each ADS representing 10 ordinary share)</securitiesClassTitle>
+      <brokerOrMarketmakerDetails>
+        <name>BOCI Securities Limited</name>
+        <address>
+          <com:street1>18/F, 181 Queen's Road Central</com:street1>
+          <com:city>Hong Kong</com:city>
+          <com:stateOrCountry>F4</com:stateOrCountry>
+          <com:zipCode>999077</com:zipCode>
+        </address>
+      </brokerOrMarketmakerDetails>
+      <noOfUnitsSold>9362110</noOfUnitsSold>
+      <aggregateMarketValue>46763739.45</aggregateMarketValue>
+      <noOfUnitsOutstanding>3144566080</noOfUnitsOutstanding>
+      <approxSaleDate>11/18/2026</approxSaleDate>
+      <securitiesExchangeName>NASDAQ</securitiesExchangeName>
+    </securitiesInformation>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>09/30/2026</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>80770</amountOfSecuritiesAcquired>
+      <paymentDate>09/30/2026</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>06/23/2026</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>559850</amountOfSecuritiesAcquired>
+      <paymentDate>06/23/2026</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>04/15/2026</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>993930</amountOfSecuritiesAcquired>
+      <paymentDate>04/15/2026</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>03/27/2026</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>116650</amountOfSecuritiesAcquired>
+      <paymentDate>03/27/2026</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>12/04/2025</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>118300</amountOfSecuritiesAcquired>
+      <paymentDate>12/04/2025</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>09/29/2025</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>110530</amountOfSecuritiesAcquired>
+      <paymentDate>09/29/2025</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>06/18/2025</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>1102270</amountOfSecuritiesAcquired>
+      <paymentDate>06/18/2025</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>06/04/2025</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>429340</amountOfSecuritiesAcquired>
+      <paymentDate>06/04/2025</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>05/06/2025</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>854190</amountOfSecuritiesAcquired>
+      <paymentDate>05/06/2025</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>04/07/2025</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>318970</amountOfSecuritiesAcquired>
+      <paymentDate>04/07/2025</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>03/28/2025</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>84690</amountOfSecuritiesAcquired>
+      <paymentDate>03/28/2025</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>09/27/2024</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>77880</amountOfSecuritiesAcquired>
+      <paymentDate>09/27/2024</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>04/25/2024</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>211550</amountOfSecuritiesAcquired>
+      <paymentDate>04/25/2024</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>10/25/2023</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>118940</amountOfSecuritiesAcquired>
+      <paymentDate>10/25/2023</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>09/27/2023</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>84810</amountOfSecuritiesAcquired>
+      <paymentDate>09/27/2023</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>03/29/2023</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>267020</amountOfSecuritiesAcquired>
+      <paymentDate>03/29/2023</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>09/26/2022</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>90430</amountOfSecuritiesAcquired>
+      <paymentDate>09/26/2022</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>03/28/2022</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>223720</amountOfSecuritiesAcquired>
+      <paymentDate>03/28/2022</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>09/27/2021</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>69690</amountOfSecuritiesAcquired>
+      <paymentDate>09/27/2021</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>03/26/2021</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>205920</amountOfSecuritiesAcquired>
+      <paymentDate>03/26/2021</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>09/28/2020</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>75830</amountOfSecuritiesAcquired>
+      <paymentDate>09/28/2020</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>03/26/2020</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>246270</amountOfSecuritiesAcquired>
+      <paymentDate>03/26/2020</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>01/02/2020</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>660870</amountOfSecuritiesAcquired>
+      <paymentDate>01/02/2020</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>11/18/2026</acquiredDate>
+      <natureOfAcquisitionTransaction>Cashless exercise of employee stock options</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>2259690</amountOfSecuritiesAcquired>
+      <paymentDate>11/18/2026</paymentDate>
+      <natureOfPayment>Broker assisted cashless exercise</natureOfPayment>
+    </securitiesToBeSold>
+    <nothingToReportFlagOnSecuritiesSoldInPast3Months>Y</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+    <noticeSignature>
+      <noticeDate>11/18/2026</noticeDate>
+      <signature>/s/ JIN HUI</signature>
+    </noticeSignature>
+  </formData>
+</edgarSubmission>

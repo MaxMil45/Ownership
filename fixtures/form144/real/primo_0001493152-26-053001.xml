@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData>
+    <submissionType>144</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <!-- Field: Pseudo-Tag; ID: Name; Data: Triton Water Equity Holdings, LP -->
+          <cik>0002046046</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <issuerInfo>
+      <issuerCik>0002042694</issuerCik>
+      <issuerName>Primo Brands Corp</issuerName>
+      <secFileNumber>001-42404</secFileNumber>
+      <issuerAddress>
+        <com:street1>1150 Assembly Drive, Suite 800,</com:street1>
+        <com:city>TAMPA,</com:city>
+        <com:stateOrCountry>FL</com:stateOrCountry>
+        <com:zipCode>33607</com:zipCode>
+      </issuerAddress>
+      <issuerContactPhone>813-544-8515</issuerContactPhone>
+      <nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>Triton Water Equity Holdings, LP</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+      <relationshipsToIssuer>
+        <relationshipToIssuer>10% Stockholder</relationshipToIssuer>
+      </relationshipsToIssuer>
+    </issuerInfo>
+    <securitiesInformation>
+      <securitiesClassTitle>Class A Common Stock</securitiesClassTitle>
+      <brokerOrMarketmakerDetails>
+        <name>Morgan Stanley &amp; Co. LLC</name>
+        <address>
+          <com:street1>1585 Broadway</com:street1>
+          <com:city>New York</com:city>
+          <com:stateOrCountry>NY</com:stateOrCountry>
+          <com:zipCode>10036</com:zipCode>
+        </address>
+      </brokerOrMarketmakerDetails>
+      <noOfUnitsSold>26366806</noOfUnitsSold>
+      <aggregateMarketValue>614873915.92</aggregateMarketValue>
+      <noOfUnitsOutstanding>361548061</noOfUnitsOutstanding>
+      <approxSaleDate>11/18/2026</approxSaleDate>
+      <securitiesExchangeName>NYSE</securitiesExchangeName>
+    </securitiesInformation>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Class A Common Stock</securitiesClassTitle>
+      <acquiredDate>11/08/2024</acquiredDate>
+      <natureOfAcquisitionTransaction>Merger Consideration</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>154105789</amountOfSecuritiesAcquired>
+      <paymentDate>11/08/2024</paymentDate>
+      <natureOfPayment>Merger Consideration</natureOfPayment>
+    </securitiesToBeSold>
+    <nothingToReportFlagOnSecuritiesSoldInPast3Months>Y</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+    <noticeSignature>
+      <noticeDate>11/18/2026</noticeDate>
+      <signature>By: Triton Water Equity Holdings GP, LLC, its general partner, By: /s/ Fola Adamolekun, Secretary</signature>
+    </noticeSignature>
+  </formData>
+</edgarSubmission>

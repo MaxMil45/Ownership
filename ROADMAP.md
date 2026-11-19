@@ -18,7 +18,7 @@ The full plan lives in the "Ownership Event Intelligence Engine — Master Plan"
   - [x] Run the loader and the database tests against a real PostgreSQL server (PostgreSQL 16 in Docker, `docker/compose.yaml`; 6 of 6 tests pass; 332 real filings and 871 rows loaded and cross-checked with `psql`)
   - [ ] Download the history: about 2.2 million filings since 2015 is roughly 75 hours at 8 requests per second through `daily-form4` (an estimate, not measured). The SEC's bulk "insider transactions" data sets may be faster; not evaluated yet.
   - [ ] Link amendments (4/A, 5/A) to the rows they replace, then load their rows; store co-owners of joint filings
-- [ ] Form 144 parser and `insider.planned_sale@1`
+- [x] Form 144 parser and `insider.planned_sale@1` (`oe-form144`, `oe daily-form144`, `oe planned-sales`; run on 274 real filings; the insider test misses 28% of large notices, see the spec; not in the database yet)
 - [ ] Item 408 extraction from 10-Q/10-K Inline XBRL and `insider.plan_terminated@1`
 - [ ] Schedule 13D/13G parser; `activist.new_13d@1`, `activist.passive_to_active@1`
 - [ ] Proxy contest filings; `activist.proxy_contest@1`

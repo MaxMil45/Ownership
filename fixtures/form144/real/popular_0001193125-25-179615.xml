@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<headerData>
+<submissionType>144</submissionType>
+<filerInfo>
+<filer>
+<filerCredentials>
+<cik>0001495232</cik>
+<ccc>XXXXXXXX</ccc>
+</filerCredentials>
+</filer>
+<liveTestFlag>LIVE</liveTestFlag>
+</filerInfo>
+</headerData>
+<formData>
+<issuerInfo>
+<issuerCik>0000763901</issuerCik>
+<issuerName>Popular, Inc.</issuerName>
+<secFileNumber>001-34084</secFileNumber>
+<issuerAddress>
+<street1 xmlns="http://www.sec.gov/edgar/common">209 Munoz Rivera Ave.</street1>
+<city xmlns="http://www.sec.gov/edgar/common">San Juan</city>
+<stateOrCountry xmlns="http://www.sec.gov/edgar/common">PR</stateOrCountry>
+<zipCode xmlns="http://www.sec.gov/edgar/common">00918</zipCode>
+</issuerAddress>
+<issuerContactPhone>787-765-9800</issuerContactPhone>
+<nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>Ignacio Alvarez</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+<relationshipsToIssuer>
+<relationshipToIssuer>Former CEO</relationshipToIssuer>
+</relationshipsToIssuer>
+</issuerInfo>
+<securitiesInformation>
+<securitiesClassTitle>Common Stock Par Value $0.01 per share</securitiesClassTitle>
+<brokerOrMarketmakerDetails>
+<name>Popular Securities, LLC</name>
+<address>
+<street1 xmlns="http://www.sec.gov/edgar/common">209 Munoz Rivera Avenue</street1>
+<city xmlns="http://www.sec.gov/edgar/common">San Juan</city>
+<stateOrCountry xmlns="http://www.sec.gov/edgar/common">PR</stateOrCountry>
+<zipCode xmlns="http://www.sec.gov/edgar/common">00918</zipCode>
+</address>
+</brokerOrMarketmakerDetails>
+<noOfUnitsSold>34583</noOfUnitsSold>
+<aggregateMarketValue>4055202.58</aggregateMarketValue>
+<noOfUnitsOutstanding>67582844</noOfUnitsOutstanding>
+<approxSaleDate>08/13/2025</approxSaleDate>
+<securitiesExchangeName>NASDAQ</securitiesExchangeName>
+</securitiesInformation>
+<securitiesToBeSold>
+<securitiesClassTitle>Common Stock Par Value $0.01 per share</securitiesClassTitle>
+<acquiredDate>03/11/2022</acquiredDate>
+<natureOfAcquisitionTransaction>Stock Award</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Popular, Inc.</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>21344</amountOfSecuritiesAcquired>
+<paymentDate>03/11/2022</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<securitiesToBeSold>
+<securitiesClassTitle>Common Stock Par Value $0.01 per share</securitiesClassTitle>
+<acquiredDate>03/08/2023</acquiredDate>
+<natureOfAcquisitionTransaction>Stock Award</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Popular, Inc.</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>13239</amountOfSecuritiesAcquired>
+<paymentDate>03/08/2023</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<nothingToReportFlagOnSecuritiesSoldInPast3Months>Y</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+<noticeSignature>
+<noticeDate>08/13/2025</noticeDate>
+<signature>Ignacio Alvarez</signature>
+</noticeSignature>
+</formData>
+</edgarSubmission>

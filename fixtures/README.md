@@ -34,6 +34,17 @@ Not yet covered: a filing that makes the parser fail (none of the 325 downloaded
 
 Owner addresses in these filings are company or business addresses. Check that before adding more (see the "no private individuals" rule in `CONTRIBUTING.md`).
 
+## Form 144 fixtures
+
+| Folder | Contents |
+| --- | --- |
+| `form144/synthetic/` | Two invented Form 144s covering the layouts (default namespace with `ns2:`; every element prefixed `own:`), an amendment, two share classes, a gift, thousands separators and a Rule 10b5-1 plan date. **Not real filings.** |
+| `form144/real/` | 17 real Form 144 / 144/A filings from 2023 to 2026, each with a `.meta.txt` sidecar. `MANIFEST.tsv` lists, per file, the submission type, namespace prefix, block counts, relationships, totals and whether `insider.planned_sale@1` should fire; the counts and sums come from the raw XML, not the parser. |
+
+The real set was chosen from 274 downloaded filings (four days) for coverage: prefixed namespaces, two securities blocks, a 24-block filing, a gift, an amendment, a 10% holder, a non-insider relationship ("See Remarks"), a former CEO, a CFO and a CEO who wrote their title, and plan and no-plan sellers. **Filings whose past-sales address was not the issuer's address (45 of 274) were left out**, because at least one was a home address. Check this before adding more.
+
+`crates/oe-form144/tests/real_fixtures.rs` and `crates/oe-events/tests/planned_sale_real.rs` run them.
+
 ## Adding real fixtures
 
 1. Set your SEC contact details (PowerShell): `$env:OE_USER_AGENT = "Your Name your.email@example.com"`

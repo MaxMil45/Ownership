@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:ns2="http://www.sec.gov/edgar/common">
+    <headerData>
+        <submissionType>144</submissionType>
+        <filerInfo>
+            <filer>
+                <filerCredentials>
+                    <cik>0001222012</cik>
+                    <ccc>XXXXXXXX</ccc>
+                </filerCredentials>
+            </filer>
+            <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+        </filerInfo>
+    </headerData>
+    <formData>
+        <issuerInfo>
+            <issuerCik>0001682852</issuerCik>
+            <issuerName>MODERNA INC</issuerName>
+            <secFileNumber>001-38753</secFileNumber>
+            <issuerAddress>
+                <ns2:street1>200 Technology Square</ns2:street1>
+                <ns2:city>Cambridge</ns2:city>
+                <ns2:stateOrCountry>MA</ns2:stateOrCountry>
+                <ns2:zipCode>02139</ns2:zipCode>
+            </issuerAddress>
+            <issuerContactPhone>6177146700</issuerContactPhone>
+            <nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>NOUBAR B AFEYAN</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+            <relationshipsToIssuer>
+                <relationshipToIssuer>Director</relationshipToIssuer>
+            </relationshipsToIssuer>
+        </issuerInfo>
+        <securitiesInformation>
+            <securitiesClassTitle>COMMON</securitiesClassTitle>
+            <brokerOrMarketmakerDetails>
+                <name>Morgan Stanley Smith Barney LLC Executive Financial Services</name>
+                <address>
+                    <ns2:street1>1 New York Plaza</ns2:street1>
+                    <ns2:street2>38th Fl.</ns2:street2>
+                    <ns2:city>New York</ns2:city>
+                    <ns2:stateOrCountry>NY</ns2:stateOrCountry>
+                    <ns2:zipCode>10004</ns2:zipCode>
+                </address>
+            </brokerOrMarketmakerDetails>
+            <noOfUnitsSold>15000</noOfUnitsSold>
+            <aggregateMarketValue>1919700.00</aggregateMarketValue>
+            <noOfUnitsOutstanding>381209000</noOfUnitsOutstanding>
+            <approxSaleDate>06/14/2023</approxSaleDate>
+            <securitiesExchangeName>NASDAQ</securitiesExchangeName>
+        </securitiesInformation>
+        <securitiesToBeSold>
+            <securitiesClassTitle>Common</securitiesClassTitle>
+            <acquiredDate>06/21/2012</acquiredDate>
+            <natureOfAcquisitionTransaction>Private Placement </natureOfAcquisitionTransaction>
+            <nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+            <isGiftTransaction>N</isGiftTransaction>
+            <amountOfSecuritiesAcquired>15000</amountOfSecuritiesAcquired>
+            <paymentDate>06/21/2012</paymentDate>
+            <natureOfPayment>N/A</natureOfPayment>
+        </securitiesToBeSold>
+        <nothingToReportFlagOnSecuritiesSoldInPast3Months>N</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+        <securitiesSoldInPast3Months>
+            <sellerDetails>
+                <name>10b5-1 Sales Plan for NOUBAR B AFEYAN</name>
+                <address>
+                    <ns2:street1>200 Technology Square</ns2:street1>
+                    <ns2:city>Cambridge</ns2:city>
+                    <ns2:stateOrCountry>MA</ns2:stateOrCountry>
+                    <ns2:zipCode>02139</ns2:zipCode>
+                </address>
+            </sellerDetails>
+            <securitiesClassTitle>Common</securitiesClassTitle>
+            <saleDate>06/07/2023</saleDate>
+            <amountOfSecuritiesSold>15000</amountOfSecuritiesSold>
+            <grossProceeds>1888600.50</grossProceeds>
+        </securitiesSoldInPast3Months>
+        <securitiesSoldInPast3Months>
+            <sellerDetails>
+                <name>10b5-1 Sales Plan for NOUBAR B AFEYAN</name>
+                <address>
+                    <ns2:street1>200 Technology Square</ns2:street1>
+                    <ns2:city>Cambridge</ns2:city>
+                    <ns2:stateOrCountry>MA</ns2:stateOrCountry>
+                    <ns2:zipCode>02139</ns2:zipCode>
+                </address>
+            </sellerDetails>
+            <securitiesClassTitle>Common</securitiesClassTitle>
+            <saleDate>05/31/2023</saleDate>
+            <amountOfSecuritiesSold>15000</amountOfSecuritiesSold>
+            <grossProceeds>1910322.00</grossProceeds>
+        </securitiesSoldInPast3Months>
+        <noticeSignature>
+            <noticeDate>06/14/2023</noticeDate>
+            <planAdoptionDates>
+                <planAdoptionDate>02/27/2023</planAdoptionDate>
+            </planAdoptionDates>
+            <signature>/s/ Noubar B. Afeyan</signature>
+        </noticeSignature>
+    </formData>
+</edgarSubmission>

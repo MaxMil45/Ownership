@@ -1,0 +1,18 @@
+file	submission_type	namespace_prefix	securities_blocks	acquisition_blocks	past_sales	plan_dates	relationships	total_units	total_value	event	note
+akamai_0001921094-24-000372.xml	144	-	1	1	1	1	Officer	1103	120977	no	2024 filing
+american_0001123292-24-000084.xml	144	-	2	7	0	0	Director	11874	142131.78	no	two securitiesInformation blocks (2024)
+analog_0001959173-23-001853.xml	144	-	1	1	0	0	Director	8460	1628576.23	yes	nothing sold in past 3 months, no plan, director
+avidxchange_0002007317-24-000395.xml	144	-	2	5	0	1	Officer	40000	518085.14	no	two securitiesInformation blocks (2024)
+avis_0001628280-26-074806.xml	144	own	1	2	0	0	Officer	7500	925125	no	own: prefixed, second layout
+boyd_0002007317-25-000867.xml	144	-	1	1	0	0	Officer	100000	8413917.8	yes	gift acquisition
+bumble_0000950170-25-108268.xml	144	-	1	2	0	0	See Remarks	7318685	47717826.2	no	relationship 'See Remarks' (not an insider by the test)
+h_0001104659-26-129330.xml	144	-	1	24	0	0	AFFILIATE	9362110	46763739.45	no	most acquisition blocks
+h_0001104659-26-129535.xml	144/A	-	1	1	0	0	AFFILIATE	500000	2682500	no	amendment 144/A
+home_0001628280-26-074788.xml	144	own	1	1	0	0	Officer	19350	6550514.87	yes	own: prefixed namespace (filing software)
+moderna_0001950047-23-001606.xml	144	-	1	1	2	1	Director	15000	1919700	yes	2023 filing (first year of the XML form), with a plan
+plexus_0001411282-26-000026.xml	144	own	1	3	3	1	President & CEO	4500	936810	no	title written out as the relationship
+popular_0001193125-25-179615.xml	144	-	1	2	0	0	Former CEO	34583	4055202.58	no	former CEO (excluded by the insider test)
+primo_0001493152-26-053001.xml	144	-	1	1	0	0	10% Stockholder	26366806	614873915.92	yes	10% holder, no plan, very large
+qualcomm_0001958244-26-000732.xml	144	ns2	1	1	3	1	Chief Financial Officer	2500	399525	no	ns2: prefixed root
+schwab_0001949846-26-000667.xml	144	-	1	1	5	0	Officer/Director	71400	6586571	yes	has remarks
+snowflake_0001959173-26-008119.xml	144	-	1	1	6	1	Officer/Director	50000	13844500	yes	plan, officer, three past sales, default namespace

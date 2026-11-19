@@ -1,0 +1,6 @@
+accession=0001959173-23-001853
+form=144
+known_on=2023-06-14
+accepted_eastern=2023-06-14T10:30:05
+company_cik=0000006281
+url=https://www.sec.gov/Archives/edgar/data/6281/0001959173-23-001853.txt

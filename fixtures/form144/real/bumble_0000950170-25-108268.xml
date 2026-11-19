@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<headerData>
+<submissionType>144</submissionType>
+<filerInfo>
+<filer>
+<filerCredentials>
+<cik>0001870649</cik>
+<ccc>XXXXXXXX</ccc>
+</filerCredentials>
+</filer>
+<liveTestFlag>LIVE</liveTestFlag>
+</filerInfo>
+</headerData>
+<formData>
+<issuerInfo>
+<issuerCik>0001830043</issuerCik>
+<issuerName>Bumble Inc.</issuerName>
+<secFileNumber>001-40054</secFileNumber>
+<issuerAddress>
+<street1 xmlns="http://www.sec.gov/edgar/common">1105 WEST 41ST STREET</street1>
+<city xmlns="http://www.sec.gov/edgar/common">AUSTIN</city>
+<stateOrCountry xmlns="http://www.sec.gov/edgar/common">TX</stateOrCountry>
+<zipCode xmlns="http://www.sec.gov/edgar/common">78756</zipCode>
+</issuerAddress>
+<issuerContactPhone>512-696-1409</issuerContactPhone>
+<nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>BX Buzz ML-5 Holdco L.P.</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+<relationshipsToIssuer>
+<relationshipToIssuer>See Remarks</relationshipToIssuer>
+</relationshipsToIssuer>
+</issuerInfo>
+<securitiesInformation>
+<securitiesClassTitle>Class A Common Stock</securitiesClassTitle>
+<brokerOrMarketmakerDetails>
+<name>UBS Securities LLC</name>
+<address>
+<street1 xmlns="http://www.sec.gov/edgar/common">1285 Avenue of the Americas</street1>
+<city xmlns="http://www.sec.gov/edgar/common">New York</city>
+<stateOrCountry xmlns="http://www.sec.gov/edgar/common">NY</stateOrCountry>
+<zipCode xmlns="http://www.sec.gov/edgar/common">10019</zipCode>
+</address>
+</brokerOrMarketmakerDetails>
+<noOfUnitsSold>7318685</noOfUnitsSold>
+<aggregateMarketValue>47717826.20</aggregateMarketValue>
+<noOfUnitsOutstanding>104010519</noOfUnitsOutstanding>
+<approxSaleDate>08/13/2025</approxSaleDate>
+<securitiesExchangeName>Nasdaq Global Select</securitiesExchangeName>
+</securitiesInformation>
+<securitiesToBeSold>
+<securitiesClassTitle>Class A Common Stock</securitiesClassTitle>
+<acquiredDate>06/25/2021</acquiredDate>
+<natureOfAcquisitionTransaction>Acquired in connection with a contribution by an affiliate who originally acquired the shares in connection with the Issuer's initial public offering and series of restructuring transactions in February of 2021</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Blackstone Buzz Holdings L.P.</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>3951</amountOfSecuritiesAcquired>
+<paymentDate>06/25/2021</paymentDate>
+<natureOfPayment>See Nature of Acquistion Transaction</natureOfPayment>
+</securitiesToBeSold>
+<securitiesToBeSold>
+<securitiesClassTitle>Class A Common Stock</securitiesClassTitle>
+<acquiredDate>08/13/2025</acquiredDate>
+<natureOfAcquisitionTransaction>Acquired upon exchange of Common Units of Buzz Holdings L.P. which Common Units were originally acquired on June 25, 2021</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>7314734</amountOfSecuritiesAcquired>
+<paymentDate>08/13/2025</paymentDate>
+<natureOfPayment>See Nature of Acquistion Transaction</natureOfPayment>
+</securitiesToBeSold>
+<nothingToReportFlagOnSecuritiesSoldInPast3Months>Y</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+<remarks>The Seller and certain of its affiliates are, together, significant equityholders of the Issuer and two executives of an affiliate of the Seller currently serve as  members of the board of directors of the Issuer.</remarks>
+<noticeSignature>
+<noticeDate>08/13/2025</noticeDate>
+<signature>BX Buzz ML-5 Holdco L.P.  By: BX Buzz ML-5 GP LLC, as its general partner  By: /s/ Robert Brooks, Title: Authorized Signatory</signature>
+</noticeSignature>
+</formData>
+</edgarSubmission>

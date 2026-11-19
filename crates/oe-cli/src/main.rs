@@ -7,6 +7,7 @@ mod live;
 
 use oe_core::FilingMeta;
 use oe_events::{detect_cluster_buys, trades_from_document, ClusterBuyParams, InsiderTrade};
+use oe_events::{detect_planned_sales, PlannedSaleParams};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -34,6 +35,17 @@ USAGE:
         Poll the EDGAR latest-filings feed (default every 30 s, at least 10) and
         download each new Form 4 as it appears. Runs until stopped with Ctrl-C,
         or for --polls polls. Needs OE_USER_AGENT.
+
+    oe daily-form144 <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>] [--include-amendments]
+        Download Form 144 notices (planned insider sales) filed by any company on one
+        day. Saved under data/form144/<issuer CIK>/. Needs OE_USER_AGENT.
+
+    oe parse-form144 <file.xml>
+        Print the key facts of one Form 144 XML file.
+
+    oe planned-sales <folder> [--min-value <dollars>]
+        Run insider.planned_sale@1 over downloaded Form 144 files (default folder:
+        data/form144) and list the events, newest first. Default minimum 1,000,000.
 
     oe db-migrate
         Create or update the PostgreSQL ledger tables (migrations/). Needs DATABASE_URL.
@@ -64,6 +76,11 @@ fn main() -> ExitCode {
             Some(file) => parse_form4(Path::new(file)),
             None => Err("parse-form4 needs a file".into()),
         },
+        Some("parse-form144") => match args.get(1) {
+            Some(file) => parse_form144_file(Path::new(file)),
+            None => Err("parse-form144 needs a file".into()),
+        },
+        Some("planned-sales") => planned_sales(&args[1..]),
         Some("cluster-buys") => cluster_buys(&args[1..]),
         Some("fetch") => match (args.get(1), args.get(2)) {
             (Some(url), Some(out)) => fetch(url, Path::new(out)),
@@ -73,9 +90,11 @@ fn main() -> ExitCode {
         #[cfg(feature = "net")]
         Some("daily-form4") => live::daily_form4(&args[1..]),
         #[cfg(feature = "net")]
+        Some("daily-form144") => live::daily_form144(&args[1..]),
+        #[cfg(feature = "net")]
         Some("follow") => live::follow(&args[1..]),
         #[cfg(not(feature = "net"))]
-        Some("daily-form4") | Some("follow") => {
+        Some("daily-form4") | Some("daily-form144") | Some("follow") => {
             Err("this build has no network support; rebuild with the default `net` feature".into())
         }
         #[cfg(feature = "db")]
@@ -101,6 +120,35 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Folder (under a download root) for filings whose XML the parser rejected.
+/// Searches skip it, so a bad file does not stop a whole run.
+pub(crate) const UNPARSED_DIR: &str = "unparsed";
+
+/// Every `.xml` under `root`, sorted by path, skipping the `unparsed` folder.
+pub(crate) fn find_xml_files(root: &Path) -> Result<Vec<PathBuf>, String> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+        for entry in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            if path.is_dir() {
+                if path.file_name().is_some_and(|n| n == UNPARSED_DIR) {
+                    continue;
+                }
+                walk(&path, out)?;
+            } else if path
+                .extension()
+                .is_some_and(|x| x.eq_ignore_ascii_case("xml"))
+            {
+                out.push(path);
+            }
+        }
+        Ok(())
+    }
+    let mut files = Vec::new();
+    walk(root, &mut files)?;
+    files.sort();
+    Ok(files)
 }
 
 fn read_document(path: &Path) -> Result<oe_core::OwnershipDocument, String> {
@@ -209,6 +257,122 @@ fn parse_form4(path: &Path) -> Result<(), String> {
             opt(t.price_per_share),
             opt(t.shares_owned_after),
             t.security_title
+        );
+    }
+    Ok(())
+}
+
+fn parse_form144_file(path: &Path) -> Result<(), String> {
+    let xml = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let f = oe_form144::parse(&xml).map_err(|e| format!("{}: {e}", path.display()))?;
+    println!(
+        "Form {} | issuer {} {} | seller {} ({})",
+        f.submission_type,
+        f.issuer_name,
+        f.issuer_cik,
+        f.seller_name,
+        f.relationships.join(", ")
+    );
+    println!(
+        "to sell: {} units, ${} | plan adopted: {}",
+        opt(f.total_units()),
+        opt(f.total_market_value()),
+        if f.plan_adoption_dates.is_empty() {
+            "no plan listed".to_string()
+        } else {
+            f.plan_adoption_dates
+                .iter()
+                .map(|d| d.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        }
+    );
+    println!("class\tunits\tvalue\tapprox_sale_date\tof_outstanding");
+    for s in &f.securities {
+        println!(
+            "{}\t{}\t{}\t{}\t{}",
+            s.class_title,
+            opt(s.units),
+            opt(s.aggregate_market_value),
+            s.approx_sale_date
+                .map_or("-".to_string(), |d| d.to_string()),
+            opt(s.units_outstanding)
+        );
+    }
+    println!(
+        "sold in the past 3 months: {} units in {} sale(s)",
+        f.units_sold_past_3_months(),
+        f.sold_past_3_months.len()
+    );
+    Ok(())
+}
+
+fn planned_sales(args: &[String]) -> Result<(), String> {
+    let mut folder: Option<PathBuf> = None;
+    let mut params = PlannedSaleParams::default();
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--min-value" => {
+                params.min_value = it
+                    .next()
+                    .and_then(|v| v.replace(',', "").parse().ok())
+                    .filter(|v: &f64| v.is_finite() && *v >= 0.0)
+                    .ok_or("--min-value needs a number of dollars")?
+            }
+            other if folder.is_none() => folder = Some(PathBuf::from(other)),
+            other => return Err(format!("unexpected argument {other:?}")),
+        }
+    }
+    let folder = folder.ok_or("planned-sales needs a folder, for example data/form144")?;
+
+    let files = find_xml_files(&folder)?;
+    let mut filings = Vec::new();
+    let mut failed = 0usize;
+    for path in &files {
+        let parsed = std::fs::read_to_string(path)
+            .map_err(|e| e.to_string())
+            .and_then(|xml| oe_form144::parse(&xml).map_err(|e| e.to_string()));
+        match parsed {
+            Ok(form) => filings.push((form, read_meta(path))),
+            Err(e) => {
+                failed += 1;
+                eprintln!("  {}: {e}", path.display());
+            }
+        }
+    }
+
+    let mut events = detect_planned_sales(&filings, &params);
+    // Newest first; within a day, the largest sale first.
+    events.sort_by(|a, b| {
+        b.known_on.cmp(&a.known_on).then(
+            b.aggregate_market_value
+                .partial_cmp(&a.aggregate_market_value)
+                .unwrap_or(std::cmp::Ordering::Equal),
+        )
+    });
+    println!(
+        "{} file(s), {} not Form 144 XML, {} event(s) from insider.planned_sale@1 (at least ${:.0})",
+        files.len(),
+        failed,
+        events.len(),
+        params.min_value
+    );
+    println!("known_on	issuer	seller	units	value	%outstanding	planned_for	plan");
+    for e in &events {
+        println!(
+            "{}	{}	{}	{}	{:.0}	{}	{}	{}",
+            e.known_on.map_or("?".to_string(), |d| d.to_string()),
+            e.issuer_name,
+            e.seller,
+            opt(e.units),
+            e.aggregate_market_value,
+            e.percent_of_outstanding
+                .map_or("-".to_string(), |p| format!("{p:.3}")),
+            e.approx_sale_date
+                .map_or("-".to_string(), |d| d.to_string()),
+            e.plan_adopted_on
+                .map_or("no plan".to_string(), |d| format!("plan {d}"))
         );
     }
     Ok(())

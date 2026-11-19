@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData>
+    <submissionType>144</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0000923738</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <issuerInfo>
+      <issuerCik>0000316709</issuerCik>
+      <issuerName>SCHWAB CHARLES CORP</issuerName>
+      <secFileNumber>001-09700</secFileNumber>
+      <issuerAddress>
+        <com:street1>3000 SCHWAB WAY</com:street1>
+        <com:city>WESTLAKE</com:city>
+        <com:stateOrCountry>TX</com:stateOrCountry>
+        <com:zipCode>76262</com:zipCode>
+      </issuerAddress>
+      <issuerContactPhone>817-859-5000</issuerContactPhone>
+      <nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>Schwab Charles R.</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+      <relationshipsToIssuer>
+        <relationshipToIssuer>Officer</relationshipToIssuer>
+        <relationshipToIssuer>Director</relationshipToIssuer>
+      </relationshipsToIssuer>
+    </issuerInfo>
+    <securitiesInformation>
+      <securitiesClassTitle>Common</securitiesClassTitle>
+      <brokerOrMarketmakerDetails>
+        <name>THE CHARLES SCHWAB CORPORATION</name>
+        <address>
+          <com:street1>3000 Schwab Way</com:street1>
+          <com:city>Westlake</com:city>
+          <com:stateOrCountry>TX</com:stateOrCountry>
+          <com:zipCode>76262</com:zipCode>
+        </address>
+      </brokerOrMarketmakerDetails>
+      <noOfUnitsSold>71400</noOfUnitsSold>
+      <aggregateMarketValue>6586571.00</aggregateMarketValue>
+      <noOfUnitsOutstanding>1726007705</noOfUnitsOutstanding>
+      <approxSaleDate>11/18/2026</approxSaleDate>
+      <securitiesExchangeName>NYSE</securitiesExchangeName>
+    </securitiesInformation>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Common</securitiesClassTitle>
+      <acquiredDate>03/31/1987</acquiredDate>
+      <natureOfAcquisitionTransaction>LEVERAGED BUYOUT</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>71400</amountOfSecuritiesAcquired>
+      <paymentDate>03/31/1987</paymentDate>
+      <natureOfPayment>NA</natureOfPayment>
+    </securitiesToBeSold>
+    <nothingToReportFlagOnSecuritiesSoldInPast3Months>N</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+    <securitiesSoldInPast3Months>
+      <sellerDetails>
+        <name>Charles R. Schwab</name>
+        <address>
+          <com:street1>3000 Schwab Way</com:street1>
+          <com:city>Westlake</com:city>
+          <com:stateOrCountry>TX</com:stateOrCountry>
+          <com:zipCode>76262</com:zipCode>
+        </address>
+      </sellerDetails>
+      <securitiesClassTitle>COMMON</securitiesClassTitle>
+      <saleDate>11/03/2026</saleDate>
+      <amountOfSecuritiesSold>11675</amountOfSecuritiesSold>
+      <grossProceeds>1041584.00</grossProceeds>
+    </securitiesSoldInPast3Months>
+    <securitiesSoldInPast3Months>
+      <sellerDetails>
+        <name>Charles R. Schwab</name>
+        <address>
+          <com:street1>3000 Schwab Way</com:street1>
+          <com:city>Westlake</com:city>
+          <com:stateOrCountry>TX</com:stateOrCountry>
+          <com:zipCode>76262</com:zipCode>
+        </address>
+      </sellerDetails>
+      <securitiesClassTitle>COMMON</securitiesClassTitle>
+      <saleDate>11/09/2026</saleDate>
+      <amountOfSecuritiesSold>70750</amountOfSecuritiesSold>
+      <grossProceeds>6580274.00</grossProceeds>
+    </securitiesSoldInPast3Months>
+    <securitiesSoldInPast3Months>
+      <sellerDetails>
+        <name>Charles R. Schwab</name>
+        <address>
+          <com:street1>3000 Schwab Way</com:street1>
+          <com:city>Westlake</com:city>
+          <com:stateOrCountry>TX</com:stateOrCountry>
+          <com:zipCode>76262</com:zipCode>
+        </address>
+      </sellerDetails>
+      <securitiesClassTitle>COMMON</securitiesClassTitle>
+      <saleDate>08/24/2026</saleDate>
+      <amountOfSecuritiesSold>117000</amountOfSecuritiesSold>
+      <grossProceeds>13244412.00</grossProceeds>
+    </securitiesSoldInPast3Months>
+    <securitiesSoldInPast3Months>
+      <sellerDetails>
+        <name>Charles R. Schwab</name>
+        <address>
+          <com:street1>3000 Schwab Way</com:street1>
+          <com:city>Westlake</com:city>
+          <com:stateOrCountry>TX</com:stateOrCountry>
+          <com:zipCode>76262</com:zipCode>
+        </address>
+      </sellerDetails>
+      <securitiesClassTitle>COMMON</securitiesClassTitle>
+      <saleDate>10/28/2026</saleDate>
+      <amountOfSecuritiesSold>66750</amountOfSecuritiesSold>
+      <grossProceeds>5897759.00</grossProceeds>
+    </securitiesSoldInPast3Months>
+    <securitiesSoldInPast3Months>
+      <sellerDetails>
+        <name>Charles R. Schwab</name>
+        <address>
+          <com:street1>3000 Schwab Way</com:street1>
+          <com:city>Westlake</com:city>
+          <com:stateOrCountry>TX</com:stateOrCountry>
+          <com:zipCode>76262</com:zipCode>
+        </address>
+      </sellerDetails>
+      <securitiesClassTitle>COMMON</securitiesClassTitle>
+      <saleDate>10/29/2026</saleDate>
+      <amountOfSecuritiesSold>136400</amountOfSecuritiesSold>
+      <grossProceeds>12207871.00</grossProceeds>
+    </securitiesSoldInPast3Months>
+    <remarks>FULL ACCT TITLE: C SCHWAB TTEE, CHARLES AND HELEN SCHWAB LIVING TRUST</remarks>
+    <noticeSignature>
+      <noticeDate>11/18/2026</noticeDate>
+      <signature>Charles R. Schwab</signature>
+    </noticeSignature>
+  </formData>
+</edgarSubmission>

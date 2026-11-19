@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData>
+    <submissionType>144/A</submissionType>
+    <previousAccessionNumber>0001104659-26-129330</previousAccessionNumber>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <!-- Field: Pseudo-Tag; ID: Name; Data: Jin Hui -->
+          <cik>0001992454</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <issuerInfo>
+      <issuerCik>0001483994</issuerCik>
+      <issuerName>H World Group Ltd</issuerName>
+      <secFileNumber>001-34656</secFileNumber>
+      <issuerAddress>
+        <com:street1>NO. 1299 FENGHUA ROAD</com:street1>
+        <com:street2>JIADING DISTRICT</com:street2>
+        <com:city>SHANGHAI</com:city>
+        <com:stateOrCountry>F4</com:stateOrCountry>
+        <com:zipCode>201803</com:zipCode>
+      </issuerAddress>
+      <issuerContactPhone>86-021-6195-2011</issuerContactPhone>
+      <nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>JIN HUI</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+      <relationshipsToIssuer>
+        <relationshipToIssuer>AFFILIATE</relationshipToIssuer>
+      </relationshipsToIssuer>
+    </issuerInfo>
+    <securitiesInformation>
+      <securitiesClassTitle>Ordinary Shares (each ADS representing 10 ordinary shares)</securitiesClassTitle>
+      <brokerOrMarketmakerDetails>
+        <name>BOCI Securities Limited</name>
+        <address>
+          <com:street1>18/F, 181 Queen's Road Central</com:street1>
+          <com:city>Hong Kong</com:city>
+          <com:stateOrCountry>F4</com:stateOrCountry>
+          <com:zipCode>999077</com:zipCode>
+        </address>
+      </brokerOrMarketmakerDetails>
+      <noOfUnitsSold>500000</noOfUnitsSold>
+      <aggregateMarketValue>2682500.00</aggregateMarketValue>
+      <noOfUnitsOutstanding>3144566080</noOfUnitsOutstanding>
+      <approxSaleDate>11/18/2026</approxSaleDate>
+      <securitiesExchangeName>NASDAQ</securitiesExchangeName>
+    </securitiesInformation>
+    <securitiesToBeSold>
+      <securitiesClassTitle>Ordinary Shares</securitiesClassTitle>
+      <acquiredDate>06/23/2026</acquiredDate>
+      <natureOfAcquisitionTransaction>Sell down of ordinary shares obtained from ESOP</natureOfAcquisitionTransaction>
+      <nameOfPersonfromWhomAcquired>H World Group Limited</nameOfPersonfromWhomAcquired>
+      <isGiftTransaction>N</isGiftTransaction>
+      <amountOfSecuritiesAcquired>500000</amountOfSecuritiesAcquired>
+      <paymentDate>06/23/2026</paymentDate>
+      <natureOfPayment>Cashless</natureOfPayment>
+    </securitiesToBeSold>
+    <nothingToReportFlagOnSecuritiesSoldInPast3Months>Y</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+    <remarks>This form 144 supersedes the form 144 filed on November 18, 2026, which was filed erroneously and contained incorrect information.</remarks>
+    <noticeSignature>
+      <noticeDate>11/18/2026</noticeDate>
+      <signature>/s/ JIN HUI</signature>
+    </noticeSignature>
+  </formData>
+</edgarSubmission>

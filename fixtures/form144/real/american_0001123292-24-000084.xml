@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:com="http://www.sec.gov/edgar/common">
+<headerData>
+<submissionType>144</submissionType>
+<filerInfo>
+<filer>
+<filerCredentials>
+<cik>0001417687</cik>
+<ccc>XXXXXXXX</ccc>
+</filerCredentials>
+</filer>
+<liveTestFlag>LIVE</liveTestFlag>
+
+
+
+</filerInfo>
+</headerData>
+<formData>
+<issuerInfo>
+<issuerCik>0001201792</issuerCik>
+<issuerName>American Public Education Inc</issuerName>
+<secFileNumber>001-33810</secFileNumber>
+<issuerAddress>
+<com:street1>111 WEST CONGRESS STREET</com:street1>
+<com:city>CHARLES TOWN</com:city>
+<com:stateOrCountry>WV</com:stateOrCountry>
+<com:zipCode>25414</com:zipCode>
+</issuerAddress>
+<issuerContactPhone>000-000-0000</issuerContactPhone>
+<nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>Halle Jean C.</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+<relationshipsToIssuer>
+<relationshipToIssuer>Director</relationshipToIssuer>
+</relationshipsToIssuer>
+</issuerInfo>
+<securitiesInformation>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<brokerOrMarketmakerDetails>
+<name>Morgan StanleySmith Barney LLC</name>
+<address>
+<com:street1>Executive FinancialServices</com:street1>
+<com:street2>1 New York Plaza, 8th Floor</com:street2>
+<com:city>New York</com:city>
+<com:stateOrCountry>NY</com:stateOrCountry>
+<com:zipCode>10004</com:zipCode>
+</address>
+</brokerOrMarketmakerDetails>
+<noOfUnitsSold>8328</noOfUnitsSold>
+<aggregateMarketValue>99686.16</aggregateMarketValue>
+<noOfUnitsOutstanding>17505345</noOfUnitsOutstanding>
+<approxSaleDate>03/12/2024</approxSaleDate>
+<securitiesExchangeName>NASDAQ</securitiesExchangeName>
+</securitiesInformation>
+<securitiesInformation>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<brokerOrMarketmakerDetails>
+<name>Wells Fargo Clearing Services</name>
+<address>
+<com:street1>1 North Jefferson Avenue</com:street1>
+<com:city>St. Louis</com:city>
+<com:stateOrCountry>MO</com:stateOrCountry>
+<com:zipCode>63103</com:zipCode>
+</address>
+</brokerOrMarketmakerDetails>
+<noOfUnitsSold>3546</noOfUnitsSold>
+<aggregateMarketValue>42445.62</aggregateMarketValue>
+<noOfUnitsOutstanding>17505345</noOfUnitsOutstanding>
+<approxSaleDate>03/12/2024</approxSaleDate>
+<securitiesExchangeName>NASDAQ</securitiesExchangeName>
+</securitiesInformation>
+<securitiesToBeSold>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<acquiredDate>06/14/2012</acquiredDate>
+<natureOfAcquisitionTransaction>Restricted Stock Vesting</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>1486</amountOfSecuritiesAcquired>
+<paymentDate>06/14/2012</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<securitiesToBeSold>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<acquiredDate>06/17/2013</acquiredDate>
+<natureOfAcquisitionTransaction>Restricted Stock Vesting</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>819</amountOfSecuritiesAcquired>
+<paymentDate>06/17/2013</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<securitiesToBeSold>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<acquiredDate>06/13/2014</acquiredDate>
+<natureOfAcquisitionTransaction>Restricted Stock Vesting</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>1241</amountOfSecuritiesAcquired>
+<paymentDate>06/13/2014</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<securitiesToBeSold>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<acquiredDate>05/15/2018</acquiredDate>
+<natureOfAcquisitionTransaction>Restricted Stock Vesting</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>3105</amountOfSecuritiesAcquired>
+<paymentDate>05/15/2018</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<securitiesToBeSold>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<acquiredDate>05/10/2019</acquiredDate>
+<natureOfAcquisitionTransaction>Restricted Stock Vesting</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>235</amountOfSecuritiesAcquired>
+<paymentDate>05/10/2019</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<securitiesToBeSold>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<acquiredDate>05/10/2020</acquiredDate>
+<natureOfAcquisitionTransaction>Restricted Stock Vesting</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>2468</amountOfSecuritiesAcquired>
+<paymentDate>05/10/2020</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<securitiesToBeSold>
+<securitiesClassTitle>Common</securitiesClassTitle>
+<acquiredDate>05/15/2021</acquiredDate>
+<natureOfAcquisitionTransaction>Restricted Stock Vesting</natureOfAcquisitionTransaction>
+<nameOfPersonfromWhomAcquired>Issuer</nameOfPersonfromWhomAcquired>
+<isGiftTransaction>N</isGiftTransaction>
+<amountOfSecuritiesAcquired>2520</amountOfSecuritiesAcquired>
+<paymentDate>05/15/2021</paymentDate>
+<natureOfPayment>Compensation</natureOfPayment>
+</securitiesToBeSold>
+<nothingToReportFlagOnSecuritiesSoldInPast3Months>Y</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+<noticeSignature>
+<noticeDate>03/12/2024</noticeDate>
+<signature>/s/ Jean C. Halle</signature>
+</noticeSignature>
+</formData>
+</edgarSubmission>

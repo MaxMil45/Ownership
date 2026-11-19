@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC. Invented issuer and person, shaped like a real Form 144.
+     Edge cases: default namespace plus an ns2: prefix on common elements; three
+     relationships; a Rule 10b5-1 plan adoption date; three past sales. -->
+<edgarSubmission xmlns="http://www.sec.gov/edgar/ownership" xmlns:ns2="http://www.sec.gov/edgar/common">
+    <headerData>
+        <submissionType>144</submissionType>
+        <filerInfo>
+            <filer>
+                <filerCredentials>
+                    <cik>0009999911</cik>
+                    <ccc>XXXXXXXX</ccc>
+                </filerCredentials>
+            </filer>
+            <liveTestFlag>LIVE</liveTestFlag>
+        </filerInfo>
+    </headerData>
+    <formData>
+        <issuerInfo>
+            <issuerCik>0009999901</issuerCik>
+            <issuerName>SYNTHETIC WIDGETS INC</issuerName>
+            <secFileNumber>001-99901</secFileNumber>
+            <issuerAddress>
+                <ns2:street1>1 Example Way</ns2:street1>
+                <ns2:city>Exampleville</ns2:city>
+                <ns2:stateOrCountry>CA</ns2:stateOrCountry>
+                <ns2:zipCode>90000</ns2:zipCode>
+            </issuerAddress>
+            <issuerContactPhone>(555) 010-0000</issuerContactPhone>
+            <nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>OFFICER BRAVO</nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold>
+            <relationshipsToIssuer>
+                <relationshipToIssuer>Officer</relationshipToIssuer>
+                <relationshipToIssuer>Director</relationshipToIssuer>
+                <relationshipToIssuer>10% Stockholder</relationshipToIssuer>
+            </relationshipsToIssuer>
+        </issuerInfo>
+        <securitiesInformation>
+            <securitiesClassTitle>Common</securitiesClassTitle>
+            <brokerOrMarketmakerDetails>
+                <name>Example Securities LLC</name>
+                <address>
+                    <ns2:street1>1 Broker Plaza</ns2:street1>
+                    <ns2:city>New York</ns2:city>
+                    <ns2:stateOrCountry>NY</ns2:stateOrCountry>
+                    <ns2:zipCode>10004</ns2:zipCode>
+                </address>
+            </brokerOrMarketmakerDetails>
+            <noOfUnitsSold>65000</noOfUnitsSold>
+            <aggregateMarketValue>2824614.00</aggregateMarketValue>
+            <noOfUnitsOutstanding>65019350</noOfUnitsOutstanding>
+            <approxSaleDate>03/11/2026</approxSaleDate>
+            <securitiesExchangeName>NASDAQ</securitiesExchangeName>
+        </securitiesInformation>
+        <securitiesToBeSold>
+            <securitiesClassTitle>Common</securitiesClassTitle>
+            <acquiredDate>03/11/2026</acquiredDate>
+            <natureOfAcquisitionTransaction>Stock Option Exercise</natureOfAcquisitionTransaction>
+            <nameOfPersonfromWhomAcquired>ISSUER</nameOfPersonfromWhomAcquired>
+            <isGiftTransaction>N</isGiftTransaction>
+            <amountOfSecuritiesAcquired>65000</amountOfSecuritiesAcquired>
+            <paymentDate>03/11/2026</paymentDate>
+            <natureOfPayment>Cash</natureOfPayment>
+        </securitiesToBeSold>
+        <nothingToReportFlagOnSecuritiesSoldInPast3Months>N</nothingToReportFlagOnSecuritiesSoldInPast3Months>
+        <securitiesSoldInPast3Months>
+            <sellerDetails>
+                <name>OFFICER BRAVO</name>
+                <address>
+                    <ns2:street1>1 Example Way</ns2:street1>
+                    <ns2:city>Exampleville</ns2:city>
+                    <ns2:stateOrCountry>CA</ns2:stateOrCountry>
+                    <ns2:zipCode>90000</ns2:zipCode>
+                </address>
+            </sellerDetails>
+            <securitiesClassTitle>Common</securitiesClassTitle>
+            <saleDate>03/10/2026</saleDate>
+            <amountOfSecuritiesSold>65000</amountOfSecuritiesSold>
+            <grossProceeds>2825160.00</grossProceeds>
+        </securitiesSoldInPast3Months>
+        <securitiesSoldInPast3Months>
+            <sellerDetails>
+                <name>OFFICER BRAVO</name>
+            </sellerDetails>
+            <securitiesClassTitle>Common</securitiesClassTitle>
+            <saleDate>01/09/2026</saleDate>
+            <amountOfSecuritiesSold>70000</amountOfSecuritiesSold>
+            <grossProceeds>5221482.00</grossProceeds>
+        </securitiesSoldInPast3Months>
+        <securitiesSoldInPast3Months>
+            <sellerDetails>
+                <name>OFFICER BRAVO</name>
+            </sellerDetails>
+            <securitiesClassTitle>Common</securitiesClassTitle>
+            <saleDate>01/08/2026</saleDate>
+            <amountOfSecuritiesSold>70000</amountOfSecuritiesSold>
+            <grossProceeds>5408522.00</grossProceeds>
+        </securitiesSoldInPast3Months>
+        <noticeSignature>
+            <noticeDate>03/11/2026</noticeDate>
+            <planAdoptionDates>
+                <planAdoptionDate>06/05/2025</planAdoptionDate>
+            </planAdoptionDates>
+            <signature>/s/ Officer Bravo</signature>
+        </noticeSignature>
+    </formData>
+</edgarSubmission>
