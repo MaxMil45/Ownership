@@ -1,0 +1,15 @@
+file	submission_type	prefixed	persons	issuer_cik	largest_percent	previous_13g_flag	amendment_no	previous_accession	rules	group_persons	new_13d_event	passive_to_active_event	note
+matson_0000052388-26-000286.xml	SCHEDULE 13G	sch	4	3453	5.8	-	-	-	Rule 13d-1(b)	0	no	no	13G whose elements all carry a namespace prefix; four reporting persons
+arcturus_0001193125-26-467309.xml	SCHEDULE 13G	-	1	1768224	7.88	-	-	-	Rule 13d-1(c)	0	no	no	13G under Rule 13d-1(c), one reporting person
+dimensional_0002107751-26-000008.xml	SCHEDULE 13G/A	-	1	354204	12.46	-	1	0002107751-26-000007	Rule 13d-1(b)	0	no	no	13G/A (amendment 1) naming the accession it amends
+sharps_0001193125-26-051406.xml	SCHEDULE 13D	-	7	1737995	20	false	-	-	-	0	yes	no	Seven reporting persons of mixed types (CO, HC, OO, PN)
+spar_0000050471-26-000006.xml	SCHEDULE 13D/A	-	1	1004989	40.6	true	1	0001437749-26-023888	-	0	no	no	A 13D/A (amendment 1) that also ticks previouslyFiledFlag: an amendment never fires an event
+standardlithium_0001193125-26-465703.xml	SCHEDULE 13G/A	-	2	1537137	0	-	3	-	Rule 13d-1(c)	0	no	no	13G/A (amendment 3) under Rule 13d-1(c)
+apollo_0000950142-26-002356.xml	SCHEDULE 13D	-	1	1858681	0.51	false	-	-	-	0	no	no	Stated percentage 0.51: below 5%, so no new_13d event
+futurefuel_0001493152-26-052855.xml	SCHEDULE 13D	-	4	1337298	9.7	false	-	-	-	4	yes	no	Four trusts, all ticking member of a group; trust names with dates
+valaris_0001104659-26-015494.xml	SCHEDULE 13D	-	1	314808	18.1	false	-	-	-	0	yes	no	One corporate holder (Transocean) at 18.1%; no group box ticked
+autoliv_0000902664-26-004607.xml	SCHEDULE 13D/A	-	1	1034670	13.04	false	9	0000902664-25-001430	-	0	no	no	A 13D/A (amendment 9) naming the accession it amends
+airproducts_0001562230-26-000024.xml	SCHEDULE 13G	-	1	2969	5.8	-	-	-	Rule 13d-1(b)	0	no	no	13G under Rule 13d-1(b) (institution), one reporting person
+arbor_0001285910-26-000002.xml	SCHEDULE 13G	-	1	1253986	6.2	-	-	-	Rule 13d-1(d)	0	no	no	13G under Rule 13d-1(d) (exempt investor)
+perfectmoment_0001104659-26-129222.xml	SCHEDULE 13D	-	1	1849221	9.9	true	-	-	-	0	yes	yes	previouslyFiledFlag true (filed under Rule 13d-1(e) after a 13G): the passive-to-active switch
+biorestorative_0001896206-26-000003.xml	SCHEDULE 13G	-	1	1505497	7.7	-	-	-	Rule 13d-1(c)	0	no	no	13G under Rule 13d-1(c) (passive investor)

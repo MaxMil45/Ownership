@@ -51,6 +51,17 @@ The real set was chosen from 274 downloaded filings (four days) for coverage: pr
 
 The set covers: a company that names every plan and one that tags only the person, a person who ended two plans, a plan replaced in the same report, a termination date tagged after the period (rejected), a company-level `booleantrue` flag that is not a termination, a 10-K, reports with only `false` statements, and a report accepted after 17:30 Eastern. Sidecars carry `known_on` (acceptance date, US Eastern) and `filing_date`; they differ for ACADIA.
 
+## Schedule 13D/13G fixtures
+
+| Folder | Contents |
+| --- | --- |
+| `sched13/synthetic/` | Four invented filings: a joint new 13D (two persons, group box, multi-paragraph Item 4), a 13D that follows a 13G (flag true), a 13D/A with `amendmentNo` and `previousAccessionNumber`, and a 13G under Rule 13d-1(c) with the 13G element names. **Not real filings.** |
+| `sched13/real/` | 14 real filings from 2026 (six original 13Ds, two 13D/As, four 13Gs, two 13G/As), each with a `.meta.txt` sidecar. `MANIFEST.tsv` has, per file, the form, whether the XML is namespace-prefixed, person count, issuer CIK, largest percent, the 13G flag, amendment fields, the 13G rules, group members, and whether each rule should fire; all from a separate script over the raw XML. |
+
+Chosen from 382 downloaded filings for coverage: Rule 13d-1(b), (c) and (d) 13Gs, a prefixed-namespace filing, a four-trust group, a seven-person filing of mixed types, a 0.51% 13D (no event), the passive-to-active 13D, a 13D/A that also ticks the flag (no event), and amendments with and without a previous accession. **Only filings whose reporting persons are all entities were used**; 204 of 382 filings name an individual and can carry a residence address. Check before adding more.
+
+`crates/oe-sched13/tests/real_fixtures.rs` and `crates/oe-events/tests/activist_real.rs` run them.
+
 ## Adding real fixtures
 
 1. Set your SEC contact details (PowerShell): `$env:OE_USER_AGENT = "Your Name your.email@example.com"`

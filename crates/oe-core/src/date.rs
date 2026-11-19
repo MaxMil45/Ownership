@@ -89,6 +89,21 @@ impl fmt::Display for Date {
     }
 }
 
+/// Parses the `MM/DD/YYYY` dates that SEC forms (144, 13D, 13G) use. Returns
+/// `None` for anything else, including impossible dates.
+pub fn parse_us_date(text: &str) -> Option<Date> {
+    let (m, rest) = text.trim().split_once('/')?;
+    let (d, y) = rest.split_once('/')?;
+    if y.trim().len() != 4 {
+        return None;
+    }
+    Date::from_ymd(
+        y.trim().parse().ok()?,
+        m.trim().parse().ok()?,
+        d.trim().parse().ok()?,
+    )
+}
+
 /// The US Eastern calendar date of a UTC timestamp such as
 /// `2026-03-11T22:05:12.000Z`: the date EDGAR uses for a filing's
 /// `filingDate` and the day the public could first see it.
@@ -263,6 +278,22 @@ mod tests {
         assert_eq!(eastern("2026-03-11"), "none");
         assert_eq!(eastern("2026-03-11 22:05:12Z"), "none");
         assert_eq!(eastern("2026-03-11T25:00:00Z"), "none");
+    }
+
+    #[test]
+    fn parses_us_dates() {
+        assert_eq!(parse_us_date("11/10/2026"), Date::from_ymd(2026, 11, 10));
+        assert_eq!(parse_us_date(" 1/5/2026 "), Date::from_ymd(2026, 1, 5));
+        for bad in [
+            "",
+            "2026-11-10",
+            "13/01/2026",
+            "02/30/2026",
+            "11/10/26",
+            "11/10",
+        ] {
+            assert_eq!(parse_us_date(bad), None, "{bad:?}");
+        }
     }
 
     #[test]

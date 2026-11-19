@@ -48,6 +48,17 @@ USAGE:
         Checks three small files per report and downloads the large one only when needed.
         --audit downloads <n> skipped reports too, to measure how often the cheap check is wrong.
 
+    oe daily-13dg <YYYY-MM-DD> [--limit <n> | --all] [--include-amendments] [--out <folder>]
+        Download Schedule 13D and 13G filings (large holders) filed by anyone on one day,
+        saved under data/sched13/<issuer CIK>/. Needs OE_USER_AGENT.
+
+    oe activist-events [<folder>] [--min-percent <n>]
+        Run activist.new_13d@1 and activist.passive_to_active@1 over downloaded 13D/13G
+        files (default folder: data/sched13) and list the events, newest first.
+
+    oe parse-13 <primary_doc.xml>
+        Print the key facts of one Schedule 13D/13G XML file.
+
     oe parse-408 <report.htm>
         Print the insider trading arrangements (Item 408) tagged in one 10-Q or 10-K.
 
@@ -90,6 +101,10 @@ fn main() -> ExitCode {
             Some(file) => parse_form4(Path::new(file)),
             None => Err("parse-form4 needs a file".into()),
         },
+        Some("parse-13") => match args.get(1) {
+            Some(file) => parse_13_file(Path::new(file)),
+            None => Err("parse-13 needs a file (a Schedule 13D/13G primary_doc.xml)".into()),
+        },
         Some("parse-408") => match args.get(1) {
             Some(file) => parse_408_file(Path::new(file)),
             None => Err("parse-408 needs a file (a 10-Q or 10-K .htm)".into()),
@@ -98,6 +113,7 @@ fn main() -> ExitCode {
             Some(file) => parse_form144_file(Path::new(file)),
             None => Err("parse-form144 needs a file".into()),
         },
+        Some("activist-events") => activist_events(&args[1..]),
         Some("plan-terminations") => plan_terminations(&args[1..]),
         Some("planned-sales") => planned_sales(&args[1..]),
         Some("cluster-buys") => cluster_buys(&args[1..]),
@@ -109,13 +125,19 @@ fn main() -> ExitCode {
         #[cfg(feature = "net")]
         Some("daily-form4") => live::daily_form4(&args[1..]),
         #[cfg(feature = "net")]
+        Some("daily-13dg") => live::daily_schedule13(&args[1..]),
+        #[cfg(feature = "net")]
         Some("daily-periodic") => periodic::daily_periodic(&args[1..]),
         #[cfg(feature = "net")]
         Some("daily-form144") => live::daily_form144(&args[1..]),
         #[cfg(feature = "net")]
         Some("follow") => live::follow(&args[1..]),
         #[cfg(not(feature = "net"))]
-        Some("daily-form4") | Some("daily-form144") | Some("daily-periodic") | Some("follow") => {
+        Some("daily-form4")
+        | Some("daily-form144")
+        | Some("daily-periodic")
+        | Some("daily-13dg")
+        | Some("follow") => {
             Err("this build has no network support; rebuild with the default `net` feature".into())
         }
         #[cfg(feature = "db")]
@@ -288,6 +310,63 @@ fn parse_form4(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn parse_13_file(path: &Path) -> Result<(), String> {
+    let xml = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let s = oe_sched13::parse(&xml).map_err(|e| format!("{}: {e}", path.display()))?;
+    println!(
+        "{} | issuer {} {} | class {} | event {}{}",
+        s.submission_type,
+        s.issuer_name,
+        s.issuer_cik,
+        s.class_title,
+        s.event_date.map_or("?".to_string(), |d| d.to_string()),
+        s.amendment_no
+            .map_or(String::new(), |n| format!(" | amendment {n}"))
+    );
+    if let Some(prev) = &s.previous_accession {
+        println!("amends {prev}");
+    }
+    println!(
+        "CUSIP: {}",
+        if s.cusips.is_empty() {
+            "-".to_string()
+        } else {
+            s.cusips.join(", ")
+        }
+    );
+    if let Some(flag) = s.previously_filed_13g {
+        println!(
+            "previously filed a 13G for this holding: {}",
+            if flag { "yes" } else { "no" }
+        );
+    }
+    if !s.rules.is_empty() {
+        println!("filed under: {}", s.rules.join("; "));
+    }
+    println!("person	cik	type	group	shares	percent	sole_vote	shared_vote");
+    for p in &s.persons {
+        println!(
+            "{}	{}	{}	{}	{}	{}	{}	{}",
+            p.name,
+            p.cik.map_or("-".to_string(), |c| c.to_string()),
+            p.person_type.as_deref().unwrap_or("-"),
+            p.member_of_group.as_deref().unwrap_or("-"),
+            opt(p.aggregate_shares),
+            opt(p.percent_of_class),
+            opt(p.sole_voting),
+            opt(p.shared_voting)
+        );
+    }
+    if let Some(purpose) = &s.purpose_of_transaction {
+        let one_line: String = purpose.split_whitespace().collect::<Vec<_>>().join(" ");
+        println!(
+            "Item 4 (purpose): {}",
+            one_line.chars().take(400).collect::<String>()
+        );
+    }
+    Ok(())
+}
+
 fn parse_408_file(path: &Path) -> Result<(), String> {
     let html = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let doc = oe_item408::extract(&html);
@@ -380,6 +459,76 @@ fn parse_form144_file(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn activist_events(args: &[String]) -> Result<(), String> {
+    let mut folder: Option<PathBuf> = None;
+    let mut params = oe_events::ActivistParams::default();
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--min-percent" => {
+                params.min_percent = it
+                    .next()
+                    .and_then(|v| v.parse().ok())
+                    .filter(|v: &f64| v.is_finite() && *v >= 0.0)
+                    .ok_or("--min-percent needs a number such as 5")?
+            }
+            other if folder.is_none() => folder = Some(PathBuf::from(other)),
+            other => return Err(format!("unexpected argument {other:?}")),
+        }
+    }
+    let folder = folder.unwrap_or_else(|| PathBuf::from("data/sched13"));
+
+    let files = find_xml_files(&folder)?;
+    let mut filings = Vec::new();
+    let mut failed = 0usize;
+    for path in &files {
+        let parsed = std::fs::read_to_string(path)
+            .map_err(|e| e.to_string())
+            .and_then(|xml| oe_sched13::parse(&xml).map_err(|e| e.to_string()));
+        match parsed {
+            Ok(s) => filings.push((s, read_meta(path))),
+            Err(e) => {
+                failed += 1;
+                eprintln!("  {}: {e}", path.display());
+            }
+        }
+    }
+
+    let mut events = oe_events::detect_activist_events(&filings, &params);
+    // Newest first; within a day, the larger holding first.
+    events.sort_by(|a, b| {
+        b.known_on.cmp(&a.known_on).then(
+            b.largest_percent
+                .partial_cmp(&a.largest_percent)
+                .unwrap_or(std::cmp::Ordering::Equal),
+        )
+    });
+    let count = |id: &str| events.iter().filter(|e| e.rule_id == id).count();
+    println!(
+        "{} file(s), {failed} unreadable: {} event(s) from activist.new_13d@1 (at least {}%), {} from activist.passive_to_active@1",
+        files.len(),
+        count(oe_events::activist::NEW_13D_RULE_ID),
+        params.min_percent,
+        count(oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID)
+    );
+    println!("known_on\trule\tissuer\tholders\tpercent\tshares\tgroup\tevent_date");
+    for e in &events {
+        let holders = e.holders.join("; ");
+        println!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            e.known_on.map_or("?".to_string(), |d| d.to_string()),
+            e.rule_id.trim_start_matches("activist."),
+            e.issuer_name,
+            holders.chars().take(70).collect::<String>(),
+            e.largest_percent
+                .map_or("-".to_string(), |p| format!("{p:.1}")),
+            opt(e.largest_shares),
+            if e.is_group { "group" } else { "-" },
+            e.event_date.map_or("-".to_string(), |d| d.to_string())
+        );
+    }
+    Ok(())
+}
 fn plan_terminations(args: &[String]) -> Result<(), String> {
     let folder = match args {
         [] => PathBuf::from("data/periodic"),

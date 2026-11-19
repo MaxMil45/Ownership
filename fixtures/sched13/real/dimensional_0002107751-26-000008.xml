@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13g" xmlns:ns1="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+<headerData>
+    <submissionType>SCHEDULE 13G/A</submissionType>
+    <previousAccessionNumber>0002107751-26-000007</previousAccessionNumber>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0002107751</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <amendmentNo>1</amendmentNo>
+      <securitiesClassTitle>Dimensional US Vector Equity ETF</securitiesClassTitle>
+      <eventDateRequiresFilingThisStatement>09/30/2026</eventDateRequiresFilingThisStatement>
+      <issuerInfo>
+        <issuerCik>0000354204</issuerCik>
+        <issuerName>DIMENSIONAL FUND ADVISORS LP</issuerName>
+        <issuerCusips>
+          <issuerCusipNumber>25434V559</issuerCusipNumber>
+        </issuerCusips>
+        <issuerPrincipalExecutiveOfficeAddress>
+          <ns1:street1>6300 BEE CAVE ROAD</ns1:street1>
+          <ns1:street2>BUILDING ONE</ns1:street2>
+          <ns1:city>AUSTIN</ns1:city>
+          <ns1:stateOrCountry>TX</ns1:stateOrCountry>
+          <ns1:zipCode>78746</ns1:zipCode>
+        </issuerPrincipalExecutiveOfficeAddress>
+      </issuerInfo>
+      <designateRulesPursuantThisScheduleFiled>
+        <designateRulePursuantThisScheduleFiled>Rule 13d-1(b)</designateRulePursuantThisScheduleFiled>
+      </designateRulesPursuantThisScheduleFiled>
+    </coverPageHeader>
+    <coverPageHeaderReportingPersonDetails>
+
+
+      <reportingPersonName>Tencap Wealth Coaching, LLC</reportingPersonName>
+      <citizenshipOrOrganization>XX</citizenshipOrOrganization>
+      <reportingPersonBeneficiallyOwnedNumberOfShares>
+        <soleVotingPower>0</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>1209132</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+      </reportingPersonBeneficiallyOwnedNumberOfShares>
+      <reportingPersonBeneficiallyOwnedAggregateNumberOfShares>1209132</reportingPersonBeneficiallyOwnedAggregateNumberOfShares>
+      <aggregateAmountExcludesCertainSharesFlag>N</aggregateAmountExcludesCertainSharesFlag>
+      <classPercent>12.46</classPercent>
+      <typeOfReportingPerson>IA</typeOfReportingPerson>
+    </coverPageHeaderReportingPersonDetails>
+    <items>
+      <item1>
+        <issuerName>DIMENSIONAL FUND ADVISORS LP</issuerName>
+        <issuerPrincipalExecutiveOfficeAddress>6300 BEE CAVE ROAD, BUILDING ONE, AUSTIN, TEXAS
+78746</issuerPrincipalExecutiveOfficeAddress>
+      </item1>
+      <item2>
+        <filingPersonName>Tencap Wealth Coaching, LLC</filingPersonName>
+        <principalBusinessOfficeOrResidenceAddress>1314 WEST 11400 SOUTH
+SUITE 201
+SOUTH JORDAN, Utah
+84095</principalBusinessOfficeOrResidenceAddress>
+        <citizenship>Tencap Wealth Coaching, LLC - UNKNOWN</citizenship>
+      </item2>
+      <item3>
+        <notApplicableFlag>N</notApplicableFlag>
+        <typeOfPersonFiling>IA</typeOfPersonFiling>
+      </item3>
+      <item4>
+        <amountBeneficiallyOwned>1,209,132</amountBeneficiallyOwned>
+        <classPercent>12.46</classPercent>
+        <numberOfSharesPersonHas>
+          <solePowerOrDirectToVote>Tencap Wealth Coaching, LLC - 0</solePowerOrDirectToVote>
+          <sharedPowerOrDirectToVote>Tencap Wealth Coaching, LLC - 0</sharedPowerOrDirectToVote>
+          <solePowerOrDirectToDispose>Tencap Wealth Coaching, LLC - 1,209,132</solePowerOrDirectToDispose>
+          <sharedPowerOrDirectToDispose>Tencap Wealth Coaching, LLC - 0</sharedPowerOrDirectToDispose>
+        </numberOfSharesPersonHas>
+      </item4>
+      <item5>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item5>
+      <item6>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item6>
+      <item7>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item7>
+      <item8>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item8>
+      <item9>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item9>
+      <item10>
+        <notApplicableFlag>N</notApplicableFlag>
+        <certifications>By signing below I certify that, to the best of my knowledge and belief, the securities referred to above were acquired and are held in the ordinary course of business and were not acquired and are not held for the purpose of or with the effect of changing or influencing the control of the issuer of the securities and were not acquired and are not held in connection with or as a participant in any transaction having that purpose or effect, other than activities solely in connection with a nomination under § 240.14a-11.</certifications>
+      </item10>
+    </items>
+    <signatureInformation>
+      <reportingPersonName>Tencap Wealth Coaching, LLC</reportingPersonName>
+      <signatureDetails>
+        <signature>/s/ Gregory D. Black</signature>
+        <title>Gregory D. Black CCO</title>
+        <date>11/17/2026</date>
+      </signatureDetails>
+    </signatureInformation>
+  </formData>
+</edgarSubmission>

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13D" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData>
+    <submissionType>SCHEDULE 13D</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <!-- Field: Pseudo-Tag; ID: Name; Data: Transocean Ltd. -->
+          <cik>0001451505</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <securitiesClassTitle>Common Shares, $0.01 par value</securitiesClassTitle>
+      <dateOfEvent>02/09/2026</dateOfEvent>
+      <previouslyFiledFlag>false</previouslyFiledFlag>
+      <issuerInfo>
+        <issuerCIK>0000314808</issuerCIK>
+        <issuerCUSIP>G9460G101</issuerCUSIP>
+        <issuerName>Valaris Limited</issuerName>
+        <address>
+          <com:street1>Clarendon House</com:street1>
+          <com:street2>2 Church Street</com:street2>
+          <com:city>Hamilton</com:city>
+          <com:stateOrCountry>D0</com:stateOrCountry>
+          <com:zipCode>11</com:zipCode>
+        </address>
+      </issuerInfo>
+      <authorizedPersons>
+        <notificationInfo>
+          <personName>Debra Kupferman</personName>
+          <personPhoneNum>41 41 749 0500</personPhoneNum>
+          <personAddress>
+            <com:street1>Turmstrasse 30</com:street1>
+            <com:city>Steinhausen</com:city>
+            <com:stateOrCountry>V8</com:stateOrCountry>
+            <com:zipCode>CH-6312</com:zipCode>
+          </personAddress>
+        </notificationInfo>
+      </authorizedPersons>
+    </coverPageHeader>
+    <reportingPersons>
+      <reportingPersonInfo>
+        <reportingPersonCIK>0001451505</reportingPersonCIK>
+        <reportingPersonNoCIK>N</reportingPersonNoCIK>
+        <reportingPersonName>Transocean Ltd.</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>OO</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>V8</citizenshipOrOrganization>
+        <soleVotingPower>0.00</soleVotingPower>
+        <sharedVotingPower>12573155.00</sharedVotingPower>
+        <soleDispositivePower>0.00</soleDispositivePower>
+        <sharedDispositivePower>0.00</sharedDispositivePower>
+        <aggregateAmountOwned>12573155.00</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>18.1</percentOfClass>
+        <typeOfReportingPerson>CO</typeOfReportingPerson>
+        <commentContent>(1) The reported amount reflects shares that may be deemed to be beneficially owned by the Reporting Person as a result of certain voting rights pursuant to the Support Agreement described in Item 4 below.
+(2) Based upon the 69,577,278 Common Shares of the Issuer outstanding as of October 23, 2025, as disclosed by the Issuer in the Issuer's Quarterly Report on Form 10-Q filed with the U.S. Securities and Exchange Commission on October 30, 2025.</commentContent>
+      </reportingPersonInfo>
+    </reportingPersons>
+    <items1To7>
+      <item1>
+        <securityTitle>Common Shares, $0.01 par value</securityTitle>
+        <issuerName>Valaris Limited</issuerName>
+        <issuerPrincipalAddress>
+          <com:street1>Clarendon House</com:street1>
+          <com:street2>2 Church Street</com:street2>
+          <com:city>Hamilton</com:city>
+          <com:stateOrCountry>D0</com:stateOrCountry>
+          <com:zipCode>11</com:zipCode>
+        </issuerPrincipalAddress>
+      </item1>
+      <item2>
+        <filingPersonName>Transocean Ltd. ("Transocean" or the "Reporting Person")
+
+The directors and executive officers of the Reporting Person are set forth on Schedule I, attached hereto. Schedule I sets forth the following information with respect to each such person:
+
+(a) name;
+(b) business address; and
+(c) position with the Reporting Person and present principal occupation or employment and, for persons not employed by the Reporting Person, the name, principal business and address of any corporation or other organization in which such employment is conducted.</filingPersonName>
+        <principalBusinessAddress>Turmstrasse 30, Steinhausen, Switzerland</principalBusinessAddress>
+        <principalJob>Transocean provides, as its primary business, contract drilling services in a single operating segment, which involves contracting its mobile offshore drilling rigs, related equipment and work crews to drill oil and gas wells.</principalJob>
+        <hasBeenConvicted>Neither the Reporting Person nor, to the knowledge of the Reporting Person, any person named in Schedule I, has, during the last five years, been a party to a civil proceeding of a judicial or administrative body of competent jurisdiction and as a result of such proceeding was or is subject to a judgment, decree or final order enjoining future violations of, or prohibiting or mandating activities subject to, federal or state securities laws or finding any violation with respect to such laws.</hasBeenConvicted>
+        <convictionDescription>Neither the Reporting Person nor, to the knowledge of the Reporting Person, any person named in Schedule I, has, during the last five years, such person was a party to a civil proceeding of a judicial or administrative body of competent jurisdiction and as a result of such proceeding was or is subject to a judgment, decree or final order enjoining future violations of, or prohibiting or mandating activities subject to, federal or state securities laws or finding any violation with respect to such laws.</convictionDescription>
+        <citizenship>Transocean is a Swiss corporation.</citizenship>
+      </item2>
+      <item3>
+        <fundsSource>The information set forth in Item 4 is incorporated by reference in its entirety into this Item 3.
+
+The Support Agreements described in Item 4 were entered into by the Valaris Shareholders (as defined below) as an inducement for the Reporting Person to enter into the Agreement (as defined below). The Support Shares (as defined below) have not yet been exchanged, and no payments were made by or on behalf of the Reporting Person to the Valaris Shareholders in connection with the execution of the Support Agreements.</fundsSource>
+      </item3>
+      <item4>
+        <transactionPurpose>On February 9, 2026, the Reporting Person and Valaris Limited, an exempted company limited by shares incorporated under the laws of Bermuda ("Valaris") (the Reporting Person and Valaris, collectively, the "Parties" and each, a "Party"), entered into a Business Combination Agreement (the "Agreement") providing for the combination of the two Parties. Pursuant to the Agreement, and on the terms and subject to the conditions thereof, the Reporting Person will acquire all of the issued and outstanding common shares, par value $0.01 each, of Valaris (the "Valaris Shares") in exchange for Shares, at an exchange ratio of 15.235 Shares for each Valaris Share.
+
+In connection with the execution of the Agreement, the Reporting Person entered into Support Agreements (the "Support Agreements") with certain holders of Valaris Shares (the "Valaris Shareholders"). The Support Agreements provide, on the terms and subject to the conditions thereof, that each Valaris Shareholder will vote the Valaris Shares owned by such Valaris Shareholder (the "Support Shares") at the time of the applicable shareholder meeting in favor of the transactions contemplated by the Agreement.
+
+The foregoing description of the Support Agreements is not complete and is qualified by reference to the Support Agreements filed as Exhibit I and Exhibit II to this Schedule 13D, which are incorporated herein by reference. To the extent the Support Agreements specifically reference the Agreement, the foregoing description of the Support Agreements is also qualified by reference to the specific references to the Agreement filed as Exhibit III to this Schedule 13D, which specific references are incorporated herein by reference.</transactionPurpose>
+      </item4>
+      <item5>
+        <percentageOfClassSecurities>Number of shares of the Issuer's common stock beneficially owned by the Reporting Persons: 12,573,155
+
+Percent of class: 18.1%
+
+The percentage ownership was calculated based upon the 69,577,278 Common Shares of the Issuer outstanding as of October 23, 2025, as disclosed by the Issuer in the Issuer's Quarterly Report on Form 10-Q filed with the U.S. Securities and Exchange Commission on October 30, 2025.</percentageOfClassSecurities>
+        <numberOfShares>Number of shares of the Issuer's Common Shares as to which the Reporting Person has:
+
+(i)    Sole power to vote or to direct the vote: 0 shares
+(ii)   Shared power to vote or to direct the vote: 12,573,155
+(iii)  Sole power to dispose or to direct the disposition of: 0 shares
+(iv)  Shared power to dispose or to direct the disposition of: 0 shares
+
+To the knowledge of the Reporting Person, none of the individuals listed on Schedule I beneficially own any of the Issuer's common stock.</numberOfShares>
+        <transactionDesc>Except as reported in this Statement, to the knowledge of the Reporting Person, neither the Reporting Person nor any of the individuals listed on Schedule I have effected any transactions in the Issuer's common stock during the past sixty (60) days.</transactionDesc>
+        <listOfShareholders>N/A</listOfShareholders>
+        <date5PercentOwnership>N/A</date5PercentOwnership>
+      </item5>
+      <item6>
+        <contractDescription>Except for the information set forth in Items 3 and 4 of this Statement, which are incorporated into this Item 6 by reference, to the knowledge of the Reporting Person, there are no contracts, arrangements, understandings or relationships (legal or otherwise), including, but not limited to, transfer or voting of any of the Issuer's shares, finder's fees, joint ventures, loan or option arrangements, puts or calls, guarantees of profits, division of profits or loss, or the giving or withholding of proxies, among the persons named in Item 2 or between such persons and any other person, with respect to any securities of Issuer, including any securities pledged or otherwise subject to a contingency the occurrence of which would give another person voting power or investment power over such securities.</contractDescription>
+      </item6>
+      <item7>
+        <filedExhibits>Exhibit 1: Support Agreement, dated as of February 9, 2026, by and among Transocean and the undersigned shareholders of Valaris.
+
+Exhibit 2: Support Agreement, dated as of February 9, 2026, by and among Transocean and the undersigned shareholders of Valaris.
+
+Exhibit 3: Business Combination Agreement, dated as of February 9, 2026, between Transocean and Valaris (incorporated by reference to Exhibit 2.1 to Transocean's Current Report on Form 8-K (Commission File No. 001-38373) filed on February 10, 2026) (only those portions of the Agreement that are specifically referenced by the Agreement are filed under this Item 7).</filedExhibits>
+      </item7>
+    </items1To7>
+    <signatureInfo>
+      <signaturePerson>
+        <signatureReportingPerson>Transocean Ltd.</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Debra Kupferman</signature>
+          <title>Debra Kupferman/Authorized Person</title>
+          <date>02/13/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+    </signatureInfo>
+  </formData>
+
+</edgarSubmission>

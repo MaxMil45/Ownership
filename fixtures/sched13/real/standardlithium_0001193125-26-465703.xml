@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13g" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <schemaVersion>X0202</schemaVersion>
+<headerData>
+    <submissionType>SCHEDULE 13G/A</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0001896636</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <amendmentNo>3</amendmentNo>
+      <securitiesClassTitle>Common Shares, without par value</securitiesClassTitle>
+      <eventDateRequiresFilingThisStatement>09/30/2026</eventDateRequiresFilingThisStatement>
+      <issuerInfo>
+        <issuerCik>0001537137</issuerCik>
+        <issuerName>Standard Lithium Ltd.</issuerName>
+        <issuerCusips>
+          <issuerCusipNumber>853606101</issuerCusipNumber>
+        </issuerCusips>
+        <issuerPrincipalExecutiveOfficeAddress>
+          <street1 xmlns="http://www.sec.gov/edgar/common">Suite 1625, 1075 W Georgia Street</street1>
+          <city xmlns="http://www.sec.gov/edgar/common">Vancouver</city>
+          <stateOrCountry xmlns="http://www.sec.gov/edgar/common">A1</stateOrCountry>
+          <zipCode xmlns="http://www.sec.gov/edgar/common">V6E 3C9</zipCode>
+        </issuerPrincipalExecutiveOfficeAddress>
+      </issuerInfo>
+      <designateRulesPursuantThisScheduleFiled>
+        <designateRulePursuantThisScheduleFiled>Rule 13d-1(c)</designateRulePursuantThisScheduleFiled>
+      </designateRulesPursuantThisScheduleFiled>
+    </coverPageHeader>
+    <coverPageHeaderReportingPersonDetails>
+
+
+      <reportingPersonName>KSP Standard Lithium Investments, LLC</reportingPersonName>
+      <citizenshipOrOrganization>DE</citizenshipOrOrganization>
+      <reportingPersonBeneficiallyOwnedNumberOfShares>
+        <soleVotingPower>0</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>0</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+      </reportingPersonBeneficiallyOwnedNumberOfShares>
+      <reportingPersonBeneficiallyOwnedAggregateNumberOfShares>0</reportingPersonBeneficiallyOwnedAggregateNumberOfShares>
+      <aggregateAmountExcludesCertainSharesFlag>N</aggregateAmountExcludesCertainSharesFlag>
+      <classPercent>0</classPercent>
+      <typeOfReportingPerson>OO</typeOfReportingPerson>
+    </coverPageHeaderReportingPersonDetails>
+    <coverPageHeaderReportingPersonDetails>
+
+
+      <reportingPersonName>Koch, Inc.</reportingPersonName>
+      <citizenshipOrOrganization>KS</citizenshipOrOrganization>
+      <reportingPersonBeneficiallyOwnedNumberOfShares>
+        <soleVotingPower>0</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>0</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+      </reportingPersonBeneficiallyOwnedNumberOfShares>
+      <reportingPersonBeneficiallyOwnedAggregateNumberOfShares>0</reportingPersonBeneficiallyOwnedAggregateNumberOfShares>
+      <aggregateAmountExcludesCertainSharesFlag>N</aggregateAmountExcludesCertainSharesFlag>
+      <classPercent>0</classPercent>
+      <typeOfReportingPerson>CO</typeOfReportingPerson>
+    </coverPageHeaderReportingPersonDetails>
+    <items>
+      <item1>
+        <issuerName>Standard Lithium Ltd.</issuerName>
+        <issuerPrincipalExecutiveOfficeAddress>Suite 1625, 1075 W Georgia Street, Vancouver, British Columbia, Canada V6E 3C9</issuerPrincipalExecutiveOfficeAddress>
+      </item1>
+      <item2>
+        <filingPersonName>KSP Standard Lithium Investments, LLC ("KSP Lithium")
+Koch Strategic Platforms, LLC ("KSP")
+Koch Investments Group, LLC ("KIG")
+Koch Investments Group Holdings, LLC (KIGH")
+Koch Companies, LLC ("KCLLC")
+Koch, Inc.
+
+(Each a "Reporting Person," and collectively, the "Reporting Persons").
+
+KSP Lithium is beneficially owned by KSP, KSP is beneficially owned by KIG, KIG is beneficially owned by KIGH, and KIGH is beneficially owned by KCLLC, KCLLC is beneficially owned by Koch, Inc., in each case by means of ownership of all voting equity instruments.</filingPersonName>
+        <principalBusinessOfficeOrResidenceAddress>The principal business office for all Reporting Persons filing is:
+
+4111 E. 37th Street North
+Wichita, KS 67220</principalBusinessOfficeOrResidenceAddress>
+        <citizenship>See Item 4 of each cover page.</citizenship>
+      </item2>
+      <item3>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item3>
+      <item4>
+        <amountBeneficiallyOwned>See Item 9 of each cover page.</amountBeneficiallyOwned>
+        <classPercent>See Item 11 of each cover page.</classPercent>
+        <numberOfSharesPersonHas>
+          <solePowerOrDirectToVote>See Item 5 of each cover page.</solePowerOrDirectToVote>
+          <sharedPowerOrDirectToVote>See Item 6 of each cover page.</sharedPowerOrDirectToVote>
+          <solePowerOrDirectToDispose>See Item 7 of each cover page.</solePowerOrDirectToDispose>
+          <sharedPowerOrDirectToDispose>See Item 8 of each cover page.</sharedPowerOrDirectToDispose>
+        </numberOfSharesPersonHas>
+      </item4>
+      <item5>
+        <notApplicableFlag>N</notApplicableFlag>
+        <classOwnership5PercentOrLess>Y</classOwnership5PercentOrLess>
+      </item5>
+      <item6>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item6>
+      <item7>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item7>
+      <item8>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item8>
+      <item9>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item9>
+      <item10>
+        <notApplicableFlag>N</notApplicableFlag>
+        <certifications>By signing below I certify that, to the best of my knowledge and belief, the securities referred to above were not acquired and are not held for the purpose of or with the effect of changing or influencing the control of the issuer of the securities and were not acquired and are not held in connection with or as a participant in any transaction having that purpose or effect, other than activities solely in connection with a nomination under § 240.14a-11.</certifications>
+      </item10>
+    </items>
+    <signatureInformation>
+      <reportingPersonName>KSP Standard Lithium Investments, LLC</reportingPersonName>
+      <signatureDetails>
+        <signature>/s/ Nicholas Hoffman</signature>
+        <title>Nicholas Hoffman, Secretary</title>
+        <date>11/17/2026</date>
+      </signatureDetails>
+    </signatureInformation>
+    <signatureInformation>
+      <reportingPersonName>Koch, Inc.</reportingPersonName>
+      <signatureDetails>
+        <signature>/s/ Adam Fitzsimmons</signature>
+        <title>Adam Fitzsimmons, Assistant Secretary</title>
+        <date>11/17/2026</date>
+      </signatureDetails>
+    </signatureInformation>
+  </formData>
+</edgarSubmission>

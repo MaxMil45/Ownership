@@ -42,6 +42,10 @@ Things to know:
 
 `oe daily-form4` and `oe follow` use these; see `crates/oe-edgar/src/{daily_index,feed,submission}.rs`.
 
+## Schedule 13D / 13G in the daily index
+
+The form types are `SCHEDULE 13D`, `SCHEDULE 13D/A`, `SCHEDULE 13G` and `SCHEDULE 13G/A` (not `SC 13D`). They need the 17-character form column (`SCHEDULE 13D/A` is 14). Rows are per filer, so one filing can appear several times. See `schedule-13.md`.
+
 ## Periodic reports (10-Q, 10-K): what is different
 
 - **Filing date is a day late after 5:30 pm Eastern** (the cutoff for Form 4 is 10 pm). Palantir's 10-Q: accepted 2026-11-02 18:00:39 Eastern, `FILING-DATE` 2026-11-03. The `.hdr.sgml` file (`.../<CIK>/<accession without dashes>/<accession>.hdr.sgml`, under 1 KB, same Eastern time as the full submission header) gives the acceptance time. The path without the accession folder gives 403.

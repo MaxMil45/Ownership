@@ -7,6 +7,6 @@ pub mod date;
 pub mod ids;
 pub mod model;
 
-pub use date::{us_eastern_date, Date};
+pub use date::{parse_us_date, us_eastern_date, Date};
 pub use ids::{Accession, Cik};
 pub use model::*;

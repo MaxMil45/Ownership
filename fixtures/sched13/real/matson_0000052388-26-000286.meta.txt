@@ -1,0 +1,6 @@
+accession=0000052388-26-000286
+form=SCHEDULE 13G
+known_on=2026-08-14
+accepted_eastern=2026-08-14T14:47:57
+company_cik=0000003453
+url=https://www.sec.gov/Archives/edgar/data/52388/0000052388-26-000286.txt

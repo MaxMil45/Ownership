@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13D" xmlns:com="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+<headerData>
+    <submissionType>SCHEDULE 13D/A</submissionType>
+    <previousAccessionNumber>0000902664-25-001430</previousAccessionNumber>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <!-- Field: Pseudo-Tag; ID: Name; Data: Cevian Capital II GP LTD -->
+          <cik>0001365341</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <amendmentNo>9</amendmentNo>
+      <securitiesClassTitle>Common stock, par value $1.00 per share</securitiesClassTitle>
+      <dateOfEvent>11/16/2026</dateOfEvent>
+      <previouslyFiledFlag>false</previouslyFiledFlag>
+      <issuerInfo>
+        <issuerCIK>0001034670</issuerCIK>
+        <issuerCusips>
+          <issuerCusipNumber>052800109</issuerCusipNumber>
+        </issuerCusips>
+        <issuerName>AUTOLIV INC</issuerName>
+        <address>
+          <com:street1>Klarabergsviadukten 70, Section D5</com:street1>
+          <com:street2>Box 70381</com:street2>
+          <com:city>Stockholm</com:city>
+          <com:stateOrCountry>V7</com:stateOrCountry>
+          <com:zipCode>SE-107 24</com:zipCode>
+        </address>
+      </issuerInfo>
+      <authorizedPersons>
+        <notificationInfo>
+          <personName>Norma O'Sullivan</personName>
+          <personPhoneNum>44 (0) 1534 828 514</personPhoneNum>
+          <personAddress>
+            <com:street1>Cevian Capital II GP Limited</com:street1>
+            <com:street2>Whiteley Chambers, Don Street</com:street2>
+            <com:city>St. Helier</com:city>
+            <com:stateOrCountry>Y9</com:stateOrCountry>
+            <com:zipCode>JE2 4TR</com:zipCode>
+          </personAddress>
+        </notificationInfo>
+        <notificationInfo>
+          <personName>Ele Klein</personName>
+          <personPhoneNum>212-756-2000</personPhoneNum>
+          <personAddress>
+            <com:street1>McDermott Will &amp; Schulte LLP</com:street1>
+            <com:street2>919 Third Avenue</com:street2>
+            <com:city>New York</com:city>
+            <com:stateOrCountry>NY</com:stateOrCountry>
+            <com:zipCode>10022</com:zipCode>
+          </personAddress>
+        </notificationInfo>
+      </authorizedPersons>
+    </coverPageHeader>
+    <reportingPersons>
+      <reportingPersonInfo>
+        <reportingPersonCIK>0001365341</reportingPersonCIK>
+        <reportingPersonNoCIK>N</reportingPersonNoCIK>
+        <reportingPersonName>Cevian Capital II GP LTD</reportingPersonName>
+        <fundType>AF</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>Y9</citizenshipOrOrganization>
+        <soleVotingPower>9319667.00</soleVotingPower>
+        <sharedVotingPower>0.00</sharedVotingPower>
+        <soleDispositivePower>9319667.00</soleDispositivePower>
+        <sharedDispositivePower>0.00</sharedDispositivePower>
+        <aggregateAmountOwned>9319667.00</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>13.04</percentOfClass>
+        <typeOfReportingPerson>IA</typeOfReportingPerson>
+        <typeOfReportingPerson>OO</typeOfReportingPerson>
+        <commentContent>Includes 3,021,159 Swedish Depositary Receipts representing 3,021,159 shares of Common Stock.</commentContent>
+      </reportingPersonInfo>
+    </reportingPersons>
+    <items1To7>
+      <item1>
+        <securityTitle>Common stock, par value $1.00 per share</securityTitle>
+        <issuerName>AUTOLIV INC</issuerName>
+        <issuerPrincipalAddress>
+          <com:street1>Klarabergsviadukten 70, Section D5</com:street1>
+          <com:street2>Box 70381</com:street2>
+          <com:city>Stockholm</com:city>
+          <com:stateOrCountry>V7</com:stateOrCountry>
+          <com:zipCode>SE-107 24</com:zipCode>
+        </issuerPrincipalAddress>
+        <commentText>This Amendment No. 9 ("Amendment No. 9") amends the statement on Schedule 13D filed with the Securities and Exchange Commission on March 1, 2018 (the "Original Schedule 13D", and the Original Schedule 13D as amended, the "Schedule 13D"). This Amendment No. 9 amends Items 5(a)-(c) as set forth below. Capitalized terms used herein and not otherwise defined in this Amendment No. 9 have the meanings set forth in the Schedule 13D.</commentText>
+      </item1>
+      <item5>
+        <percentageOfClassSecurities>Item 5(a) is hereby amended and restated in its entirety as follows:
+
+See rows (11) and (13) of the cover page to this Schedule 13D for the aggregate number of shares of Common Stock and percentage of shares of Common Stock beneficially owned by the Reporting Person. The percentage set forth in row (13) is calculated based upon 71,490,306 shares of Common Stock outstanding, which is the difference obtained by (x) subtracting a total of 360,142 shares of Common Stock repurchased by the Issuer from November 2, 2026 through November 13, 2026 under the Issuer's share buyback program, from (y) 71,850,448 shares of Common Stock outstanding as of October 31, 2026, each as disclosed on the Issuer's website.
+
+The shares of Common Stock reported herein include 3,021,159 Swedish Depositary Receipts, each representing one share of Common Stock.
+
+The Reporting Person has not acquired any shares of Common Stock since the filing of Amendment No. 8 to the Schedule 13D. The change in the percentage of the outstanding shares of Common Stock beneficially owned by the Reporting Person results solely from the reduction in the number of outstanding shares of Common Stock due to the Issuer's share repurchase program.</percentageOfClassSecurities>
+        <numberOfShares>Item 5(b) is hereby amended and restated in its entirety as follows:
+
+See rows (7) through (10) of the cover page to this Schedule 13D for the number of shares of Common Stock as to which the Reporting Person has the sole or shared power to vote or direct the vote and sole or shared power to dispose or to direct the disposition.</numberOfShares>
+        <transactionDesc>Item 5(c) is hereby amended and restated in its entirety as follows:
+
+No transactions in the Common Stock or Swedish Depositary Receipts by the Reporting Person for the benefit of the Master Fund were made during the past sixty (60) days.</transactionDesc>
+      </item5>
+    </items1To7>
+    <signatureInfo>
+      <signaturePerson>
+        <signatureReportingPerson>Cevian Capital II GP LTD</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Norma O'Sullivan</signature>
+          <title>Norma O'Sullivan, Director</title>
+          <date>11/18/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+    </signatureInfo>
+  </formData>
+</edgarSubmission>

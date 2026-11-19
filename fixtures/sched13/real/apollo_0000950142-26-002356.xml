@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13D" xmlns:com="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+<headerData>
+    <submissionType>SCHEDULE 13D</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <!-- Field: Pseudo-Tag; ID: Name; Data: LDB 2025 LLC -->
+          <cik>0002121659</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <securitiesClassTitle>Common stock, par value $0.00001 per share</securitiesClassTitle>
+      <dateOfEvent>08/13/2026</dateOfEvent>
+      <previouslyFiledFlag>false</previouslyFiledFlag>
+      <issuerInfo>
+        <issuerCIK>0001858681</issuerCIK>
+        <issuerCusips>
+          <issuerCusipNumber>03769M106</issuerCusipNumber>
+        </issuerCusips>
+        <issuerName>Apollo Global Management, Inc.</issuerName>
+        <address>
+          <com:street1>9 WEST 57TH STREET, 42ND FLOOR</com:street1>
+          <com:city>NEW YORK</com:city>
+          <com:stateOrCountry>NY</com:stateOrCountry>
+          <com:zipCode>10019</com:zipCode>
+        </address>
+      </issuerInfo>
+      <authorizedPersons>
+        <notificationInfo>
+          <personName>Heather Gray</personName>
+          <personPhoneNum>646-589-8607</personPhoneNum>
+          <personAddress>
+            <com:street1>c/o Elysium Management LLC</com:street1>
+            <com:street2>445 Park Avenue, Suite 1401</com:street2>
+            <com:city>New York</com:city>
+            <com:stateOrCountry>NY</com:stateOrCountry>
+            <com:zipCode>10022</com:zipCode>
+          </personAddress>
+        </notificationInfo>
+      </authorizedPersons>
+    </coverPageHeader>
+    <reportingPersons>
+      <reportingPersonInfo>
+        <reportingPersonCIK>0002121659</reportingPersonCIK>
+        <reportingPersonNoCIK>N</reportingPersonNoCIK>
+        <reportingPersonName>LDB 2025 LLC</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>OO</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>DE</citizenshipOrOrganization>
+        <soleVotingPower>3000000.00</soleVotingPower>
+        <sharedVotingPower>0.00</sharedVotingPower>
+        <soleDispositivePower>3000000.00</soleDispositivePower>
+        <sharedDispositivePower>0.00</sharedDispositivePower>
+        <aggregateAmountOwned>3000000.00</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>0.51</percentOfClass>
+        <typeOfReportingPerson>OO</typeOfReportingPerson>
+        <commentContent>Row 13: Based on 590,543,159 shares of common stock, par value $0.00001 per share, of Apollo Global Management, Inc. (the "Issuer") issued and outstanding as of August 5, 2026, reported by the Issuer in its Quarterly Report on Form 10-Q filed on August 10, 2026.</commentContent>
+      </reportingPersonInfo>
+    </reportingPersons>
+    <items1To7>
+      <item1>
+        <securityTitle>Common stock, par value $0.00001 per share</securityTitle>
+        <issuerName>Apollo Global Management, Inc.</issuerName>
+        <issuerPrincipalAddress>
+          <com:street1>9 WEST 57TH STREET, 42ND FLOOR</com:street1>
+          <com:city>NEW YORK</com:city>
+          <com:stateOrCountry>NY</com:stateOrCountry>
+          <com:zipCode>10019</com:zipCode>
+        </issuerPrincipalAddress>
+      </item1>
+      <item2>
+        <filingPersonName>LDB 2025 LLC</filingPersonName>
+        <principalBusinessAddress>The principal business address for the Reporting Person is c/o Elysium Management LLC, 445 Park Avenue, Suite 1401, New York, NY 10022.</principalBusinessAddress>
+        <principalJob>LDB 2025 LLC is an investment vehicle for trusts for the benefit of the Mr. Leon D. Black's family members. Heather Gray is the manager of LDB 2025 LLC.</principalJob>
+        <hasBeenConvicted>The Reporting Person has not during the last five years, been convicted in a criminal proceeding (excluding traffic violations or similar misdemeanors).</hasBeenConvicted>
+        <convictionDescription>The Reporting Person has not during the last five years, been a party to a civil proceeding of a judicial or administrative body of competent jurisdiction and, as a result of such proceeding, was or is subject to a judgment, decree or final order enjoining future violations of, or prohibiting or mandating activities subject to, federal or state securities laws or finding any violation with respect to such laws.</convictionDescription>
+        <citizenship>DE</citizenship>
+      </item2>
+      <item3>
+        <fundsSource>On July 29, 2026, LDC 2025 LLC received a contribution of 3,000,000 shares of Common Stock from the members of LDB 2014 LLC</fundsSource>
+      </item3>
+      <item4>
+        <transactionPurpose>The information set forth under Item 3 above is incorporated by reference herein.
+
+Stockholders Agreement
+
+On August 13, 2026, the Reporting Person became a party to the Stockholders Agreement among the Issuer, Leon D. Black, Marc J. Rowan, Joshua J. Harris (each, a "Principal") and the other persons party thereto, dated as of January 1, 2022 (the "Stockholders Agreement"). The Stockholders Agreement provides that:
+
+o the Issuer will nominate each Principal (or his designee, as applicable) as part of the director slate of the Issuer's board of directors (the "Board"), for so long as such Principal, together with the members of his family group, beneficially owns at least $400 million in value or 10 million in number of shares of Common Stock (the "Ownership Threshold");
+o each Principal (or his designee, as applicable), will, if requested by the Board, resign from the Board in the event that such Principal no longer meets the Ownership Threshold;
+o each Principal, together with the members of his family group, agrees to vote all of his or their respective shares of Common Stock in favor of the election of the other Principals (or their designees, as applicable);
+o the Issuer will recommend that its stockholders vote in favor of the Principals (or their designees, as applicable) and the Issuer will otherwise take all reasonable action to support their nomination and election (including by filling vacancies on the Board, if necessary);
+o each Principal (but not his designee) will be entitled to a seat on the executive committee of the Board so long as such Principal serves on the Board and the Ownership Threshold is satisfied with respect to such Principal;
+o the Issuer will not make any non-pro rata distributions or payments to any Principals without the consent of the other Principals;
+o each Principal and the Issuer agree not to take actions inconsistent with the terms of the Stockholders Agreement or in a manner that is discriminatory as to one or more of the Principals, and will agree to oppose any such actions if proposed by others
+o each Principal will have customary information rights regarding the Issuer's business, so long as such Principal, together with the members of his family group, meets an ownership threshold equal to 50% of the Ownership Threshold;
+o each Principal will be entitled to the use of office space at the Issuer's offices and administrative and logistics support provided by the Issuer; provided, that such Principal continues to (a) provide services to the Issuer (other than as a member of the Board), (b) serve on the executive committee of the Board or (c) serve as the chairman of the Board or of any committee of the Board.
+
+The Stockholders Agreement also grants to the parties thereto (and their permitted transferees) the right, under certain circumstances and subject to certain restrictions, to require the Issuer to register under the Securities Act of 1933, as amended (the "Securities Act"), shares of Common Stock held or acquired by them. Under the Stockholders Agreement, each party thereto (and its permitted transferees) (i) has "demand" registration rights that require the Issuer to register under the Securities Act the shares of Common Stock held or acquired, (ii) may require the Issuer to make available registration statements permitting sales of shares of Common Stock held or acquired in the market from time to time over an extended period and (iii) has the ability to exercise certain piggyback registration rights in connection with registered offerings requested by other registration rights holders or initiated by the Issuer. The Issuer has agreed to indemnify each party thereto (and its permitted transferees, together with certain related parties) against any losses or damages resulting from any untrue statement or omission of material fact in any registration statement or prospectus pursuant to which such holder sells shares of Common Stock, unless such liability arose from the holder's misstatement or omission, and each party thereto (and its permitted transferees) has agreed to indemnify the Issuer against all losses caused by his (or their) misstatements or omissions. References to and descriptions of the Stockholders Agreement set forth above are not intended to be complete and are qualified in their entirety by reference to the full text of such agreement, which is filed as Exhibit 1 hereto and is incorporated by reference herein.
+
+Variable Forward Transaction
+
+On August 7, 2026 the Reporting Person (the "Counterparty"), entered into a Variable Share Forward Transaction (the "Transaction") with Wells Fargo Bank, National Association (the "Bank") pursuant to a Master Confirmation entered into between the Counterparty and the Bank (the "Forward Contract") on June 18, 2026. The Forward Contract obligates the Counterparty to deliver to the Bank, on specified dates (each, a "Settlement Date"), at the Counterparty's option, up to an aggregate number of shares of the Issuer's Common Stock equal to the number of shares of Common Stock pledged by the Counterparty or, at Counterparty's election and subject to satisfaction of certain conditions, an equivalent amount of cash. The Counterparty pledged an aggregate of 2,000,000 shares of the Issuer's Common Stock (the "Pledged Shares") to secure its obligations under the Transaction. The Counterparty retains ownership and voting and ordinary dividend rights in the Pledged Shares during the term of the pledge (for so long as no event of default or similar event occurs under the Forward Contract as to which the Bank exercises its right to foreclose on such Pledged Shares) (and thereafter if the Counterparty settles the Transaction in cash), subject to certain payments the Counterparty may need to make to the Bank with respect to dividends under the terms of the Forward Contract. Under the terms of the Forward Contract, the Counterparty will receive a prepayment from the Bank equal to the product of (i) the aggregate number of shares underlying the Transaction and (ii) a percentage of the initial share price, which will be determined following a hedging period. For each of the components of the Transaction, the number of shares of the Issuer's Common Stock to be delivered to the Bank on each Settlement Date (or on which to base the amount of cash to be delivered to the Bank on the Cash Settlement Date) is to be determined as follows: (a) if the per-share volume weighted average price of the Issuer's Common Stock on the related valuation date (the "Settlement Price") is less than or equal to a floor price that will be determined following a hedging period (the "Floor Price"), the Counterparty will deliver to the Bank the ratable portion of the Pledged Shares to be delivered with respect to each Settlement Date (such number of shares, the "Number of Shares"), (b) if the Settlement Price is between the Floor Price and a cap price that will be determined following a hedging period (the "Cap Price"), the Counterparty will deliver to the Bank a number of shares of the Issuer's Common Stock equal to the Number of Shares multiplied by a fraction, the numerator of which is the Floor Price and the denominator of which is the Settlement Price, and (c) if the Settlement Price is greater than the Cap Price, the Counterparty will deliver to the Bank a number of shares of the Issuer's Common Stock equal to the product of (i) the Number of Shares and (ii) a fraction (a) the numerator of which is the sum of (x) the Floor Price and (y) the Settlement Price minus the Cap Price, and (b) the denominator of which is the Settlement Price.
+
+General
+
+The Reporting Person acquired the shares of the Common Stock reported in this Schedule 13D for investment purposes and intends to review such investment in the Issuer on a continuing basis. Consistent with such purposes, the Reporting Person may engage in communications with, without limitation, one or more stockholders of the Issuer, management of the Issuer and/or one or more members of the board of directors of the Issuer and may make suggestions concerning the Issuer's operations, prospects, business and financial strategies, strategic transactions, assets and liabilities, business and financing alternatives, the composition of the board of directors of the Issuer and such other matters as the Reporting Person may deem relevant to its investment in the Issuer. The Reporting Person expects that it will, from time to time, review its investment position in the shares of the Common Stock of the Issuer and may, depending on the Issuer's performance and other market conditions, increase or decrease their investment position in the Common Stock. The Reporting Person may, from time to time, make additional purchases of shares of the Common Stock either in the open market or in privately negotiated transactions, depending upon its evaluation of the Issuer's business, prospects, financial condition and results of operations, the market for the Common Stock, other opportunities available to the Reporting Person, general economic conditions, stock market conditions and other factors. Depending upon the factors noted above, the Reporting Person may also decide to hold or dispose of all or part of its investments in the Common Stock and/or enter into derivative transactions with institutional counterparties with respect to the Issuer's securities, including the Common Stock. Any actions the Reporting Person might undertake may be made at any time and from time to time without prior notice and will be dependent upon the Reporting Person's review of numerous factors, including, but not limited to: an ongoing evaluation of the Issuer's business, financial condition, operations and prospects; price levels of the Issuer's securities; general market, industry and economic conditions; the relative attractiveness of alternative business and investment opportunities; and other future developments. Except as set forth in this Item 4 or Item 6 below, the Reporting Person has no present plans or proposals that relate to, or that would result in, any of the actions specified in clauses (a) through (j) of Item 4 of Schedule 13D under the Securities Exchange Act of 1934, as amended (the "Exchange Act").</transactionPurpose>
+      </item4>
+      <item5>
+        <percentageOfClassSecurities>Reference to percentage ownership of the Common Stock in this Schedule 13D are based on 590,543,159 shares of Common Stock, issued and outstanding as of August 5, 2026, as reported by the Issuer in its Quarterly Report on Form 10-Q filed on August 10, 2026. As of the date of this Schedule 13D, LDB 2025 LLC is the beneficial owner of 3,000,000 shares of Common Stock (approximately 0.51% of the Common Stock), which it holds directly. LDB 2025 LLC has sole voting and sole dispositive power with respect to such shares. By virtue of the agreements made pursuant to the Stockholders Agreement, the parties thereto, including the Reporting Person, may be deemed to be acting as a group for purposes of Rule 13d-3 under the Exchange Act. Based on public filings, the parties to the Stockholders Agreement, as a group, may be deemed to beneficially own an aggregate of 146,753,672 shares of Common Stock (approximately 24.9% of the Common Stock). The Reporting Person disclaims beneficial ownership of any securities owned by such other parties. Only the shares of Common Stock beneficially owned by the Reporting Person are the subject of this Schedule 13D. For a description of the relationship between the Reporting Person and the other parties to the Stockholders Agreement, see Item 4.</percentageOfClassSecurities>
+        <numberOfShares>See Row (11)</numberOfShares>
+        <transactionDesc>The information set forth in Items 3 and 4 above is hereby incorporated into this Item 5(c) by reference, as applicable.</transactionDesc>
+        <listOfShareholders>Not applicable.</listOfShareholders>
+        <date5PercentOwnership>Not applicable.</date5PercentOwnership>
+      </item5>
+      <item6>
+        <contractDescription>Item 4 above summarizes certain provisions of the Stockholders Agreement and the terms of the Variable Forward Transaction and is incorporated herein by reference.</contractDescription>
+      </item6>
+      <item7>
+        <filedExhibits>Exhibit 1: Apollo Global Management, Inc. Stockholders Agreement, dated as of January 1, 2022, among the Issuer, Leon D. Black, Marc J. Rowan, Joshua J. Harris and the other persons party thereto, incorporated by reference to Exhibit 10.68 to the Issuer's Annual Report on Form 10-K for the year ended December 31, 2024, filed with the SEC on February 24, 2025.
+(https://www.sec.gov/Archives/edgar/data/1858681/000185868122000029/exhibit1027q12022agm.htm)
+
+Exhibit 2: Form of Variable Share Forward Contract.</filedExhibits>
+      </item7>
+    </items1To7>
+    <signatureInfo>
+      <signaturePerson>
+        <signatureReportingPerson>LDB 2025 LLC</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Heather Gray</signature>
+          <title>Heather Gray, Manager</title>
+          <date>08/14/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+    </signatureInfo>
+  </formData>
+
+</edgarSubmission>

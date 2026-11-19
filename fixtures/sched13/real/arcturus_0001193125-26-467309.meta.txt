@@ -1,0 +1,6 @@
+accession=0001193125-26-467309
+form=SCHEDULE 13G
+known_on=2026-11-18
+accepted_eastern=2026-11-18T17:44:08
+company_cik=0001768224
+url=https://www.sec.gov/Archives/edgar/data/1768224/0001193125-26-467309.txt

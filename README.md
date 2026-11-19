@@ -24,7 +24,9 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | `insider.planned_sale@1` rule | `oe-events` | Done, tested on real filings (spec in `events/specs/`) |
 | Item 408 reader (insider trading plans in 10-Q/10-K Inline XBRL) | `oe-item408` | Done; run on 647 real reports; 10 real fixtures |
 | `insider.plan_terminated@1` rule | `oe-events` | Done, tested on real reports (spec in `events/specs/`) |
-| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `db-*`, `fetch` |
+| Schedule 13D/13G parser (large holders) | `oe-sched13` | Done; reads 382 real filings; 14 real fixtures |
+| `activist.new_13d@1` and `activist.passive_to_active@1` rules | `oe-events` | Done, tested on real filings (specs in `events/specs/`) |
+| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `daily-13dg`, `parse-13`, `activist-events`, `db-*`, `fetch` |
 
 ## Quick start (Windows)
 
@@ -61,6 +63,11 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
    cargo run -p oe-cli -- daily-periodic 2026-11-05 --all   # about 650 reports; takes minutes
    cargo run -p oe-cli -- plan-terminations data/periodic
    ```n   `daily-periodic` reads a small page per report and downloads the 2 MB report only when it shows a termination. `--audit 30` also downloads 30 reports it skipped to measure its error rate. `parse-408 <report.htm>` shows what one report says.
+8. **Large holders (Schedule 13D/13G).** Someone crossing 5% of a company files a 13D (may want influence) or a 13G (passive):
+   ```powershell
+   cargo run -p oe-cli -- daily-13dg 2026-11-18 --all --include-amendments
+   cargo run -p oe-cli -- activist-events data/sched13
+   ```n   `activist-events` lists new 13Ds (`activist.new_13d@1`, at least 5%, change with `--min-percent`) and 13Ds that follow an earlier 13G (`activist.passive_to_active@1`). On deadline days there are over a thousand 13Gs; use `--limit`.
 
 On macOS or Linux, install Rust with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` and use `export OE_USER_AGENT="..."` instead.
 
@@ -96,6 +103,7 @@ crates/
   oe-form4/     Form 3/4/5 parser and a small XML tokenizer
   oe-form144/   Form 144 (notice of proposed sale) parser
   oe-item408/   Item 408 reader for 10-Q/10-K Inline XBRL (insider trading plans)
+  oe-sched13/   Schedule 13D/13G (large holder) parser
   oe-ledger/    append-only, point-in-time fact store
   oe-events/    versioned event rules (insider.cluster_buy@1)
   oe-edgar/     polite EDGAR HTTP client with rate limiting

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13g" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <schemaVersion>X0202</schemaVersion>
+<headerData>
+    <submissionType>SCHEDULE 13G</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0002163814</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <securitiesClassTitle>Common Stock, par value $0.001 per share</securitiesClassTitle>
+      <eventDateRequiresFilingThisStatement>11/16/2026</eventDateRequiresFilingThisStatement>
+      <issuerInfo>
+        <issuerCik>0001768224</issuerCik>
+        <issuerName>Arcturus Therapeutics Holdings Inc.</issuerName>
+        <issuerCusips>
+          <issuerCusipNumber>03969T109</issuerCusipNumber>
+        </issuerCusips>
+        <issuerPrincipalExecutiveOfficeAddress>
+          <street1 xmlns="http://www.sec.gov/edgar/common">10285 Science Center Drive</street1>
+          <city xmlns="http://www.sec.gov/edgar/common">San Diego</city>
+          <stateOrCountry xmlns="http://www.sec.gov/edgar/common">CA</stateOrCountry>
+          <zipCode xmlns="http://www.sec.gov/edgar/common">92121</zipCode>
+        </issuerPrincipalExecutiveOfficeAddress>
+      </issuerInfo>
+      <designateRulesPursuantThisScheduleFiled>
+        <designateRulePursuantThisScheduleFiled>Rule 13d-1(c)</designateRulePursuantThisScheduleFiled>
+      </designateRulesPursuantThisScheduleFiled>
+    </coverPageHeader>
+    <coverPageHeaderReportingPersonDetails>
+
+
+      <reportingPersonName>Meiji Seika Pharma Co., Ltd.</reportingPersonName>
+      <citizenshipOrOrganization>M0</citizenshipOrOrganization>
+      <reportingPersonBeneficiallyOwnedNumberOfShares>
+        <soleVotingPower>2466395</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>2466395</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+      </reportingPersonBeneficiallyOwnedNumberOfShares>
+      <reportingPersonBeneficiallyOwnedAggregateNumberOfShares>2466395</reportingPersonBeneficiallyOwnedAggregateNumberOfShares>
+      <aggregateAmountExcludesCertainSharesFlag>N</aggregateAmountExcludesCertainSharesFlag>
+      <classPercent>7.88</classPercent>
+      <typeOfReportingPerson>CO</typeOfReportingPerson>
+      <comments>With respect to Rows 5 through 9 and Row 11 above, the amounts reported reflect 2,466,395 shares of Common Stock issuable to, and to be held directly by, the Reporting Person.</comments>
+    </coverPageHeaderReportingPersonDetails>
+    <items>
+      <item1>
+        <issuerName>Arcturus Therapeutics Holdings Inc.</issuerName>
+        <issuerPrincipalExecutiveOfficeAddress>10285 Science Center Drive, San Diego, California 92121</issuerPrincipalExecutiveOfficeAddress>
+      </item1>
+      <item2>
+        <filingPersonName>Meiji Seika Pharma Co., Ltd. (the "Reporting Person")</filingPersonName>
+        <principalBusinessOfficeOrResidenceAddress>The address of the principal business office of the Reporting Person is:
+
+2-4-16, Kyobashi, Chuo-ku,
+Tokyo 104-8002, Japan
+</principalBusinessOfficeOrResidenceAddress>
+        <citizenship>Japan  </citizenship>
+      </item2>
+      <item3>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item3>
+      <item4>
+        <amountBeneficiallyOwned>The information required by this Item 4(a) is set forth in Row 9 of the cover page hereto and is incorporated herein by reference.
+
+The number of Shares reported as beneficially owned by the Reporting Person consists of 2,466,395 Shares issuable to, and to be held directly by, the Reporting Person.
+
+The percentage reported is based on 28,822,514 Shares outstanding as of November 3, 2026, as reported in the Issuer's Quarterly Report on Form 10-Q filed on November 5, 2026, plus 2,466,395 Shares issuable to the Reporting Person pursuant to the Securities Purchase Agreement dated November 16, 2026, for a total of 31,288,909 Shares outstanding.
+</amountBeneficiallyOwned>
+        <classPercent>7.88</classPercent>
+        <numberOfSharesPersonHas>
+          <solePowerOrDirectToVote>The information required by this Item 4(c)(i) is set forth in Row 5 of the cover page hereto and is incorporated herein by reference.</solePowerOrDirectToVote>
+          <sharedPowerOrDirectToVote>The information required by this Item 4(c)(ii) is set forth in Row 6 of the cover page hereto and is incorporated herein by reference.</sharedPowerOrDirectToVote>
+          <solePowerOrDirectToDispose>The information required by this Item 4(c)(iii) is set forth in Row 7 of the cover page hereto and is incorporated herein by reference.</solePowerOrDirectToDispose>
+          <sharedPowerOrDirectToDispose>The information required by this Item 4(c)(iv) is set forth in Row 8 of the cover page hereto and is incorporated herein by reference.</sharedPowerOrDirectToDispose>
+        </numberOfSharesPersonHas>
+      </item4>
+      <item5>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item5>
+      <item6>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item6>
+      <item7>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item7>
+      <item8>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item8>
+      <item9>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item9>
+      <item10>
+        <notApplicableFlag>N</notApplicableFlag>
+        <certifications>By signing below I certify that, to the best of my knowledge and belief, the securities referred to above were not acquired and are not held for the purpose of or with the effect of changing or influencing the control of the issuer of the securities and were not acquired and are not held in connection with or as a participant in any transaction having that purpose or effect, other than activities solely in connection with a nomination under § 240.14a-11.</certifications>
+      </item10>
+    </items>
+    <signatureInformation>
+      <reportingPersonName>Meiji Seika Pharma Co., Ltd.</reportingPersonName>
+      <signatureDetails>
+        <signature>/s/ Kenshi Murase</signature>
+        <title>Kenshi Murase, Director</title>
+        <date>11/16/2026</date>
+      </signatureDetails>
+    </signatureInformation>
+  </formData>
+</edgarSubmission>

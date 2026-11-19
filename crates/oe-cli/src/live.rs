@@ -17,6 +17,7 @@ use std::time::Duration;
 
 const DEFAULT_ROOT: &str = "data/form4";
 const DEFAULT_ROOT_144: &str = "data/form144";
+const DEFAULT_ROOT_13: &str = "data/sched13";
 /// Folder (under the output root) for filings whose XML the parser rejected.
 const UNPARSED_DIR: &str = "unparsed";
 
@@ -27,6 +28,8 @@ pub enum Kind {
     Ownership,
     /// Form 144: an `<edgarSubmission>`.
     Form144,
+    /// Schedule 13D / 13G: an `<edgarSubmission>`.
+    Schedule13,
 }
 
 impl Kind {
@@ -34,6 +37,7 @@ impl Kind {
         match self {
             Kind::Ownership => DEFAULT_ROOT,
             Kind::Form144 => DEFAULT_ROOT_144,
+            Kind::Schedule13 => DEFAULT_ROOT_13,
         }
     }
 
@@ -43,6 +47,13 @@ impl Kind {
             (Kind::Ownership, true) => &["4", "4/A"],
             (Kind::Form144, false) => &["144"],
             (Kind::Form144, true) => &["144", "144/A"],
+            (Kind::Schedule13, false) => &["SCHEDULE 13D", "SCHEDULE 13G"],
+            (Kind::Schedule13, true) => &[
+                "SCHEDULE 13D",
+                "SCHEDULE 13D/A",
+                "SCHEDULE 13G",
+                "SCHEDULE 13G/A",
+            ],
         }
     }
 
@@ -50,6 +61,7 @@ impl Kind {
         match self {
             Kind::Ownership => "Form 4",
             Kind::Form144 => "Form 144",
+            Kind::Schedule13 => "Schedule 13D/G",
         }
     }
 }
@@ -214,6 +226,26 @@ fn parse_ownership(accession: &str, xml: &str) -> ParsedFiling {
     }
 }
 
+fn parse_schedule13(accession: &str, xml: &str) -> ParsedFiling {
+    match oe_sched13::parse(xml) {
+        Ok(s) => ParsedFiling {
+            issuer_cik: Some(s.issuer_cik.to_string()),
+            summary: Ok(format!(
+                "{accession}  {:<15} {:<26.26} {:<24.24} {:>6}%",
+                s.submission_type,
+                s.issuer_name,
+                s.persons.first().map_or("?", |p| p.name.as_str()),
+                s.largest_percent()
+                    .map_or("-".to_string(), |p| format!("{p:.1}"))
+            )),
+        },
+        Err(e) => ParsedFiling {
+            issuer_cik: None,
+            summary: Err(e.to_string()),
+        },
+    }
+}
+
 fn parse_form144(accession: &str, xml: &str) -> ParsedFiling {
     match oe_form144::parse(xml) {
         Ok(f) => ParsedFiling {
@@ -243,7 +275,7 @@ fn save_filing(client: &EdgarClient, url: &str, root: &Path, kind: Kind) -> Resu
     let sub = parse_full_submission(&text).map_err(|e| format!("{url}: {e}"))?;
     let xml = match kind {
         Kind::Ownership => sub.ownership_xml.as_deref(),
-        Kind::Form144 => sub.primary_xml.as_deref(),
+        Kind::Form144 | Kind::Schedule13 => sub.primary_xml.as_deref(),
     };
     let Some(xml) = xml else {
         return Ok(Saved::NoOwnershipXml(format!(
@@ -260,6 +292,7 @@ fn save_filing(client: &EdgarClient, url: &str, root: &Path, kind: Kind) -> Resu
     } = match kind {
         Kind::Ownership => parse_ownership(&sub.accession, xml),
         Kind::Form144 => parse_form144(&sub.accession, xml),
+        Kind::Schedule13 => parse_schedule13(&sub.accession, xml),
     };
     let dir = match &company_cik {
         Some(cik) => root.join(cik),
@@ -306,6 +339,10 @@ pub fn daily_form4(args: &[String]) -> Result<(), String> {
 
 pub fn daily_form144(args: &[String]) -> Result<(), String> {
     daily(args, Kind::Form144)
+}
+
+pub fn daily_schedule13(args: &[String]) -> Result<(), String> {
+    daily(args, Kind::Schedule13)
 }
 
 fn daily(args: &[String], kind: Kind) -> Result<(), String> {

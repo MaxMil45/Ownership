@@ -1,0 +1,6 @@
+accession=0000050471-26-000006
+form=SCHEDULE 13D/A
+known_on=2026-11-18
+accepted_eastern=2026-11-18T12:49:10
+company_cik=0001004989
+url=https://www.sec.gov/Archives/edgar/data/50471/0000050471-26-000006.txt

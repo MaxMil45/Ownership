@@ -1,0 +1,6 @@
+accession=0001896206-26-000003
+form=SCHEDULE 13G
+known_on=2026-02-13
+accepted_eastern=2026-02-13T16:20:18
+company_cik=0001505497
+url=https://www.sec.gov/Archives/edgar/data/1896206/0001896206-26-000003.txt

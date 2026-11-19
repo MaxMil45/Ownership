@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC. Invented issuer and holders, shaped like a real Schedule 13G (December 2024 XML format).
+     Edge cases: the 13G element names differ from 13D (issuerCik, classPercent, coverPageHeaderReportingPersonDetails,
+     eventDateRequiresFilingThisStatement); filed under Rule 13d-1(c) (passive investor); two reporting persons;
+     numbers nested under reportingPersonBeneficiallyOwnedNumberOfShares; an XML comment inside filerCredentials. -->
+<edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13g" xmlns:com="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+  <headerData>
+    <submissionType>SCHEDULE 13G</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <!-- Field: Pseudo-Tag; ID: Name; Data: EXAMPLE INDEX ADVISERS LLC -->
+          <cik>0009999931</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <securitiesClassTitle>Common Stock, par value $0.0001 per share</securitiesClassTitle>
+      <eventDateRequiresFilingThisStatement>02/27/2026</eventDateRequiresFilingThisStatement>
+      <issuerInfo>
+        <issuerCik>0009999902</issuerCik>
+        <issuerName>Gadget Holdings Corp.</issuerName>
+        <issuerCusips>
+          <issuerCusipNumber>000000BB9</issuerCusipNumber>
+        </issuerCusips>
+        <issuerPrincipalExecutiveOfficeAddress>
+          <street1>2 Sample Street</street1>
+          <city>Sampletown</city>
+          <stateOrCountry>TX</stateOrCountry>
+          <zipCode>75000</zipCode>
+        </issuerPrincipalExecutiveOfficeAddress>
+      </issuerInfo>
+      <designateRulesPursuantThisScheduleFiled>
+        <designateRulePursuantThisScheduleFiled>Rule 13d-1(c)</designateRulePursuantThisScheduleFiled>
+      </designateRulesPursuantThisScheduleFiled>
+    </coverPageHeader>
+    <coverPageHeaderReportingPersonDetails>
+      <reportingPersonName>Example Index Advisers LLC</reportingPersonName>
+      <citizenshipOrOrganization>DE</citizenshipOrOrganization>
+      <reportingPersonBeneficiallyOwnedNumberOfShares>
+        <soleVotingPower>0.00</soleVotingPower>
+        <sharedVotingPower>612000.00</sharedVotingPower>
+        <soleDispositivePower>0.00</soleDispositivePower>
+        <sharedDispositivePower>612000.00</sharedDispositivePower>
+      </reportingPersonBeneficiallyOwnedNumberOfShares>
+      <reportingPersonBeneficiallyOwnedAggregateNumberOfShares>612000.00</reportingPersonBeneficiallyOwnedAggregateNumberOfShares>
+      <aggregateAmountExcludesCertainSharesFlag>N</aggregateAmountExcludesCertainSharesFlag>
+      <classPercent>5.4</classPercent>
+      <typeOfReportingPerson>IA</typeOfReportingPerson>
+    </coverPageHeaderReportingPersonDetails>
+    <coverPageHeaderReportingPersonDetails>
+      <reportingPersonName>Example Master Fund LP</reportingPersonName>
+      <citizenshipOrOrganization>KY</citizenshipOrOrganization>
+      <reportingPersonBeneficiallyOwnedNumberOfShares>
+        <soleVotingPower>0.00</soleVotingPower>
+        <sharedVotingPower>612000.00</sharedVotingPower>
+        <soleDispositivePower>0.00</soleDispositivePower>
+        <sharedDispositivePower>612000.00</sharedDispositivePower>
+      </reportingPersonBeneficiallyOwnedNumberOfShares>
+      <reportingPersonBeneficiallyOwnedAggregateNumberOfShares>612000.00</reportingPersonBeneficiallyOwnedAggregateNumberOfShares>
+      <aggregateAmountExcludesCertainSharesFlag>N</aggregateAmountExcludesCertainSharesFlag>
+      <classPercent>5.4</classPercent>
+      <typeOfReportingPerson>PN</typeOfReportingPerson>
+    </coverPageHeaderReportingPersonDetails>
+    <items>
+      <item1>
+        <issuerName>Gadget Holdings Corp.</issuerName>
+      </item1>
+      <item10>
+        <certifications>By signing below I certify that, to the best of my knowledge and belief, the securities referred to above were not acquired and are not held for the purpose of or with the effect of changing or influencing the control of the issuer.</certifications>
+      </item10>
+    </items>
+    <signatureInformation>
+      <reportingPersonName>Example Index Advisers LLC</reportingPersonName>
+      <signatureDetails>
+        <signature>/s/ Sam Example</signature>
+        <title>Sam Example, President</title>
+        <date>03/02/2026</date>
+      </signatureDetails>
+    </signatureInformation>
+  </formData>
+</edgarSubmission>

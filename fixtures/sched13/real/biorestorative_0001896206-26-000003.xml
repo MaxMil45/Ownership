@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13g" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData>
+    <submissionType>SCHEDULE 13G</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0001896206</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <securitiesClassTitle>Common Stock, $0.0001 par value</securitiesClassTitle>
+      <eventDateRequiresFilingThisStatement>02/13/2026</eventDateRequiresFilingThisStatement>
+      <issuerInfo>
+        <issuerCik>0001505497</issuerCik>
+        <issuerName>BioRestorative Therapies, Inc.</issuerName>
+        <issuerCusip>090655606</issuerCusip>
+        <issuerPrincipalExecutiveOfficeAddress>
+          <com:street1>40 MARCUS DRIVE</com:street1>
+          <com:city>MELVILLE</com:city>
+          <com:stateOrCountry>NY</com:stateOrCountry>
+          <com:zipCode>11747</com:zipCode>
+        </issuerPrincipalExecutiveOfficeAddress>
+      </issuerInfo>
+      <designateRulesPursuantThisScheduleFiled>
+        <designateRulePursuantThisScheduleFiled>Rule 13d-1(c)</designateRulePursuantThisScheduleFiled>
+      </designateRulesPursuantThisScheduleFiled>
+    </coverPageHeader>
+    <coverPageHeaderReportingPersonDetails>
+
+      <reportingPersonName>Alta Partners LLC</reportingPersonName>
+      <citizenshipOrOrganization>NY</citizenshipOrOrganization>
+      <reportingPersonBeneficiallyOwnedNumberOfShares>
+        <soleVotingPower>1787163.00</soleVotingPower>
+        <sharedVotingPower>0.00</sharedVotingPower>
+        <soleDispositivePower>1787163.00</soleDispositivePower>
+        <sharedDispositivePower>0.00</sharedDispositivePower>
+      </reportingPersonBeneficiallyOwnedNumberOfShares>
+      <reportingPersonBeneficiallyOwnedAggregateNumberOfShares>1787163.00</reportingPersonBeneficiallyOwnedAggregateNumberOfShares>
+      <classPercent>7.7</classPercent>
+      <typeOfReportingPerson>OO</typeOfReportingPerson>
+    </coverPageHeaderReportingPersonDetails>
+    <items>
+      <item1>
+        <issuerName>BioRestorative Therapies, Inc.</issuerName>
+        <issuerPrincipalExecutiveOfficeAddress>40 MARCUS DRIVE, MELVILLE, NEW YORK, 11747.</issuerPrincipalExecutiveOfficeAddress>
+      </item1>
+      <item2>
+        <filingPersonName>Alta Partners LLC</filingPersonName>
+        <principalBusinessOfficeOrResidenceAddress>1205 Franklin Avenue
+Garden City, New York 11530</principalBusinessOfficeOrResidenceAddress>
+        <citizenship>New York Limited Liability Company</citizenship>
+      </item2>
+      <item3>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item3>
+      <item4>
+        <amountBeneficiallyOwned>1,787,163 shares, excluding shares underlying warrants which are not exercisable. </amountBeneficiallyOwned>
+        <classPercent>7.7%</classPercent>
+        <numberOfSharesPersonHas>
+          <solePowerOrDirectToVote>1,787,163 shares</solePowerOrDirectToVote>
+          <sharedPowerOrDirectToVote>0 shares</sharedPowerOrDirectToVote>
+          <solePowerOrDirectToDispose>1,787,163 shares</solePowerOrDirectToDispose>
+          <sharedPowerOrDirectToDispose>0 shares</sharedPowerOrDirectToDispose>
+        </numberOfSharesPersonHas>
+      </item4>
+      <item5>
+        <notApplicableFlag>Y</notApplicableFlag>
+        <classOwnership5PercentOrLess>N</classOwnership5PercentOrLess>
+      </item5>
+      <item6>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item6>
+      <item7>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item7>
+      <item8>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item8>
+      <item9>
+        <notApplicableFlag>Y</notApplicableFlag>
+      </item9>
+      <item10>
+        <notApplicableFlag>N</notApplicableFlag>
+        <certifications>By signing below I certify that, to the best of my knowledge and belief, the securities referred to above were acquired and are held in the ordinary course of business and were not acquired and are not held for the purpose of or with the effect of changing or influencing the control of the issuer of the securities and were not acquired and are not held in connection with or as a participant in any transaction having that purpose or effect, other than activities solely in connection with a nomination under &amp;#167; 240.14a-11.
+
+By signing below I certify that, to the best of my knowledge and belief, the securities referred to above were not acquired and are not held for the purpose of or with the effect of changing or influencing the control of the issuer of the securities and were not acquired and are not held in connection with or as a participant in any transaction having that purpose or effect, other than activities solely in connection with a nomination under &amp;#167; 240.14a-11.
+
+</certifications>
+      </item10>
+    </items>
+    <signatureInformation>
+      <reportingPersonName>Alta Partners LLC</reportingPersonName>
+      <signatureDetails>
+        <signature>/s/ Steven Cohen</signature>
+        <title>Steven Cohen, Managing Member</title>
+        <date>02/13/2026</date>
+      </signatureDetails>
+    </signatureInformation>
+  </formData>
+</edgarSubmission>

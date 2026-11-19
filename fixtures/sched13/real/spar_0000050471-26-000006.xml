@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13D" xmlns:com="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+<headerData>
+    <submissionType>SCHEDULE 13D/A</submissionType>
+    <previousAccessionNumber>0001437749-26-023888</previousAccessionNumber>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0000050471</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <amendmentNo>1</amendmentNo>
+      <securitiesClassTitle>Common Shares, par value $0.01 per share</securitiesClassTitle>
+      <dateOfEvent>11/13/2026</dateOfEvent>
+      <previouslyFiledFlag>true</previouslyFiledFlag>
+      <issuerInfo>
+        <issuerCIK>0001004989</issuerCIK>
+        <issuerCusips>
+          <issuerCusipNumber>784933103</issuerCusipNumber>
+        </issuerCusips>
+        <issuerName>SPAR Group, Inc.</issuerName>
+        <address>
+          <com:street1>110 EAST BOULEVARD</com:street1>
+          <com:city>CHARLOTTE</com:city>
+          <com:stateOrCountry>NC</com:stateOrCountry>
+          <com:zipCode>28203</com:zipCode>
+        </address>
+      </issuerInfo>
+      <authorizedPersons>
+        <notificationInfo>
+          <personName>John Merill, CFO</personName>
+          <personPhoneNum>(435) 645-2000</personPhoneNum>
+          <personAddress>
+            <com:street1>ReposiTrak, Inc.</com:street1>
+            <com:street2>5282 South Commerce Drive, Suite D292</com:street2>
+            <com:city>Murray</com:city>
+            <com:stateOrCountry>UT</com:stateOrCountry>
+            <com:zipCode>84107</com:zipCode>
+          </personAddress>
+        </notificationInfo>
+      </authorizedPersons>
+    </coverPageHeader>
+    <reportingPersons>
+      <reportingPersonInfo>
+        <reportingPersonCIK>0000050471</reportingPersonCIK>
+        <reportingPersonNoCIK>N</reportingPersonNoCIK>
+        <reportingPersonName>ReposiTrak, Inc.</reportingPersonName>
+        <fundType>WC</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>NV</citizenshipOrOrganization>
+        <soleVotingPower>19368421.00</soleVotingPower>
+        <sharedVotingPower>0.00</sharedVotingPower>
+        <soleDispositivePower>19368421.00</soleDispositivePower>
+        <sharedDispositivePower>0.00</sharedDispositivePower>
+        <aggregateAmountOwned>19368421.00</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>40.6</percentOfClass>
+        <typeOfReportingPerson>CO</typeOfReportingPerson>
+      </reportingPersonInfo>
+    </reportingPersons>
+    <items1To7>
+      <item1>
+        <securityTitle>Common Shares, par value $0.01 per share</securityTitle>
+        <issuerName>SPAR Group, Inc.</issuerName>
+        <issuerPrincipalAddress>
+          <com:street1>110 EAST BOULEVARD</com:street1>
+          <com:city>CHARLOTTE</com:city>
+          <com:stateOrCountry>NC</com:stateOrCountry>
+          <com:zipCode>28203</com:zipCode>
+        </issuerPrincipalAddress>
+        <commentText>This Amendment No. 1 ("Amendment No. 1") amends and supplements the statement on Schedule 13D filed with the Securities and Exchange Commission (the "SEC") on July 20, 2026 (the "Original Schedule 13D") by ReposiTrak, Inc. relating to the shares of common stock, par value $0.01 per share ("Common Stock"), of SPAR Group Inc., a Delaware corporation (the "Issuer"). Capitalized terms used herein and not otherwise defined have the meanings assigned to them in the Original Schedule 13D. Except as specifically provided herein, this Amendment No. 1 does not modify any of the information previously reported in the Original 13D.</commentText>
+      </item1>
+      <item2>
+        <filingPersonName>This Statement is being filed by ReposiTrak, Inc., a Nevada corporation ("ReposiTrak" or the "Reporting Person").</filingPersonName>
+        <principalBusinessAddress>The business address of the Reporting Person is 5282 South Commerce Drive, Suite D292, Murray, Utah 84107.</principalBusinessAddress>
+        <principalJob>The principal business the Reporting Person is a software-as-a-service which operates a business-to-business e-commerce, compliance &amp; traceability, and supply chain management platform.</principalJob>
+        <hasBeenConvicted>During the last five years, the Reporting Person has not been convicted in a criminal proceeding (excluding traffic violations or similar misdemeanors).</hasBeenConvicted>
+        <convictionDescription>During the last five years, the Reporting Person has not been party to a civil proceeding of a judicial or administrative body of competent jurisdiction and as a result of such proceeding was or is subject to a judgment, decree or final order enjoining further violations of, or prohibiting or mandating activities subject to, federal or state securities laws or finding any violation with respect to such laws.</convictionDescription>
+        <citizenship>The Reporting Person is a Nevada corporation.</citizenship>
+      </item2>
+      <item3>
+        <fundsSource>Item 3 of the Original Schedule 13D is hereby amended and supplemented as follows:
+
+On November 13, 2026, the Reporting Person entered into an Exchange Agreement (the "Exchange Agreement") with the Issuer, SPAR Marketing Force Inc., a wholly owned subsidiary of the Issuer ("SPM"), and PC Group, Inc., a wholly owned subsidiary of the Reporting Person ("PCG"). Pursuant to the Exchange Agreement, PCG agreed to exchange all outstanding principal and accrued interest under its promissory note receivable from SPAR ("Note"), totaling approximately $4.0 million (the "Note Exchange"), for 4,000 shares of SPAR's Series C Convertible Preferred Stock, par value $0.01 per share (the "Series C Preferred"), having a stated value of $1,000 per share ("Stated Value"). The Series C Preferred (i) is convertible into Common Stock at $0.38 per share ("Conversion Price"), (ii) pays cumulative dividends at 8% per annum, payable quarterly in cash, with an additional 2% per annum if paid in additional shares of Series C Preferred, (iii) is senior to all other equity, equal to the Stated Value plus accrued but unpaid dividends, and (iv) votes together with the Common Stock on an as-converted basis, subject to the Beneficial Ownership Limitation, defined below.
+
+In addition, the Reporting Person and PCG agreed to exchange their aggregate holdings of 8,900,406 shares of the Issuer's common stock, par value $0.01 per share (the "Common Stock"), for 3,360 shares of Series C Preferred, representing an agreed aggregate exchange value of $3,359,605 (the "Common Exchange" and, together with the Note Exchange, the "Exchanges"). As additional consideration for the Exchanges, the Issuer agreed to issue the Reporting Person a single warrant to purchase an aggregate of 9,684,211 shares of Common Stock at an exercise price of $0.38 per share (the "Warrant"). Upon consummation of the Exchanges, the Note and the 8,900,406 shares of Common Stock were cancelled.  Warrants similarly have an exercise price equal to the Conversion Price and are exercisable beginning January 31, 2028 with a four-year term, expiring January 31, 2032.
+
+The Series C Preferred and Warrants are subject to beneficial ownership limitations whereby they shall not be exercisable, and the Series C Preferred cannot be converted, to the extent their exercise or conversion, as the case may be, would cause the beneficial ownership of Common Stock held by the Reporting Person to exceed 50% of the total issued and outstanding shares of Common Stock ("Beneficial Ownership Limitation"). The Beneficial Ownership Limitation expires on December 23, 2027, after which date the Reporting Person's beneficial ownership could exceed 50% upon conversion of Series C Preferred or exercise of Warrants.
+
+The Exchange Agreement also provides for the Reporting Person to indemnify the Issuer and its officers and directors against any claims arising out of the Exchanges after the Issuer's directors and officers' insurance and charter indemnification have been exhausted.
+
+Shares of Common Stock of the Issuer held by the Reporting Person prior to the acquisition of such Shares were acquired with working capital of the Reporting Person and under the terms of a Services Agreement by and between the Reporting Person and the Issuer.</fundsSource>
+      </item3>
+      <item4>
+        <transactionPurpose>Item 4 of the Original Schedule 13D is hereby amended and supplemented as follows:
+
+The November 13, 2026 transactions described in Item 3 were undertaken to recapitalize the Reporting Person's existing investment in the Issuer, exchange outstanding indebtedness and common shares for Series C Convertible Preferred Stock, and provide for additional financing and strategic cooperation. The Series C Preferred carries conversion, dividend and voting rights, and the related Warrant provides a future right to acquire additional Common Stock. The transaction agreements also provide for anti-dilution adjustments, financing and contractual limitations on ownership and voting power. These arrangements may affect the Issuer's capitalization and may enable the Reporting Person to influence the Issuer's affairs, subject to the operative agreements and applicable law.
+
+Depending on market conditions and other factors (including evaluation of the Issuer's businesses and prospects, availability of funds, alternative uses of funds and general economic conditions), the Reporting Person may from time to time acquire additional securities of the Issuer or dispose of all or a portion of its investment in the Issuer. The Reporting Person intends to review its investment in the Issuer on an ongoing basis and, in the course of its review, may take actions with respect to its investment or the Issuer, including communicating with the board of directors of the Issuer (the "Board"), members of management or other security-holders of the Issuer, or other third parties from time to time, taking steps to implement a course of action, including, without limitation, engaging advisors, including legal, financial, regulatory, technical and/or industry advisors, to assist in any review, and evaluating strategic alternatives as they may become available. The Reporting Person's ownership as a percentage of the outstanding shares of Common Stock of the Issuer may be deemed to have the resulting effect of changing or influencing the control of the Issuer, notwithstanding that the shares of Common Stock of the Issuer beneficially owned by the Reporting Person were acquired in the ordinary course of its business and were not acquired for the purpose of changing or influencing the control of the Issuer. Except as described herein, the Reporting Person has no present plans, proposals or intentions which would result in or relate to any of the matters described in Items 4(a)-(j) of the Instructions to Schedule 13D. However, as part of the ongoing evaluation of investment and investment alternatives, the Reporting Person may consider such matters and, subject to applicable law, may formulate a plan with respect to such matters, and, from time to time, may hold discussions with or make formal proposals to management or the Board or other third parties regarding such matters.</transactionPurpose>
+      </item4>
+      <item5>
+        <percentageOfClassSecurities>Item 5 of the Original Schedule 13D is hereby amended and restated as follows:
+
+As of the date hereof, the Reporting Person beneficially owns 7,360 shares of Series C Preferred, convertible into 19,368,421 shares of Common Stock, representing approximately 40.6% of the outstanding shares of Common Stock.  The Reporting Person also owns warrants to purchase 9,684,211 shares of Common Stock, which warrants are not exercisable until January 31, 2028.
+
+Beneficial ownership is determined in accordance with Section 13(d) of the Securities Exchange Act, as amended and Rule 13d-3 thereunder and is based on 28,398,561 shares of Common Stock outstanding as of November 4 2026, as reported in the Issuer's Quarterly Report on Form 10-Q for the period ended September 30, 2026, filed with the SEC on November 13, 2026.</percentageOfClassSecurities>
+        <numberOfShares>The Reporting Person has sole voting and dispositive power over 19,368,421 shares of Common Stock.</numberOfShares>
+        <transactionDesc>Information set forth under Item 3 of this Schedule 13D is incorporated by reference herein. </transactionDesc>
+        <listOfShareholders>Not applicable.</listOfShareholders>
+        <date5PercentOwnership>Not applicable.</date5PercentOwnership>
+      </item5>
+      <item6>
+        <contractDescription>Item 6. of the Original Schedule 13D is hereby amended and supplemented as follows:
+
+The Reporting Person and the Issuer are parties to that certain Services Agreement dated March 13, 2026, as amended (the "Agreement"), whereby the Reporting Person agreed to provide certain consulting and related services to the Issuer for a one-year term beginning March 13, 2026 (the "Services"). See the  Original Schedule 13D.
+
+The Reporting Person and the Issuer are parties to the Exchange Agreement dated November 13, 2026, by and between the Reporting Person and the Issuer. See Item 3.
+
+The Reporting Person and the Issuer are parties to a Revolving Credit Agreement dated November 13, 2026, by and between the Reporting Person and the Issuer. See the Reporting Person's Current Report on Form 8-K filed with the SEC on November 17, 2026.</contractDescription>
+      </item6>
+      <item7>
+        <filedExhibits>I - Exchange Agreement dated November 13, 2026 by and between SPAR Group, Inc. and the Company (incorporated by reference to Exhibit 10.1 to the Reporting Person's Current Report on Form 8-K filed with the SEC on November 17, 2026.
+
+https://www.sec.gov/Archives/edgar/data/0000050471/000143774926037393/ex_1047058.htm</filedExhibits>
+      </item7>
+    </items1To7>
+    <signatureInfo>
+      <signaturePerson>
+        <signatureReportingPerson>ReposiTrak, Inc.</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ John Merrill</signature>
+          <title>Chief Financial Officer</title>
+          <date>11/18/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+    </signatureInfo>
+  </formData>
+</edgarSubmission>

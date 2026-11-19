@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13D" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <headerData>
+    <submissionType>SCHEDULE 13D</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0002108351</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <securitiesClassTitle>Common Stock, par value $0.0001 per share</securitiesClassTitle>
+      <dateOfEvent>10/14/2025</dateOfEvent>
+      <previouslyFiledFlag>false</previouslyFiledFlag>
+      <issuerInfo>
+        <issuerCIK>0001737995</issuerCIK>
+        <issuerCUSIP>82003F309</issuerCUSIP>
+        <issuerName>Sharps Technology, Inc.</issuerName>
+        <address>
+          <street1 xmlns="http://www.sec.gov/edgar/common">105 Maxess Road</street1>
+          <street2 xmlns="http://www.sec.gov/edgar/common">Suite 124</street2>
+          <city xmlns="http://www.sec.gov/edgar/common">Melville</city>
+          <stateOrCountry xmlns="http://www.sec.gov/edgar/common">NY</stateOrCountry>
+          <zipCode xmlns="http://www.sec.gov/edgar/common">11747</zipCode>
+        </address>
+      </issuerInfo>
+      <authorizedPersons>
+        <notificationInfo>
+          <personName>Brian Crist</personName>
+          <personPhoneNum>650-200-0698</personPhoneNum>
+          <personAddress>
+            <street1 xmlns="http://www.sec.gov/edgar/common">FalconX Holdings Limited</street1>
+            <street2 xmlns="http://www.sec.gov/edgar/common">1850 Gateway Drive, 6th Floor</street2>
+            <city xmlns="http://www.sec.gov/edgar/common">San Mateo</city>
+            <stateOrCountry xmlns="http://www.sec.gov/edgar/common">CA</stateOrCountry>
+            <zipCode xmlns="http://www.sec.gov/edgar/common">94404</zipCode>
+          </personAddress>
+        </notificationInfo>
+        <notificationInfo>
+          <personName>Justin Smith, Esq.</personName>
+          <personPhoneNum>213-426-2649</personPhoneNum>
+          <personAddress>
+            <street1 xmlns="http://www.sec.gov/edgar/common">Goodwin Procter LLP, 601 S.</street1>
+            <street2 xmlns="http://www.sec.gov/edgar/common">Figueroa St., Suite 4100</street2>
+            <city xmlns="http://www.sec.gov/edgar/common">Los Angeles</city>
+            <stateOrCountry xmlns="http://www.sec.gov/edgar/common">CA</stateOrCountry>
+            <zipCode xmlns="http://www.sec.gov/edgar/common">90017</zipCode>
+          </personAddress>
+        </notificationInfo>
+        <notificationInfo>
+          <personName>Leonard Wood, Esq.</personName>
+          <personPhoneNum>212-459-7058</personPhoneNum>
+          <personAddress>
+            <street1 xmlns="http://www.sec.gov/edgar/common">Goodwin Procter LLP, The NYT Building</street1>
+            <street2 xmlns="http://www.sec.gov/edgar/common">620 Eighth Avenue</street2>
+            <city xmlns="http://www.sec.gov/edgar/common">New York</city>
+            <stateOrCountry xmlns="http://www.sec.gov/edgar/common">NY</stateOrCountry>
+            <zipCode xmlns="http://www.sec.gov/edgar/common">10018</zipCode>
+          </personAddress>
+        </notificationInfo>
+      </authorizedPersons>
+    </coverPageHeader>
+    <reportingPersons>
+      <reportingPersonInfo>
+        <reportingPersonNoCIK>Y</reportingPersonNoCIK>
+        <reportingPersonName>Solios, Inc.</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>WC</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>DE</citizenshipOrOrganization>
+        <soleVotingPower>10665460</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>10665460</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+        <aggregateAmountOwned>10665460</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>15.9</percentOfClass>
+        <typeOfReportingPerson>CO</typeOfReportingPerson>
+        <commentContent>(1) The number of shares in rows 7, 9, and 11 consists of (i) Cash Pre-Funded Warrants exercisable for 461,538 shares of Common Stock; (ii) Cryptocurrency Pre-Funded Warrants exercisable for 4,871,192 shares of Common Stock; (iii) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock; and (iv) Cryptocurrency Stapled Warrants exercisable for 4,871,192 shares of Common Stock. Each of the foregoing warrants became exercisable upon receipt of stockholder approval on October 14, 2025. The Cash Pre-Funded Warrants and Cryptocurrency Pre-Funded Warrants are subject to a 9.99% beneficial ownership limitation that restricts exercise to the extent such exercise would result in Solios, Inc. ("Solios") beneficially owning more than 9.99% of the Issuer's outstanding Common Stock. Because the shares underlying the Cash Stapled Warrants and Cryptocurrency Stapled Warrants alone exceed such limitation, no shares issuable upon exercise of the Pre-Funded Warrants are included in the beneficial ownership of Solios as reported in Row 13 of the table. The Cash Stapled Warrants and Cryptocurrency Stapled Warrants are not subject to any beneficial ownership limitation and are exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i). Accordingly, the shares underlying such warrants are included in Solios's beneficial ownership. Solios may be deemed to beneficially own an aggregate of 5,332,730 shares of the Issuer's Common Stock, representing approximately 15.9% of the outstanding shares of Common Stock.
+
+(2) The percent of class set forth in row 13 was calculated based on 28,226,153 shares of the Issuer's Common Stock outstanding, as reported in the Issuer's Registration Statement on Form S-3 filed with the Securities and Exchange Commission on October 23, 2025, and includes shares of Common Stock issuable upon exercise of (i) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock; and (ii) Cryptocurrency Stapled Warrants exercisable for 4,871,192 shares of Common Stock, each exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i).</commentContent>
+      </reportingPersonInfo>
+      <reportingPersonInfo>
+        <reportingPersonNoCIK>Y</reportingPersonNoCIK>
+        <reportingPersonName>FalconX Alpha, Inc.</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>AF</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>DE</citizenshipOrOrganization>
+        <soleVotingPower>10665460</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>10665460</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+        <aggregateAmountOwned>10665460</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>15.9</percentOfClass>
+        <typeOfReportingPerson>CO</typeOfReportingPerson>
+        <commentContent>(1) The number of shares in rows 7, 9, and 11 consists of (i) Cash Pre-Funded Warrants exercisable for 461,538 shares of Common Stock; (ii) Cryptocurrency Pre-Funded Warrants exercisable for 4,871,192 shares of Common Stock; (iii) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock; and (iv) Cryptocurrency Stapled Warrants exercisable for 4,871,192 shares of Common Stock. Each of the foregoing warrants became exercisable upon receipt of stockholder approval on October 14, 2025. The Cash Pre-Funded Warrants and Cryptocurrency Pre-Funded Warrants are subject to a 9.99% beneficial ownership limitation that restricts exercise to the extent such exercise would result in Solios, Inc. ("Solios"), together with its affiliates, beneficially owning more than 9.99% of the Issuer's outstanding Common Stock. Because the shares underlying the Cash Stapled Warrants and Cryptocurrency Stapled Warrants alone exceed such limitation, no shares issuable upon exercise of the Pre-Funded Warrants are included in the beneficial ownership of the Reporting Person as reported in Row 13 of the table. The Cash Stapled Warrants and Cryptocurrency Stapled Warrants are not subject to any beneficial ownership limitation and are exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i). Accordingly, the shares underlying such warrants are included in the Reporting Person's beneficial ownership.  The Reporting Person may be deemed to beneficially own an aggregate of 5,332,730 shares of the Issuer's Common Stock, representing approximately 15.9% of the outstanding shares of Common Stock.
+
+(2) The percent of class set forth in row 13 was calculated based on 28,226,153 shares of the Issuer's Common Stock outstanding, as reported in the Issuer's Registration Statement on Form S-3 filed with the Securities and Exchange Commission on October 23, 2025, and includes shares of Common Stock issuable upon exercise of (i) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock; and (ii) Cryptocurrency Stapled Warrants exercisable for 4,871,192 shares of Common Stock, each exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i).</commentContent>
+      </reportingPersonInfo>
+      <reportingPersonInfo>
+        <reportingPersonNoCIK>Y</reportingPersonNoCIK>
+        <reportingPersonName>MNNC Capital Digital Asset Opportunities Master Fund LP</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>WC</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>E9</citizenshipOrOrganization>
+        <soleVotingPower>923076</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>923076</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+        <aggregateAmountOwned>923076</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>3.2</percentOfClass>
+        <typeOfReportingPerson>PN</typeOfReportingPerson>
+      </reportingPersonInfo>
+      <reportingPersonInfo>
+        <reportingPersonNoCIK>Y</reportingPersonNoCIK>
+        <reportingPersonName>MNNC Capital Digital Opportunities BTC Master Fund LP</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>WC</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>E9</citizenshipOrOrganization>
+        <soleVotingPower>615384</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>615384</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+        <aggregateAmountOwned>615384</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>2.2</percentOfClass>
+        <typeOfReportingPerson>PN</typeOfReportingPerson>
+      </reportingPersonInfo>
+      <reportingPersonInfo>
+        <reportingPersonNoCIK>Y</reportingPersonNoCIK>
+        <reportingPersonName>MNNC Capital GP LLC</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>AF</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>E9</citizenshipOrOrganization>
+        <soleVotingPower>1538460</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>1538460</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+        <aggregateAmountOwned>1538460</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>5.4</percentOfClass>
+        <typeOfReportingPerson>OO</typeOfReportingPerson>
+      </reportingPersonInfo>
+      <reportingPersonInfo>
+        <reportingPersonNoCIK>Y</reportingPersonNoCIK>
+        <reportingPersonName>Monarch Digital, Inc.</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>AF</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>E9</citizenshipOrOrganization>
+        <soleVotingPower>1538460</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>1538460</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+        <aggregateAmountOwned>1538460</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>5.4</percentOfClass>
+        <typeOfReportingPerson>CO</typeOfReportingPerson>
+      </reportingPersonInfo>
+      <reportingPersonInfo>
+        <reportingPersonCIK>0002108351</reportingPersonCIK>
+        <reportingPersonNoCIK>N</reportingPersonNoCIK>
+        <reportingPersonName>FalconX Holdings Limited</reportingPersonName>
+        <memberOfGroup>b</memberOfGroup>
+        <fundType>AF</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>E9</citizenshipOrOrganization>
+        <soleVotingPower>12203920</soleVotingPower>
+        <sharedVotingPower>0</sharedVotingPower>
+        <soleDispositivePower>12203920</soleDispositivePower>
+        <sharedDispositivePower>0</sharedDispositivePower>
+        <aggregateAmountOwned>12203920</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>20.0</percentOfClass>
+        <typeOfReportingPerson>HC</typeOfReportingPerson>
+        <commentContent>(1) The number of shares in rows 7, 9, and 11 consists of: (i) Cash Pre-Funded Warrants exercisable for 461,538 shares of Common Stock held by Solios, Inc. ("Solios"); (ii) Cryptocurrency Pre-Funded Warrants exercisable for 4,871,192 shares of Common Stock held by Solios; (iii) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock held by Solios; (iv) Cryptocurrency Stapled Warrants exercisable for 4,871,192 shares of Common Stock held by Solios; (v) 461,538 shares of Common Stock held by MNNC Capital Digital Asset Opportunities Master Fund LP ("MNNC Master Fund"); (vi) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock held by MNNC Master Fund; (vii) 461,538 shares of Common Stock held by MNNC Capital Digital Opportunities BTC Master Fund LP ("MNNC BTC Master Fund"); (viii) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock held by MNNC BTC Master Fund. Each of the foregoing warrants became exercisable upon receipt of stockholder approval on October 14, 2025. The Cash Pre-Funded Warrants and Cryptocurrency Pre-Funded Warrants are subject to a 9.99% beneficial ownership limitation that restricts exercise to the extent such exercise would result in the Reporting Person beneficially owning more than 9.99% of the Issuer's outstanding Common Stock. Because the shares underlying the Cash Stapled Warrants and Cryptocurrency Stapled Warrants alone exceed such limitation, no shares issuable upon exercise of the Pre-Funded Warrants are included in the beneficial ownership as reported in Row 13 of the table. The Cash Stapled Warrants and Cryptocurrency Stapled Warrants are not subject to any beneficial ownership limitation and are exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i). Accordingly, the shares underlying such warrants are included in the beneficial ownership and FalconX Holdings Limited may be deemed to beneficially own an aggregate of 6,871,190 shares of the Issuer's Common Stock, representing approximately 20.0% of the outstanding shares of Common Stock.
+(2) The percent of class set forth in row 13 was calculated based on 28,226,153 shares of the Issuer's Common Stock outstanding, as reported in the Issuer's Registration Statement on Form S-3 filed with the Securities and Exchange Commission on October 23, 2025, and includes shares of Common Stock issuable upon exercise of (i) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock held by Solios; (ii) Cryptocurrency Stapled Warrants exercisable for 4,871,192 shares of Common Stock held by Solios; (iii) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock held by MNNC Master Fund; and (iv) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock held by MNNC BTC Master Fund, each exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i).</commentContent>
+      </reportingPersonInfo>
+    </reportingPersons>
+    <items1To7>
+      <item1>
+        <securityTitle>Common Stock, par value $0.0001 per share</securityTitle>
+        <issuerName>Sharps Technology, Inc.</issuerName>
+        <issuerPrincipalAddress>
+          <street1 xmlns="http://www.sec.gov/edgar/common">105 Maxess Road</street1>
+          <street2 xmlns="http://www.sec.gov/edgar/common">Suite 124</street2>
+          <city xmlns="http://www.sec.gov/edgar/common">Melville</city>
+          <stateOrCountry xmlns="http://www.sec.gov/edgar/common">NY</stateOrCountry>
+          <zipCode xmlns="http://www.sec.gov/edgar/common">11747</zipCode>
+        </issuerPrincipalAddress>
+      </item1>
+      <item2>
+        <filingPersonName>This statement on Schedule 13D ("Schedule 13D") is filed by the entities listed below (collectively the "Reporting Persons"):
+(i)    Solios, Inc., a Delaware corporation ("Solios");
+(ii)   FalconX Alpha, Inc., a Delaware corporation ("FalconX Alpha") and the sole stockholder of Solios, and a wholly owned direct subsidiary of FalconX Holdings;
+(iii)  MNNC Capital Digital Asset Opportunities Master Fund LP, a Cayman Islands limited partnership ("MNNC Master Fund");
+(iv)  MNNC Capital Digital Opportunities BTC Master Fund LP, a Cayman Islands limited partnership ("MNNC BTC Master Fund", and together with the MNNC Master Fund, the "MNNC Funds");
+(v)   MNNC Capital GP LLC, a Cayman Islands limited liability company ("MNNC GP") and the general partner of the MNNC Funds;
+(vi)  Monarch Digital, Inc., a Cayman Islands exempted company ("Monarch Digital"), which holds a majority of the voting equity interests in MNNC GP and is a wholly owned direct subsidiary of FalconX Holdings; and
+(vii)  FalconX Holdings Limited, a Cayman Islands exempted company ("FalconX Holdings").
+
+The Reporting Persons have entered into a joint filing agreement, a copy of which is attached hereto as Exhibit 99.1.</filingPersonName>
+        <principalBusinessAddress>The principal business address of Solios, FalconX Alpha, Monarch Digital, and FalconX Holdings is 1850 Gateway Drive, 6th Floor, San Mateo, CA 94404.
+
+The principal business address of MNNC Funds and MNNC GP is Signal House, Fairbanks Road, P.O.Box CEC-1, Grand Cayman KY1-9012 Cayman Islands. The MNNC Funds are the direct holders of certain of the securities reported in this Schedule 13D. MNNC Capital Digital Opportunities BTC Fund LP, a Cayman Islands limited partnership, is the sole limited partner of MNNC BTC Master Fund, and MNNC Capital Digital Asset Opportunities Onshore Fund LP, a Delaware limited partnership, and MNNC Capital Digital Asset Opportunities Fund LP, a Cayman Islands limited partnership, are the sole limited partners of MNNC Master Fund. </principalBusinessAddress>
+        <principalJob>Each of the Reporting Persons is principally engaged in the business of investing in securities.</principalJob>
+        <hasBeenConvicted>During the last five years, none of the Reporting Persons or, to the knowledge of the Reporting Persons, any of the persons listed on Schedule A attached hereto have been convicted in a criminal proceeding (excluding traffic violations or similar misdemeanors).</hasBeenConvicted>
+        <convictionDescription>During the last five years, none of the Reporting Persons or, to the knowledge of the Reporting Persons, any of the persons listed on Schedule A attached hereto have been party to a civil proceeding of a judicial or administrative body of competent jurisdiction and as a result of such proceeding was or is subject to a judgment, decree or final order enjoining future violations of, or prohibiting or mandating activities subject to, federal or state securities laws or finding any violation with respect to such laws.</convictionDescription>
+        <citizenship>See Item 2(a).</citizenship>
+      </item2>
+      <item3>
+        <fundsSource>The securities of the Issuer reported herein were acquired by the Reporting Persons pursuant to a private placement transaction (the "Private Placement") described in the Issuer's Current Report on Form 8-K filed on August 25, 2025.
+
+Solios purchased (i) Cash Pre-Funded Warrants exercisable for 461,538 shares of Common Stock, (ii) Cryptocurrency Pre-Funded Warrants exercisable for 4,871,192 shares of Common Stock, (iii) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock, and (iv) Cryptocurrency Stapled Warrants exercisable for 4,871,192 shares of Common Stock. Each of the foregoing warrants became exercisable upon receipt of stockholder approval on October 14, 2025.
+
+Solios purchased the Cash Pre-Funded Warrants and Cryptocurrency Pre-Funded Warrants at a price of $6.4999 per warrant, each exercisable for one share of Common Stock for a nominal exercise price. The Cash Stapled Warrants and Cryptocurrency Stapled Warrants are exercisable for one share of Common Stock at an exercise price of $9.75 per warrant. The consideration for such warrants consisted of cash and/or cryptocurrency and digital assets, as applicable, as provided in the applicable transaction documents. Any exercise price payable upon exercise of the Stapled Warrants will be paid using Solios's working capital or other available funds.
+
+MNNC Master Fund purchased shares of Common Stock at a purchase price of $6.50 per share and received Cash Stapled Warrants exercisable for additional shares of Common Stock. As of October 14, 2025, MNNC Master Fund beneficially owned 461,538 shares of Common Stock and held Cash Stapled Warrants exercisable for an additional 461,538 shares of Common Stock. The Cash Stapled Warrants became exercisable upon receipt of stockholder approval on October 14, 2025. No separate consideration was paid for the Cash Stapled Warrants, which were issued in connection with the purchase of Common Stock.
+
+MNNC BTC Master Fund purchased shares of Common Stock at a purchase price of $6.50 per share and received Cash Stapled Warrants exercisable for additional shares of Common Stock. As of October 14, 2025, MNNC BTC Master Fund beneficially owned 307,692 shares of Common Stock and held Cash Stapled Warrants exercisable for an additional 307,692 shares of Common Stock. The Cash Stapled Warrants became exercisable upon receipt of stockholder approval on October 14, 2025. No separate consideration was paid for the Cash Stapled Warrants, which were issued in connection with the purchase of Common Stock.
+
+The aggregate consideration paid by Solios, MNNC Master Fund and MNNC BTC Master Fund for the securities acquired in the Private Placement was approximately $45.7 million, which was derived solely from their respective working capital. No funds were borrowed or obtained for the purpose of acquiring the securities reported in this Schedule 13D.</fundsSource>
+      </item3>
+      <item4>
+        <transactionPurpose>The securities were acquired for investment purposes. The Reporting Persons entered into the transaction to obtain an equity position in the Issuer and exposure to the Issuer's business and growth prospects, including through the potential exercise of the warrants described above.
+
+The Reporting Persons may, from time to time, depending on market conditions, the Issuer's performance, business prospects, and other factors, engage in discussions with management or the board of directors of the Issuer regarding the Issuer's business, financial condition, operations, or strategic plans. The Reporting Persons may also evaluate their investment and take such actions as they deem appropriate, which may include acquiring additional securities of the Issuer, exercising warrants, disposing of some or all of their securities, or otherwise modifying their investment position.
+
+Except as described in this Schedule 13D, the Reporting Persons do not have any plans or proposals that relate to or would result in: (i) any extraordinary corporate transaction involving the Issuer; (ii) any sale or transfer of a material amount of the Issuer's assets; (iii) any change in the present board of directors or management of the Issuer; (iv) any material change in the Issuer's capitalization or dividend policy; (v) any other material change in the Issuer's business or corporate structure; (vi) any changes in the Issuer's charter or bylaws; or (vii) causing the Issuer's securities to be delisted from a national securities exchange or cease to be registered under the Securities Exchange Act of 1934 ("Act").
+
+The foregoing description of the Reporting Persons' purposes and intentions is subject to change at any time based on market conditions or other factors.</transactionPurpose>
+      </item4>
+      <item5>
+        <percentageOfClassSecurities>Unless otherwise indicated, the percentage ownership calculations below are based on 28,226,153 shares of the Issuer's Common Stock outstanding, as reported in the Issuer's Registration Statement on Form S-3 filed with the Securities and Exchange Commission on October 23, 2025, and, with respect to each reporting person, include shares of Common Stock issuable upon exercise of warrants exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i).
+
+Solios held the following securities of the Issuer: (i) Cash Pre-Funded Warrants exercisable for 461,538 shares of Common Stock; (ii) Cryptocurrency Pre-Funded Warrants exercisable for 4,871,192 shares of Common Stock; (iii) Cash Stapled Warrants exercisable for 461,538 shares of Common Stock; and (iv) Cryptocurrency Stapled Warrants exercisable for 4,871,192 shares of Common Stock. Each of the foregoing warrants became exercisable upon receipt of stockholder approval on October 14, 2025. The Cash Pre-Funded Warrants and Cryptocurrency Pre-Funded Warrants are subject to a 9.99% beneficial ownership limitation that restricts exercise to the extent such exercise would result in Solios beneficially owning more than 9.99% of the Issuer's outstanding Common Stock. Because the shares underlying the Cash Stapled Warrants and Cryptocurrency Stapled Warrants alone exceed such limitation, no shares issuable upon exercise of the Pre-Funded Warrants are included in the beneficial ownership of Solios as reported in Row 13 of the table. The Cash Stapled Warrants and Cryptocurrency Stapled Warrants are not subject to any beneficial ownership limitation and are exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i). Accordingly, the shares underlying such warrants are included in Solios's beneficial ownership. Solios may be deemed to beneficially own an aggregate of 5,332,730 shares of the Issuer's Common Stock, representing approximately 15.9% of the outstanding shares of Common Stock.
+
+MNNC Master Fund beneficially owned 461,538 shares of the Issuer's Common Stock. MNNC Master Fund also held Cash Stapled Warrants exercisable for 461,538 shares of Common Stock. The Cash Stapled Warrants became exercisable upon receipt of stockholder approval on October 14, 2025, are not subject to any beneficial ownership limitation, and are exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i). Accordingly, the shares underlying the Cash Stapled Warrants are included in MNNC Master Fund's beneficial ownership. MNNC Capital Digital Asset Opportunities Master Fund, LP may be deemed to beneficially own an aggregate of 923,076 shares of the Issuer's Common Stock, representing approximately 3.2% of the outstanding shares of Common Stock.
+
+MNNC BTC Master Fund beneficially owned 307,692 shares of the Issuer's Common Stock. MNNC BTC Master Fund also held Cash Stapled Warrants exercisable for 307,692 shares of Common Stock. The Cash Stapled Warrants became exercisable upon receipt of stockholder approval on October 14, 2025, are not subject to any beneficial ownership limitation, and are exercisable within 60 days for purposes of Rule 13d-3(d)(1)(i). Accordingly, the shares underlying the Cash Stapled Warrants are included in MNNC BTC Master Fund's beneficial ownership. MNNC BTC Master Fund may be deemed to beneficially own an aggregate of 615,384 shares of the Issuer's Common Stock, representing approximately 2.2% of the outstanding shares of Common Stock.
+
+FalconX Alpha, as the sole stockholder of Solios, may be deemed to beneficially own the securities reported herein as directly owned by Solios.
+
+MNNC GP, as the general partner of the MNNC Funds, may be deemed to beneficially own the securities reported herein as indirectly beneficially owned by the MNNC Funds.
+
+Monarch Digital, as the holder of a majority of the voting equity of MNNC GP, may be deemed to beneficially own the securities reported herein as indirectly beneficially owned by MNNC GP.
+
+FalconX Holdings, as the sole stockholder of each of FalconX Alpha and Monarch Digital, may be deemed to beneficially own the securities reported herein as indirectly beneficially owned by each of FalconX Alpha and Monarch Digital.</percentageOfClassSecurities>
+        <numberOfShares>The information set forth in rows (7) through (10) of the cover pages and Item 5(a) of this Schedule 13D is incorporated by reference into this Item 5(b).</numberOfShares>
+        <transactionDesc>Except as set forth in Item 3 of this Schedule 13D, the Reporting Persons have not effected any transactions in Common Stock within last 60 days.</transactionDesc>
+        <listOfShareholders>Except as described herein, no other person has the right to receive or the power to direct the receipt of dividends from, or the proceeds from the sale of, securities covered by this statement.</listOfShareholders>
+        <date5PercentOwnership>Not applicable.</date5PercentOwnership>
+      </item5>
+      <item6>
+        <contractDescription>The securities of the Issuer reported in this Schedule 13D were acquired by the Reporting Persons pursuant to a Cash Securities Purchase Agreement or a Cryptocurrency Securities Purchase Agreement, each dated on or about August 25, 2025, entered into between the Issuer and certain accredited investors, including certain of the Reporting Persons, in connection with the Private Placement, as described in the Issuer's Current Report on Form 8-K filed with the Securities and Exchange Commission on August 25, 2025 (the "Securities Purchase Agreements").
+
+As described in the Issuer's Form 8-K and Item 5 of this Schedule 13D, (i) pursuant to the Securities Purchase Agreements and related transaction documents, the Issuer issued to certain of the Reporting Persons shares of Common Stock, Cash Pre-Funded Warrants, Cash Stapled Warrants, Cryptocurrency Pre-Funded Warrants, and Cryptocurrency Stapled Warrants, each of which warrants are exercisable for shares of the Issuer's Common Stock on the terms and subject to the conditions set forth therein, and (ii) the Pre-Funded Warrants contain beneficial ownership limitation provisions that restrict exercise to the extent such exercise would result in the holder beneficially owning more than a specified percentage of the Issuer's outstanding Common Stock.
+
+The Issuer also entered into a Registration Rights Agreement with the purchasers in the Private Placement, including the Reporting Persons, pursuant to which the Issuer agreed to file and maintain the effectiveness of one or more registration statements covering the resale of the shares of Common Stock issued or issuable upon exercise of the warrants issued in the Private Placement, subject to the terms and conditions set forth therein.
+
+Other than the agreements and arrangements described above, and the Joint Filing Agreement among the Reporting Persons filed as an exhibit to this Schedule 13D, there are no contracts, arrangements, understandings or relationships (legal or otherwise) between any of the Reporting Persons and any other person with respect to any securities of the Issuer, including, without limitation, any agreements concerning the transfer or voting of any securities of the Issuer, finder's fees, joint ventures, loan or option arrangements, puts or calls, guarantees of profits, division of profits or losses, or the giving or withholding of proxies.</contractDescription>
+      </item6>
+      <item7>
+        <filedExhibits>Exhibit 99.1   Joint Filing Agreement, dated as of February 13, 2026, by and among the Reporting Persons.
+Exhibit 4.1      Form of Cash Pre-Funded Warrant (incorporated by reference to Exhibit 4.1 to the Issuer's Current Report on Form 8-K filed on August 25, 2025).
+Exhibit 4.2      Form of Cryptocurrency Pre-Funded Warrant (incorporated by reference to Exhibit 4.2 to the Issuer's Current Report on Form 8-K filed on August 25, 2025).
+Exhibit 4.3      Form of Cash Stapled Warrant (incorporated by reference to Exhibit 4.3 to the Issuer's Current Report on Form 8-K filed on August 25, 2025).
+Exhibit 4.4      Form of Cryptocurrency Stapled Warrant (incorporated by reference to Exhibit 4.4 to the Issuer's Current Report on Form 8-K filed on August 25, 2025).
+Exhibit 10.1    Form of Cash Securities Purchase Agreement, dated as of August 25, 2025, by and among Sharps Technology, Inc. and each Purchaser (as defined therein) (incorporated by reference to Exhibit 10.1 to the Issuer's Current Report on Form 8-K filed on August 25, 2025).
+Exhibit 10.2    Form of Cryptocurrency Securities Purchase Agreement, dated as of August 25, 2025, by and among Sharps Technology, Inc. and each Purchaser (as defined therein) (incorporated by reference to Exhibit 10.2 to the Issuer's Current Report on Form 8-K filed on August 25, 2025).
+Exhibit 10.3    Form of Registration Rights Agreement, dated as of August 25, 2025, by and among Sharps Technology, Inc. and each Holder (as defined therein) (incorporated by reference to Exhibit 10.3 to the Issuer's Current Report on Form 8-K filed on August 25, 2025).</filedExhibits>
+      </item7>
+    </items1To7>
+    <signatureInfo>
+      <signaturePerson>
+        <signatureReportingPerson>Solios, Inc.</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Matthew Whaley</signature>
+          <title>Matthew Whaley, its Vice President, Treasurer</title>
+          <date>02/13/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+      <signaturePerson>
+        <signatureReportingPerson>FalconX Alpha, Inc.</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Matthew Whaley</signature>
+          <title>Matthew Whaley, its Vice President, Treasurer</title>
+          <date>02/13/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+      <signaturePerson>
+        <signatureReportingPerson>MNNC Capital Digital Asset Opportunities Master Fund LP</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Shiliang Tang</signature>
+          <title>Shiliang Tang, its director</title>
+          <date>02/13/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+      <signaturePerson>
+        <signatureReportingPerson>MNNC Capital Digital Opportunities BTC Master Fund LP</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Shiliang Tang</signature>
+          <title>Shiliang Tang, its director</title>
+          <date>02/13/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+      <signaturePerson>
+        <signatureReportingPerson>MNNC Capital GP LLC</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Shiliang Tang</signature>
+          <title>Shiliang Tang, its director</title>
+          <date>02/13/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+      <signaturePerson>
+        <signatureReportingPerson>Monarch Digital, Inc.</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Ben Grigus</signature>
+          <title>Ben Grigus, its Senior Director, Corporate Development</title>
+          <date>02/13/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+      <signaturePerson>
+        <signatureReportingPerson>FalconX Holdings Limited</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Brian Crist</signature>
+          <title>Brian Crist, its Secretary</title>
+          <date>02/13/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+    </signatureInfo>
+  </formData>
+
+</edgarSubmission>

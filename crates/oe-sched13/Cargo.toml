@@ -1,0 +1,11 @@
+[package]
+name = "oe-sched13"
+description = "Parser for SEC Schedule 13D and 13G (large holder reports), XML era."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+oe-core.workspace = true
+oe-form4.workspace = true

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC. Invented issuer and holders, shaped like a real Schedule 13D (December 2024 XML format).
+     Edge cases: a joint filing by two reporting persons (a fund and its manager) who state the same
+     shares; memberOfGroup "a"; a decimal percentage; a multi-paragraph Item 4; previouslyFiledFlag false. -->
+<edgarSubmission xmlns="http://www.sec.gov/edgar/schedule13D" xmlns:com="http://www.sec.gov/edgar/common">
+  <schemaVersion>X0202</schemaVersion>
+  <headerData>
+    <submissionType>SCHEDULE 13D</submissionType>
+    <filerInfo>
+      <filer>
+        <filerCredentials>
+          <cik>0009999921</cik>
+          <ccc>XXXXXXXX</ccc>
+        </filerCredentials>
+      </filer>
+      <liveTestFlag>LIVE</liveTestFlag>
+    </filerInfo>
+  </headerData>
+  <formData>
+    <coverPageHeader>
+      <securitiesClassTitle>Common Stock, $0.01 par value</securitiesClassTitle>
+      <dateOfEvent>03/04/2026</dateOfEvent>
+      <previouslyFiledFlag>false</previouslyFiledFlag>
+      <issuerInfo>
+        <issuerCIK>0009999901</issuerCIK>
+        <issuerCusips>
+          <issuerCusipNumber>000000AA1</issuerCusipNumber>
+        </issuerCusips>
+        <issuerName>SYNTHETIC WIDGETS INC</issuerName>
+        <address>
+          <com:street1>1 Example Way</com:street1>
+          <com:city>Exampleville</com:city>
+          <com:stateOrCountry>CA</com:stateOrCountry>
+          <com:zipCode>90000</com:zipCode>
+        </address>
+      </issuerInfo>
+    </coverPageHeader>
+    <reportingPersons>
+      <reportingPersonInfo>
+        <reportingPersonCIK>0009999921</reportingPersonCIK>
+        <reportingPersonNoCIK>N</reportingPersonNoCIK>
+        <reportingPersonName>Example Opportunity Fund LP</reportingPersonName>
+        <memberOfGroup>a</memberOfGroup>
+        <fundType>WC</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>DE</citizenshipOrOrganization>
+        <soleVotingPower>0.00</soleVotingPower>
+        <sharedVotingPower>1,250,000.00</sharedVotingPower>
+        <soleDispositivePower>0.00</soleDispositivePower>
+        <sharedDispositivePower>1250000.00</sharedDispositivePower>
+        <aggregateAmountOwned>1250000.00</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>8.4</percentOfClass>
+        <typeOfReportingPerson>PN</typeOfReportingPerson>
+      </reportingPersonInfo>
+      <reportingPersonInfo>
+        <reportingPersonCIK>0009999922</reportingPersonCIK>
+        <reportingPersonNoCIK>N</reportingPersonNoCIK>
+        <reportingPersonName>Example Capital Management LLC</reportingPersonName>
+        <memberOfGroup>a</memberOfGroup>
+        <fundType>OO</fundType>
+        <legalProceedings>N</legalProceedings>
+        <citizenshipOrOrganization>DE</citizenshipOrOrganization>
+        <soleVotingPower>0.00</soleVotingPower>
+        <sharedVotingPower>1250000.00</sharedVotingPower>
+        <soleDispositivePower>0.00</soleDispositivePower>
+        <sharedDispositivePower>1250000.00</sharedDispositivePower>
+        <aggregateAmountOwned>1250000.00</aggregateAmountOwned>
+        <isAggregateExcludeShares>N</isAggregateExcludeShares>
+        <percentOfClass>8.4</percentOfClass>
+        <typeOfReportingPerson>IA</typeOfReportingPerson>
+      </reportingPersonInfo>
+    </reportingPersons>
+    <items1To7>
+      <item1>
+        <securityTitle>Common Stock, $0.01 par value</securityTitle>
+        <issuerName>SYNTHETIC WIDGETS INC</issuerName>
+      </item1>
+      <item4>
+        <transactionPurpose>The Reporting Persons acquired the shares because they believe they are undervalued.
+
+The Reporting Persons intend to engage in discussions with the Issuer's board and management about strategic alternatives, capital allocation and board composition, and may seek representation on the board.</transactionPurpose>
+      </item4>
+    </items1To7>
+    <signatureInfo>
+      <signaturePerson>
+        <signatureReportingPerson>Example Opportunity Fund LP</signatureReportingPerson>
+        <signatureDetails>
+          <signature>/s/ Jane Example</signature>
+          <title>Managing Member</title>
+          <date>03/11/2026</date>
+        </signatureDetails>
+      </signaturePerson>
+    </signatureInfo>
+  </formData>
+</edgarSubmission>
