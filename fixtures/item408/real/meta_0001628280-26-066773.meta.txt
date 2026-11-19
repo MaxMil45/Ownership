@@ -1,0 +1,8 @@
+accession=0001628280-26-066773
+form=10-Q
+known_on=2026-10-21
+accepted_eastern=2026-10-21T20:00:08
+filing_date=2026-10-22
+period=2026-09-30
+company_cik=0001326801
+url=meta-20260930.htm

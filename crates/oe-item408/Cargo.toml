@@ -1,0 +1,10 @@
+[package]
+name = "oe-item408"
+description = "Reads Item 408 insider trading arrangement disclosures (ecd tags) from Inline XBRL 10-Q and 10-K files."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+oe-core.workspace = true

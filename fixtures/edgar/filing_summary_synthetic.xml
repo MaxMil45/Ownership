@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8'?>
+<FilingSummary>
+  <Version>3.26.3</Version>
+  <ReportFormat>html</ReportFormat>
+  <InputFiles>
+    <File doctype="10-Q" isDefinitelyFs="true" isUsgaap="true" original="synw-20260930.htm">synw-20260930.htm</File>
+    <File>synw-20260930.xsd</File>
+    <File>synw-20260930_cal.xml</File>
+  </InputFiles>
+  <MyReports>
+    <Report instance="synw-20260930.htm">
+      <IsDefault>false</IsDefault>
+      <HtmlFileName>R1.htm</HtmlFileName>
+      <LongName>0000001 - Document - Cover Page</LongName>
+      <ReportType>Sheet</ReportType>
+      <ShortName>Cover Page</ShortName>
+      <Position>1</Position>
+    </Report>
+    <Report instance="synw-20260930.htm">
+      <IsDefault>false</IsDefault>
+      <HtmlFileName>R20.htm</HtmlFileName>
+      <LongName>995444 - Disclosure - Insider Trading Policies and Procedures</LongName>
+      <ReportType>Sheet</ReportType>
+      <ShortName>Insider Trading Policies and Procedures</ShortName>
+      <Position>20</Position>
+    </Report>
+    <Report instance="synw-20260930.htm">
+      <IsDefault>false</IsDefault>
+      <HtmlFileName>R21.htm</HtmlFileName>
+      <LongName>995445 - Disclosure - Insider Trading Arrangements</LongName>
+      <ReportType>Sheet</ReportType>
+      <Role>http://xbrl.sec.gov/ecd/role/InsiderTradingArrangements</Role>
+      <ShortName>Insider Trading Arrangements</ShortName>
+      <Position>21</Position>
+    </Report>
+    <Report instance="synw-20260930.htm">
+      <IsDefault>false</IsDefault>
+      <HtmlFileName>R22.htm</HtmlFileName>
+      <ShortName>Notes &amp; Details</ShortName>
+      <Position>22</Position>
+    </Report>
+  </MyReports>
+</FilingSummary>

@@ -4,6 +4,8 @@
 mod dbcmd;
 #[cfg(feature = "net")]
 mod live;
+#[cfg(feature = "net")]
+mod periodic;
 
 use oe_core::FilingMeta;
 use oe_events::{detect_cluster_buys, trades_from_document, ClusterBuyParams, InsiderTrade};
@@ -39,6 +41,18 @@ USAGE:
     oe daily-form144 <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>] [--include-amendments]
         Download Form 144 notices (planned insider sales) filed by any company on one
         day. Saved under data/form144/<issuer CIK>/. Needs OE_USER_AGENT.
+
+    oe daily-periodic <YYYY-MM-DD> [--limit <n> | --all] [--forms 10-Q,10-K] [--save-all] [--audit <n>] [--out <folder>]
+        Find the 10-Q/10-K reports of one day (any company) whose Item 408 page says a director
+        or officer terminated a Rule 10b5-1 plan, and save them under data/periodic/<CIK>/.
+        Checks three small files per report and downloads the large one only when needed.
+        --audit downloads <n> skipped reports too, to measure how often the cheap check is wrong.
+
+    oe parse-408 <report.htm>
+        Print the insider trading arrangements (Item 408) tagged in one 10-Q or 10-K.
+
+    oe plan-terminations <folder>
+        Run insider.plan_terminated@1 over downloaded reports (default folder: data/periodic).
 
     oe parse-form144 <file.xml>
         Print the key facts of one Form 144 XML file.
@@ -76,10 +90,15 @@ fn main() -> ExitCode {
             Some(file) => parse_form4(Path::new(file)),
             None => Err("parse-form4 needs a file".into()),
         },
+        Some("parse-408") => match args.get(1) {
+            Some(file) => parse_408_file(Path::new(file)),
+            None => Err("parse-408 needs a file (a 10-Q or 10-K .htm)".into()),
+        },
         Some("parse-form144") => match args.get(1) {
             Some(file) => parse_form144_file(Path::new(file)),
             None => Err("parse-form144 needs a file".into()),
         },
+        Some("plan-terminations") => plan_terminations(&args[1..]),
         Some("planned-sales") => planned_sales(&args[1..]),
         Some("cluster-buys") => cluster_buys(&args[1..]),
         Some("fetch") => match (args.get(1), args.get(2)) {
@@ -90,11 +109,13 @@ fn main() -> ExitCode {
         #[cfg(feature = "net")]
         Some("daily-form4") => live::daily_form4(&args[1..]),
         #[cfg(feature = "net")]
+        Some("daily-periodic") => periodic::daily_periodic(&args[1..]),
+        #[cfg(feature = "net")]
         Some("daily-form144") => live::daily_form144(&args[1..]),
         #[cfg(feature = "net")]
         Some("follow") => live::follow(&args[1..]),
         #[cfg(not(feature = "net"))]
-        Some("daily-form4") | Some("daily-form144") | Some("follow") => {
+        Some("daily-form4") | Some("daily-form144") | Some("daily-periodic") | Some("follow") => {
             Err("this build has no network support; rebuild with the default `net` feature".into())
         }
         #[cfg(feature = "db")]
@@ -128,17 +149,23 @@ pub(crate) const UNPARSED_DIR: &str = "unparsed";
 
 /// Every `.xml` under `root`, sorted by path, skipping the `unparsed` folder.
 pub(crate) fn find_xml_files(root: &Path) -> Result<Vec<PathBuf>, String> {
-    fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+    find_files(root, "xml")
+}
+
+/// Every file with the extension ``ext`` (any letter case) under ``root``,
+/// sorted by path, skipping the ``unparsed`` folder.
+pub(crate) fn find_files(root: &Path, ext: &str) -> Result<Vec<PathBuf>, String> {
+    fn walk(dir: &Path, ext: &str, out: &mut Vec<PathBuf>) -> Result<(), String> {
         for entry in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
             let path = entry.map_err(|e| e.to_string())?.path();
             if path.is_dir() {
                 if path.file_name().is_some_and(|n| n == UNPARSED_DIR) {
                     continue;
                 }
-                walk(&path, out)?;
+                walk(&path, ext, out)?;
             } else if path
                 .extension()
-                .is_some_and(|x| x.eq_ignore_ascii_case("xml"))
+                .is_some_and(|x| x.eq_ignore_ascii_case(ext))
             {
                 out.push(path);
             }
@@ -146,11 +173,10 @@ pub(crate) fn find_xml_files(root: &Path) -> Result<Vec<PathBuf>, String> {
         Ok(())
     }
     let mut files = Vec::new();
-    walk(root, &mut files)?;
+    walk(root, ext, &mut files)?;
     files.sort();
     Ok(files)
 }
-
 fn read_document(path: &Path) -> Result<oe_core::OwnershipDocument, String> {
     let xml = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     oe_form4::parse(&xml).map_err(|e| format!("{}: {e}", path.display()))
@@ -262,6 +288,53 @@ fn parse_form4(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn parse_408_file(path: &Path) -> Result<(), String> {
+    let html = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let doc = oe_item408::extract(&html);
+    println!(
+        "{} | {} | CIK {} | period ending {}",
+        doc.document_type.as_deref().unwrap_or("?"),
+        doc.registrant.as_deref().unwrap_or("?"),
+        doc.cik.map_or("?".to_string(), |c| c.to_string()),
+        doc.period_end.map_or("?".to_string(), |d| d.to_string())
+    );
+    if !doc.uses_ecd_tags {
+        println!("no ecd (insider trading arrangement) tags in this report");
+        return Ok(());
+    }
+    let f = &doc.company_flags;
+    let show = |v: Option<bool>| v.map_or("-", |b| if b { "yes" } else { "no" });
+    println!(
+        "company-level statements: 10b5-1 adopted {}, terminated {}; other arrangements adopted {}, terminated {}",
+        show(f.rule_10b5_1_adopted),
+        show(f.rule_10b5_1_terminated),
+        show(f.non_rule_adopted),
+        show(f.non_rule_terminated)
+    );
+    println!("{} trading arrangement(s)", doc.arrangements.len());
+    for a in &doc.arrangements {
+        let status = match (a.rule_10b5_1_adopted, a.rule_10b5_1_terminated) {
+            (true, false) => "ADOPTED",
+            (false, true) => "TERMINATED",
+            (true, true) => "ADOPTED+TERMINATED",
+            _ if a.non_rule_adopted => "non-10b5-1 adopted",
+            _ if a.non_rule_terminated => "non-10b5-1 terminated",
+            _ => "no flag",
+        };
+        println!(
+            "  {status:<10} {} | {} | adopted {} | terminated {} | expires {} | shares {}",
+            a.person.as_deref().unwrap_or("?"),
+            a.title.as_deref().unwrap_or("?"),
+            a.adoption_date.map_or("-".to_string(), |d| d.to_string()),
+            a.termination_date
+                .map_or("-".to_string(), |d| d.to_string()),
+            a.expiration_date.map_or("-".to_string(), |d| d.to_string()),
+            opt(a.securities_amount)
+        );
+    }
+    Ok(())
+}
+
 fn parse_form144_file(path: &Path) -> Result<(), String> {
     let xml = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let f = oe_form144::parse(&xml).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -307,6 +380,61 @@ fn parse_form144_file(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn plan_terminations(args: &[String]) -> Result<(), String> {
+    let folder = match args {
+        [] => PathBuf::from("data/periodic"),
+        [one] => PathBuf::from(one),
+        _ => return Err("plan-terminations takes one folder, for example data/periodic".into()),
+    };
+    let files = find_files(&folder, "htm")?;
+    let mut events = Vec::new();
+    let (mut with_tags, mut failed) = (0usize, 0usize);
+    for path in &files {
+        let html = match std::fs::read_to_string(path) {
+            Ok(h) => h,
+            Err(e) => {
+                failed += 1;
+                eprintln!("  {}: {e}", path.display());
+                continue;
+            }
+        };
+        let doc = oe_item408::extract(&html);
+        with_tags += usize::from(doc.uses_ecd_tags);
+        events.extend(oe_events::detect_plan_terminations(&doc, &read_meta(path)));
+    }
+
+    // Newest first.
+    events.sort_by_key(|e| std::cmp::Reverse(e.known_on));
+    println!(
+        "{} report(s), {} with insider-trading tags, {failed} unreadable, {} event(s) from insider.plan_terminated@1",
+        files.len(),
+        with_tags,
+        events.len()
+    );
+    println!("known_on\tissuer\tperson\ttitle\tterminated\tperiod_end\treplaced\tform");
+    for e in &events {
+        println!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            e.known_on.map_or("?".to_string(), |d| d.to_string()),
+            e.issuer_name.as_deref().unwrap_or("?"),
+            e.person.as_deref().unwrap_or("?"),
+            e.title.as_deref().unwrap_or("?"),
+            match (e.termination_date, e.rejected_termination_date) {
+                (Some(d), _) => d.to_string(),
+                (None, Some(bad)) => format!("tag {bad} rejected (after the period)"),
+                (None, None) => "not tagged".to_string(),
+            },
+            e.period_end.map_or("-".to_string(), |d| d.to_string()),
+            if e.replaced_in_filing {
+                "new plan adopted"
+            } else {
+                "no new plan"
+            },
+            e.form.as_deref().unwrap_or("?")
+        );
+    }
+    Ok(())
+}
 fn planned_sales(args: &[String]) -> Result<(), String> {
     let mut folder: Option<PathBuf> = None;
     let mut params = PlannedSaleParams::default();

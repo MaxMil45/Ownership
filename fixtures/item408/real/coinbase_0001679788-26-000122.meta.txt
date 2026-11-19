@@ -1,0 +1,8 @@
+accession=0001679788-26-000122
+form=10-Q
+known_on=2026-10-29
+accepted_eastern=2026-10-29T16:12:37
+filing_date=2026-10-29
+period=2026-09-30
+company_cik=0001679788
+url=coin-20260930.htm

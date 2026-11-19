@@ -1,0 +1,8 @@
+accession=0001321655-26-000048
+form=10-Q
+known_on=2026-11-02
+accepted_eastern=2026-11-02T18:00:39
+filing_date=2026-11-03
+period=2026-09-30
+company_cik=0001321655
+url=pltr-20260930.htm

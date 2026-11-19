@@ -20,6 +20,7 @@ db = ["dep:oe-store"]
 oe-core.workspace = true
 oe-form4.workspace = true
 oe-form144.workspace = true
+oe-item408.workspace = true
 oe-events.workspace = true
 oe-edgar.workspace = true
 oe-store = { workspace = true, optional = true }

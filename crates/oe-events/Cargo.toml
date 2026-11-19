@@ -9,6 +9,7 @@ rust-version.workspace = true
 [dependencies]
 oe-core.workspace = true
 oe-form144.workspace = true
+oe-item408.workspace = true
 
 [dev-dependencies]
 oe-form4.workspace = true

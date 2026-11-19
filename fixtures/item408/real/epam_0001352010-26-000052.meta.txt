@@ -1,0 +1,8 @@
+accession=0001352010-26-000052
+form=10-Q
+known_on=2026-11-05
+accepted_eastern=2026-11-05T16:01:44
+filing_date=2026-11-05
+period=2026-09-30
+company_cik=0001352010
+url=https://www.sec.gov/Archives/edgar/data/1352010/000135201026000052/epam-20260930.htm

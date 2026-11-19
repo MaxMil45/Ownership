@@ -4,6 +4,7 @@ members = [
     "crates/oe-core",
     "crates/oe-form4",
     "crates/oe-form144",
+    "crates/oe-item408",
     "crates/oe-ledger",
     "crates/oe-events",
     "crates/oe-edgar",
@@ -22,6 +23,7 @@ repository = "https://github.com/YOUR-USERNAME/ownership-engine"
 oe-core = { path = "crates/oe-core" }
 oe-form4 = { path = "crates/oe-form4" }
 oe-form144 = { path = "crates/oe-form144" }
+oe-item408 = { path = "crates/oe-item408" }
 oe-ledger = { path = "crates/oe-ledger" }
 oe-events = { path = "crates/oe-events" }
 oe-store = { path = "crates/oe-store" }

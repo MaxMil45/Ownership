@@ -22,7 +22,9 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | Daily form index, latest-filings feed, complete submission files | `oe-edgar` | Done, tested on synthetic samples and run live |
 | Form 144 (planned insider sale) parser | `oe-form144` | Done; reads 274 real filings; 17 real fixtures |
 | `insider.planned_sale@1` rule | `oe-events` | Done, tested on real filings (spec in `events/specs/`) |
-| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `db-*`, `fetch` |
+| Item 408 reader (insider trading plans in 10-Q/10-K Inline XBRL) | `oe-item408` | Done; run on 647 real reports; 10 real fixtures |
+| `insider.plan_terminated@1` rule | `oe-events` | Done, tested on real reports (spec in `events/specs/`) |
+| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `db-*`, `fetch` |
 
 ## Quick start (Windows)
 
@@ -54,6 +56,11 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
    cargo run -p oe-cli -- daily-form144 2026-11-18 --all
    cargo run -p oe-cli -- planned-sales data/form144
    ```n   `planned-sales` lists the `insider.planned_sale@1` events: notices by officers, directors and 10% holders worth at least $1,000,000 (change it with `--min-value`), with whether the sale is under a 10b5-1 plan. `db-load` is for Form 4 folders (`data/form4`) only; Form 144 is not in the database yet.
+7. **Insider plan terminations (Item 408).** Companies say in each 10-Q and 10-K which directors and officers adopted or ended a Rule 10b5-1 trading plan:
+   ```powershell
+   cargo run -p oe-cli -- daily-periodic 2026-11-05 --all   # about 650 reports; takes minutes
+   cargo run -p oe-cli -- plan-terminations data/periodic
+   ```n   `daily-periodic` reads a small page per report and downloads the 2 MB report only when it shows a termination. `--audit 30` also downloads 30 reports it skipped to measure its error rate. `parse-408 <report.htm>` shows what one report says.
 
 On macOS or Linux, install Rust with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` and use `export OE_USER_AGENT="..."` instead.
 
@@ -88,6 +95,7 @@ crates/
   oe-core/      shared types: Date, Cik, Accession, OwnershipDocument
   oe-form4/     Form 3/4/5 parser and a small XML tokenizer
   oe-form144/   Form 144 (notice of proposed sale) parser
+  oe-item408/   Item 408 reader for 10-Q/10-K Inline XBRL (insider trading plans)
   oe-ledger/    append-only, point-in-time fact store
   oe-events/    versioned event rules (insider.cluster_buy@1)
   oe-edgar/     polite EDGAR HTTP client with rate limiting

@@ -1,0 +1,8 @@
+accession=0001193125-26-447794
+form=10-Q
+known_on=2026-11-04
+accepted_eastern=2026-11-04T18:16:04
+filing_date=2026-11-05
+period=2026-09-30
+company_cik=0001070494
+url=https://www.sec.gov/Archives/edgar/data/1070494/000119312526447794/acad-20260930.htm

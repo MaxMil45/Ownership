@@ -42,6 +42,14 @@ Things to know:
 
 `oe daily-form4` and `oe follow` use these; see `crates/oe-edgar/src/{daily_index,feed,submission}.rs`.
 
+## Periodic reports (10-Q, 10-K): what is different
+
+- **Filing date is a day late after 5:30 pm Eastern** (the cutoff for Form 4 is 10 pm). Palantir's 10-Q: accepted 2026-11-02 18:00:39 Eastern, `FILING-DATE` 2026-11-03. The `.hdr.sgml` file (`.../<CIK>/<accession without dashes>/<accession>.hdr.sgml`, under 1 KB, same Eastern time as the full submission header) gives the acceptance time. The path without the accession folder gives 403.
+- `.../<accession without dashes>/index.json` lists the files of a filing; its `type` field is an icon name, not a form type, and `size` is empty for some.
+- `FilingSummary.xml` in the same folder (30 to 60 KB) names the main document (`<File doctype=...>`) and lists the rendered report pages `R1.htm`, `R2.htm`... with their `ShortName`; the `Insider Trading Arrangements` page is the small one that shows Item 408.
+- The XBRL frames API (`/api/xbrl/frames/ecd/<tag>/<unit>/<period>.json`) does **not** work for discovery here: `ecd` facts carry dimensions, and the frame for `TrdArrSecuritiesAggAvailAmt` returned only 19 companies.
+- See `item-408.md`.
+
 ## The trap: `primaryDocument` for Form 4s
 
 For ownership forms, `primaryDocument` usually points at the **rendered** version, for example `xslF345X05/wk-form4_1234.xml`. Remove the `xsl…/` folder to get the raw XML. The raw URL is:

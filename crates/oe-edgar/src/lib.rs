@@ -7,6 +7,8 @@
 
 pub mod daily_index;
 pub mod feed;
+pub mod filing_summary;
+pub mod header;
 pub mod json;
 pub mod ratelimit;
 pub mod submission;
@@ -16,6 +18,8 @@ pub use daily_index::{daily_index_url, parse_form_index, FormIndex, IndexEntry};
 pub use feed::{
     parse_atom_feed, unique_accessions, FeedEntry, FeedError, LATEST_OWNERSHIP_FEED_URL,
 };
+pub use filing_summary::{parse_filing_summary, FilingSummary, ReportRef};
+pub use header::{parse_header_sgml, FilingHeader, HeaderError};
 pub use submission::{parse_full_submission, FullSubmission, SubmissionError};
 pub use submissions::{
     find_ticker, history_page_url, parse_company_tickers, parse_history_page, parse_submissions,

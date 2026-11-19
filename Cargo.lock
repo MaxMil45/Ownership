@@ -485,6 +485,7 @@ dependencies = [
  "oe-events",
  "oe-form144",
  "oe-form4",
+ "oe-item408",
  "oe-store",
 ]
 
@@ -507,6 +508,7 @@ dependencies = [
  "oe-core",
  "oe-form144",
  "oe-form4",
+ "oe-item408",
 ]
 
 [[package]]
@@ -519,6 +521,13 @@ dependencies = [
 
 [[package]]
 name = "oe-form4"
+version = "0.1.0-dev"
+dependencies = [
+ "oe-core",
+]
+
+[[package]]
+name = "oe-item408"
 version = "0.1.0-dev"
 dependencies = [
  "oe-core",

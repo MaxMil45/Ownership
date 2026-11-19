@@ -45,6 +45,12 @@ The real set was chosen from 274 downloaded filings (four days) for coverage: pr
 
 `crates/oe-form144/tests/real_fixtures.rs` and `crates/oe-events/tests/planned_sale_real.rs` run them.
 
+## Item 408 fixtures
+
+`item408/real/` holds 10 **excerpts** of real 10-Q and 10-K reports (Palantir, Cryoport, Twin Vee, ARS Pharmaceuticals, Coastal Financial, EPAM, ACADIA, Meta, Coinbase, Apple's 10-K). A full report is 1.5 to 3 MB, so each excerpt keeps only the XBRL contexts and the `dei`/`ecd` facts, verbatim, with a comment saying which accession it came from and why it is here. `MANIFEST.tsv` has, per file, the numbers worked out from the **original full report** with a separate script: arrangements, adoptions, terminations, rejected dates, replaced plans. The tests (`crates/oe-item408/tests/real_fixtures.rs`, `crates/oe-events/tests/plan_terminated_real.rs`) compare the Rust code to it. I also checked that `oe parse-408` gives the same output on each excerpt as on its original.
+
+The set covers: a company that names every plan and one that tags only the person, a person who ended two plans, a plan replaced in the same report, a termination date tagged after the period (rejected), a company-level `booleantrue` flag that is not a termination, a 10-K, reports with only `false` statements, and a report accepted after 17:30 Eastern. Sidecars carry `known_on` (acceptance date, US Eastern) and `filing_date`; they differ for ACADIA.
+
 ## Adding real fixtures
 
 1. Set your SEC contact details (PowerShell): `$env:OE_USER_AGENT = "Your Name your.email@example.com"`
