@@ -42,6 +42,10 @@ Things to know:
 
 `oe daily-form4` and `oe follow` use these; see `crates/oe-edgar/src/{daily_index,feed,submission}.rs`.
 
+## Who filed about whom: the SGML header's parties
+
+The `.hdr.sgml` header names the parties: `<SUBJECT-COMPANY>` (the company a filing is about, for proxy materials, 13D/G and tender offers), one `<FILED-BY>` block per filer, and `<FILER>` for a company's own reports. Each block has `<CONFORMED-NAME>` and `<CIK>`. `FilingHeader` exposes them as `subject`, `filed_by` and `filers`. See `proxy-contests.md`.
+
 ## Schedule 13D / 13G in the daily index
 
 The form types are `SCHEDULE 13D`, `SCHEDULE 13D/A`, `SCHEDULE 13G` and `SCHEDULE 13G/A` (not `SC 13D`). They need the 17-character form column (`SCHEDULE 13D/A` is 14). Rows are per filer, so one filing can appear several times. See `schedule-13.md`.

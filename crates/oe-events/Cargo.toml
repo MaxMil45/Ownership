@@ -13,4 +13,5 @@ oe-item408.workspace = true
 oe-sched13.workspace = true
 
 [dev-dependencies]
+oe-edgar.workspace = true
 oe-form4.workspace = true

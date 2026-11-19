@@ -5,11 +5,11 @@
 //! Both fetch each filing's complete submission text file, which holds the
 //! ownership XML and the exact acceptance time in one request.
 
-use super::{meta_path, render_meta};
+use super::{args, meta_path, render_meta};
 use oe_core::Date;
 use oe_edgar::{
-    daily_index_url, parse_atom_feed, parse_form_index, parse_full_submission, unique_accessions,
-    EdgarClient, EdgarError, LATEST_OWNERSHIP_FEED_URL,
+    daily_index_url, filing_folder_url, parse_atom_feed, parse_form_index, parse_full_submission,
+    unique_accessions, EdgarClient, EdgarError, FormIndex, LATEST_OWNERSHIP_FEED_URL,
 };
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -18,6 +18,7 @@ use std::time::Duration;
 const DEFAULT_ROOT: &str = "data/form4";
 const DEFAULT_ROOT_144: &str = "data/form144";
 const DEFAULT_ROOT_13: &str = "data/sched13";
+const DEFAULT_ROOT_PROXY: &str = "data/proxy";
 /// Folder (under the output root) for filings whose XML the parser rejected.
 const UNPARSED_DIR: &str = "unparsed";
 
@@ -89,26 +90,11 @@ pub fn parse_daily_args(args: &[String], default_root: &str) -> Result<DailyArgs
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
-            "--limit" => {
-                parsed.limit = Some(
-                    it.next()
-                        .and_then(|v| v.parse().ok())
-                        .filter(|n| *n > 0)
-                        .ok_or("--limit needs a positive number")?,
-                )
-            }
+            "--limit" => parsed.limit = Some(args::positive(&mut it, "--limit")?),
             "--all" => parsed.limit = None,
-            "--out" => parsed.out = PathBuf::from(it.next().ok_or("--out needs a folder")?),
+            "--out" => parsed.out = args::folder(&mut it, "--out")?,
             "--include-amendments" => parsed.include_amendments = true,
-            other if date.is_none() => {
-                date = Some(
-                    other
-                        .parse::<Date>()
-                        .ok()
-                        .filter(|_| other.len() == 10)
-                        .ok_or_else(|| format!("{other:?} is not a date like 2026-11-18"))?,
-                )
-            }
+            other if date.is_none() => date = Some(args::date(other, "2026-11-18")?),
             other => return Err(format!("unexpected argument {other:?}")),
         }
     }
@@ -140,23 +126,15 @@ pub fn parse_follow_args(args: &[String]) -> Result<FollowArgs, String> {
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--interval" => {
-                parsed.interval_secs = it
-                    .next()
-                    .and_then(|v| v.parse().ok())
-                    .filter(|n| *n >= MIN_INTERVAL_SECS)
-                    .ok_or(format!(
-                        "--interval needs a number of seconds, at least {MIN_INTERVAL_SECS}"
-                    ))?
+                parsed.interval_secs = args::value(
+                    &mut it,
+                    "--interval",
+                    &format!("a number of seconds, at least {MIN_INTERVAL_SECS}"),
+                    |n| *n >= MIN_INTERVAL_SECS,
+                )?
             }
-            "--polls" => {
-                parsed.polls = Some(
-                    it.next()
-                        .and_then(|v| v.parse().ok())
-                        .filter(|n| *n > 0)
-                        .ok_or("--polls needs a positive number")?,
-                )
-            }
-            "--out" => parsed.out = PathBuf::from(it.next().ok_or("--out needs a folder")?),
+            "--polls" => parsed.polls = Some(args::positive(&mut it, "--polls")?),
+            "--out" => parsed.out = args::folder(&mut it, "--out")?,
             "--include-amendments" => parsed.include_amendments = true,
             other => return Err(format!("unexpected argument {other:?}")),
         }
@@ -180,7 +158,10 @@ fn saved_accessions(root: &Path) -> HashSet<String> {
         };
         for file in files.filter_map(|f| f.ok()) {
             let name = file.file_name().to_string_lossy().into_owned();
-            if let Some(acc) = name.strip_suffix(".xml") {
+            if let Some(acc) = name
+                .strip_suffix(".xml")
+                .or_else(|| name.strip_suffix(".hdr.sgml"))
+            {
                 found.insert(acc.to_string());
             }
         }
@@ -345,18 +326,14 @@ pub fn daily_schedule13(args: &[String]) -> Result<(), String> {
     daily(args, Kind::Schedule13)
 }
 
-fn daily(args: &[String], kind: Kind) -> Result<(), String> {
-    let args = parse_daily_args(args, kind.default_root())?;
-    let client = client()?;
-
-    let url = daily_index_url(args.date);
+/// Downloads and reads EDGAR's form index for one day, warning about any row
+/// it could not read.
+pub(crate) fn fetch_daily_index(client: &EdgarClient, date: Date) -> Result<FormIndex, String> {
+    let url = daily_index_url(date);
     let body = client.get_text(&url).map_err(|e| match e {
         EdgarError::Status {
             code: 403 | 404, ..
-        } => format!(
-            "no daily index for {} (weekend, holiday, or not published yet): {url}",
-            args.date
-        ),
+        } => format!("no daily index for {date} (weekend, holiday, or not published yet): {url}"),
         other => other.to_string(),
     })?;
     let index = parse_form_index(&body);
@@ -366,6 +343,14 @@ fn daily(args: &[String], kind: Kind) -> Result<(), String> {
             index.skipped
         );
     }
+    Ok(index)
+}
+
+fn daily(args: &[String], kind: Kind) -> Result<(), String> {
+    let args = parse_daily_args(args, kind.default_root())?;
+    let client = client()?;
+
+    let index = fetch_daily_index(&client, args.date)?;
     let forms = kind.forms(args.include_amendments);
     let filings = index.unique_filings(forms);
     println!(
@@ -409,6 +394,79 @@ fn daily(args: &[String], kind: Kind) -> Result<(), String> {
                 failed += 1;
             }
         }
+    }
+    println!("done: {saved} saved, {skipped} already present, {failed} failed");
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// oe daily-proxy
+
+/// Downloads the SGML header (under 1 KB) of every contested-solicitation
+/// filing of one day and saves it under `data/proxy/<subject CIK>/`. The header
+/// names the subject company and everyone who filed; the documents themselves
+/// (HTML letters and proxy statements) are not fetched.
+pub fn daily_proxy(args: &[String]) -> Result<(), String> {
+    let args = parse_daily_args(args, DEFAULT_ROOT_PROXY)?;
+    let client = client()?;
+    let index = fetch_daily_index(&client, args.date)?;
+    let filings = index.unique_filings(oe_events::proxy_contest::CONTEST_FORMS);
+    println!(
+        "{}: {} rows in the index, {} contested-solicitation filing(s)",
+        args.date,
+        index.entries.len(),
+        filings.len()
+    );
+
+    let mut known = saved_accessions(&args.out);
+    let (mut saved, mut skipped, mut failed) = (0usize, 0usize, 0usize);
+    for entry in filings.into_iter().take(args.limit.unwrap_or(usize::MAX)) {
+        let Some(accession) = entry.accession() else {
+            failed += 1;
+            continue;
+        };
+        if known.contains(accession) {
+            skipped += 1;
+            continue;
+        }
+        let url = format!(
+            "{}{accession}.hdr.sgml",
+            filing_folder_url(entry.cik, &accession.replace('-', ""))
+        );
+        let header = client
+            .get_text(&url)
+            .map_err(|e| e.to_string())
+            .and_then(|text| {
+                oe_edgar::parse_header_sgml(&text)
+                    .map(|h| (h, text))
+                    .map_err(|e| e.to_string())
+            });
+        let (h, text) = match header {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("  {accession}: {e}");
+                failed += 1;
+                continue;
+            }
+        };
+        let Some(subject) = &h.subject else {
+            eprintln!("  {accession}: the header names no subject company");
+            failed += 1;
+            continue;
+        };
+        let dir = args.out.join(subject.cik.to_string());
+        std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        let path = dir.join(format!("{accession}.hdr.sgml"));
+        std::fs::write(&path, &text).map_err(|e| format!("{}: {e}", path.display()))?;
+        let filers: Vec<&str> = h.filed_by.iter().map(|p| p.name.as_str()).collect();
+        println!(
+            "  {accession}  {:<8} {:<34.34} filed by {}",
+            h.form,
+            subject.name,
+            filers.join("; ")
+        );
+        saved += 1;
+        known.insert(accession.to_string());
     }
     println!("done: {saved} saved, {skipped} already present, {failed} failed");
     Ok(())

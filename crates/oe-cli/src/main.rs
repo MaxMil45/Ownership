@@ -1,5 +1,6 @@
 //! `oe`: command-line tool for the ownership engine.
 
+mod args;
 #[cfg(feature = "db")]
 mod dbcmd;
 #[cfg(feature = "net")]
@@ -55,6 +56,14 @@ USAGE:
     oe activist-events [<folder>] [--min-percent <n>]
         Run activist.new_13d@1 and activist.passive_to_active@1 over downloaded 13D/13G
         files (default folder: data/sched13) and list the events, newest first.
+
+    oe daily-proxy <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>]
+        Download the SGML header of every contested-solicitation filing (PREC14A, DEFC14A,
+        PREN14A, PRRN14A, DEFN14A, DFAN14A, ...) of one day, saved under data/proxy/<CIK>/.
+        Needs OE_USER_AGENT.
+
+    oe proxy-contests [<folder>]
+        Run activist.proxy_contest@1 over downloaded headers (default folder: data/proxy).
 
     oe parse-13 <primary_doc.xml>
         Print the key facts of one Schedule 13D/13G XML file.
@@ -114,6 +123,7 @@ fn main() -> ExitCode {
             None => Err("parse-form144 needs a file".into()),
         },
         Some("activist-events") => activist_events(&args[1..]),
+        Some("proxy-contests") => proxy_contests(&args[1..]),
         Some("plan-terminations") => plan_terminations(&args[1..]),
         Some("planned-sales") => planned_sales(&args[1..]),
         Some("cluster-buys") => cluster_buys(&args[1..]),
@@ -127,6 +137,8 @@ fn main() -> ExitCode {
         #[cfg(feature = "net")]
         Some("daily-13dg") => live::daily_schedule13(&args[1..]),
         #[cfg(feature = "net")]
+        Some("daily-proxy") => live::daily_proxy(&args[1..]),
+        #[cfg(feature = "net")]
         Some("daily-periodic") => periodic::daily_periodic(&args[1..]),
         #[cfg(feature = "net")]
         Some("daily-form144") => live::daily_form144(&args[1..]),
@@ -137,6 +149,7 @@ fn main() -> ExitCode {
         | Some("daily-form144")
         | Some("daily-periodic")
         | Some("daily-13dg")
+        | Some("daily-proxy")
         | Some("follow") => {
             Err("this build has no network support; rebuild with the default `net` feature".into())
         }
@@ -231,19 +244,16 @@ fn read_meta(xml_path: &Path) -> FilingMeta {
     };
     let mut stored_known_on = None;
     let mut accepted_eastern = None;
-    for line in text.lines() {
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        match key.trim() {
-            "accession" => meta.accession = value.trim().parse().ok(),
-            "known_on" => stored_known_on = value.trim().parse().ok(),
+    for (key, value) in oe_core::text::key_values(&text) {
+        match key {
+            "accession" => meta.accession = value.parse().ok(),
+            "known_on" => stored_known_on = value.parse().ok(),
             // The raw SEC timestamp is UTC. Converting it here, rather than
             // trusting the stored `known_on`, corrects sidecars written
             // before the conversion existed (they were a day late for
             // filings accepted after about 8 pm in New York).
             "accepted" => accepted_eastern = oe_core::us_eastern_date(value),
-            "url" => meta.source = Some(value.trim().to_string()),
+            "url" => meta.source = Some(value.to_string()),
             _ => {}
         }
     }
@@ -466,11 +476,8 @@ fn activist_events(args: &[String]) -> Result<(), String> {
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--min-percent" => {
-                params.min_percent = it
-                    .next()
-                    .and_then(|v| v.parse().ok())
-                    .filter(|v: &f64| v.is_finite() && *v >= 0.0)
-                    .ok_or("--min-percent needs a number such as 5")?
+                params.min_percent =
+                    args::non_negative(&mut it, "--min-percent", "a number such as 5")?
             }
             other if folder.is_none() => folder = Some(PathBuf::from(other)),
             other => return Err(format!("unexpected argument {other:?}")),
@@ -525,6 +532,73 @@ fn activist_events(args: &[String]) -> Result<(), String> {
             opt(e.largest_shares),
             if e.is_group { "group" } else { "-" },
             e.event_date.map_or("-".to_string(), |d| d.to_string())
+        );
+    }
+    Ok(())
+}
+fn proxy_contests(args: &[String]) -> Result<(), String> {
+    let folder = match args {
+        [] => PathBuf::from("data/proxy"),
+        [one] => PathBuf::from(one),
+        _ => return Err("proxy-contests takes one folder, for example data/proxy".into()),
+    };
+    let files = find_files(&folder, "sgml")?;
+    let mut filings = Vec::new();
+    let mut failed = 0usize;
+    for path in &files {
+        let header = std::fs::read_to_string(path)
+            .map_err(|e| e.to_string())
+            .and_then(|t| oe_edgar::parse_header_sgml(&t).map_err(|e| e.to_string()));
+        match header {
+            Ok(h) => match h.subject.clone() {
+                Some(subject) => filings.push(oe_events::ContestFiling {
+                    known_on: h.known_on(),
+                    form: h.form,
+                    accession: h.accession,
+                    subject,
+                    filed_by: h.filed_by,
+                }),
+                None => failed += 1,
+            },
+            Err(e) => {
+                failed += 1;
+                eprintln!("  {}: {e}", path.display());
+            }
+        }
+    }
+    let mut events = oe_events::detect_proxy_contests(&filings);
+    events.sort_by_key(|e| std::cmp::Reverse(e.last_known_on));
+    println!(
+        "{} header(s), {failed} unreadable or without a subject: {} event(s) from activist.proxy_contest@1",
+        files.len(),
+        events.len()
+    );
+    println!(
+        "last_known_on\tissuer\tchallengers\tfilings\tchallenger_proxy\tcompany_contested_proxy"
+    );
+    for e in &events {
+        let challengers: Vec<&str> = e.challengers.iter().map(|p| p.name.as_str()).collect();
+        let forms: Vec<&str> = e.filings.iter().map(|f| f.form.as_str()).collect();
+        println!(
+            "{}\t{}\t{}\t{}\t{}\t{}",
+            e.last_known_on.map_or("?".to_string(), |d| d.to_string()),
+            e.issuer_name,
+            if challengers.is_empty() {
+                "-".to_string()
+            } else {
+                challengers.join("; ")
+            },
+            forms.join(","),
+            if e.challenger_proxy_statement {
+                "yes"
+            } else {
+                "-"
+            },
+            if e.company_contested_proxy {
+                "yes"
+            } else {
+                "-"
+            }
         );
     }
     Ok(())
@@ -591,11 +665,8 @@ fn planned_sales(args: &[String]) -> Result<(), String> {
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--min-value" => {
-                params.min_value = it
-                    .next()
-                    .and_then(|v| v.replace(',', "").parse().ok())
-                    .filter(|v: &f64| v.is_finite() && *v >= 0.0)
-                    .ok_or("--min-value needs a number of dollars")?
+                params.min_value =
+                    args::non_negative(&mut it, "--min-value", "a number of dollars")?
             }
             other if folder.is_none() => folder = Some(PathBuf::from(other)),
             other => return Err(format!("unexpected argument {other:?}")),
@@ -662,16 +733,11 @@ fn cluster_buys(args: &[String]) -> Result<(), String> {
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--window" => {
-                params.window_days = it
-                    .next()
-                    .and_then(|v| v.parse().ok())
-                    .ok_or("--window needs a number of days")?
+                params.window_days = args::value(&mut it, "--window", "a number of days", |_| true)?
             }
             "--min" => {
-                params.min_insiders = it
-                    .next()
-                    .and_then(|v| v.parse().ok())
-                    .ok_or("--min needs a number of insiders")?
+                params.min_insiders =
+                    args::value(&mut it, "--min", "a number of insiders", |_| true)?
             }
             "--keep-routine" => params.routine_lookback_years = 0,
             other if folder.is_none() => folder = Some(PathBuf::from(other)),
@@ -774,14 +840,8 @@ fn parse_recent_args(args: &[String]) -> Result<RecentArgs, String> {
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
-            "--limit" => {
-                parsed.limit = it
-                    .next()
-                    .and_then(|v| v.parse().ok())
-                    .filter(|n| *n > 0)
-                    .ok_or("--limit needs a positive number")?
-            }
-            "--out" => parsed.out = Some(PathBuf::from(it.next().ok_or("--out needs a folder")?)),
+            "--limit" => parsed.limit = args::positive(&mut it, "--limit")?,
+            "--out" => parsed.out = Some(args::folder(&mut it, "--out")?),
             "--include-amendments" => parsed.include_amendments = true,
             other if parsed.company.is_empty() => parsed.company = other.to_string(),
             other => return Err(format!("unexpected argument {other:?}")),

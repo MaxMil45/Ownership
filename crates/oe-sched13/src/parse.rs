@@ -1,6 +1,7 @@
 //! Reads Schedule 13D / 13G XML tokens into a [`Schedule13`].
 
 use crate::{ReportingPerson, Schedule, Schedule13};
+use oe_core::text::{parse_decimal, parse_flag as flag};
 use oe_core::{parse_us_date, Cik, Date};
 use oe_form4::xml::{tokenize, Token, XmlError};
 use std::fmt;
@@ -35,22 +36,14 @@ impl From<XmlError> for ParseError {
 }
 
 fn number(field: &'static str, text: &str) -> Result<Option<f64>, ParseError> {
-    let cleaned: String = text
-        .chars()
-        .filter(|c| !matches!(c, ',' | '%' | '$'))
-        .collect();
-    let t = cleaned.trim();
+    let t = text.trim();
     if t.is_empty() || t.eq_ignore_ascii_case("n/a") {
         return Ok(None);
     }
-    t.parse::<f64>()
-        .ok()
-        .filter(|v| v.is_finite())
-        .map(Some)
-        .ok_or(ParseError::Invalid {
-            field,
-            value: text.to_string(),
-        })
+    parse_decimal(t).map(Some).ok_or(ParseError::Invalid {
+        field,
+        value: text.to_string(),
+    })
 }
 
 fn date(field: &'static str, text: &str) -> Result<Option<Date>, ParseError> {
@@ -66,15 +59,6 @@ fn date(field: &'static str, text: &str) -> Result<Option<Date>, ParseError> {
             value: text.to_string(),
         })
 }
-
-fn flag(text: &str) -> Option<bool> {
-    match text.trim().to_ascii_lowercase().as_str() {
-        "y" | "yes" | "true" | "1" => Some(true),
-        "n" | "no" | "false" | "0" => Some(false),
-        _ => None,
-    }
-}
-
 #[derive(Default)]
 struct Builder {
     submission_type: Option<String>,

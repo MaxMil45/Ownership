@@ -5,7 +5,7 @@
 
 use crate::InsiderTrade;
 use oe_core::{Cik, Date, TransactionCode};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 pub const RULE_ID: &str = "insider.cluster_buy@1";
 
@@ -54,24 +54,41 @@ pub struct ClusterBuyEvent {
     pub known_on: Option<Date>,
 }
 
-/// Whether `owner` traded `issuer` (buy or sell) in the same calendar month
-/// as `on` in each of the `years` previous years.
-pub fn is_routine(owner: Cik, issuer: Cik, on: Date, history: &[InsiderTrade], years: u32) -> bool {
-    if years == 0 {
-        return false;
-    }
-    (1..=years as i32).all(|back| {
-        let year = on.year() - back;
-        history.iter().any(|t| {
-            t.owner == owner
-                && t.issuer == issuer
-                && matches!(t.code, TransactionCode::P | TransactionCode::S)
-                && t.date.year() == year
-                && t.date.month() == on.month()
-        })
-    })
+/// The calendar months in which each insider traded each issuer (code P or
+/// S), built once from the history so the routine-trader filter is a set
+/// lookup per trade instead of a scan of the whole history.
+pub struct RoutineIndex {
+    months: HashSet<(Cik, Cik, i32, u32)>,
 }
 
+impl RoutineIndex {
+    pub fn new(history: &[InsiderTrade]) -> RoutineIndex {
+        RoutineIndex {
+            months: history
+                .iter()
+                .filter(|t| matches!(t.code, TransactionCode::P | TransactionCode::S))
+                .map(|t| (t.owner, t.issuer, t.date.year(), t.date.month()))
+                .collect(),
+        }
+    }
+
+    /// Whether `owner` traded `issuer` in the calendar month of `on` in each
+    /// of the `years` previous years. Zero years means never routine.
+    pub fn is_routine(&self, owner: Cik, issuer: Cik, on: Date, years: u32) -> bool {
+        years > 0
+            && (1..=years as i32).all(|back| {
+                self.months
+                    .contains(&(owner, issuer, on.year() - back, on.month()))
+            })
+    }
+}
+
+/// Whether `owner` traded `issuer` (buy or sell) in the same calendar month
+/// as `on` in each of the `years` previous years. For one check; to check many
+/// trades, build a [`RoutineIndex`] once.
+pub fn is_routine(owner: Cik, issuer: Cik, on: Date, history: &[InsiderTrade], years: u32) -> bool {
+    years > 0 && RoutineIndex::new(history).is_routine(owner, issuer, on, years)
+}
 /// Finds cluster-buy events in `trades`.
 ///
 /// `history` is used only for the routine-trader filter; pass earlier trades
@@ -81,16 +98,16 @@ pub fn detect_cluster_buys(
     history: &[InsiderTrade],
     params: &ClusterBuyParams,
 ) -> Vec<ClusterBuyEvent> {
+    // Built once; empty when the filter is off.
+    let routine = if params.routine_lookback_years > 0 {
+        RoutineIndex::new(history)
+    } else {
+        RoutineIndex::new(&[])
+    };
     let qualifying = trades.iter().filter(|t| {
         t.is_open_market_purchase
             && !(params.exclude_10b5_1 && t.plan_10b5_1 == Some(true))
-            && !is_routine(
-                t.owner,
-                t.issuer,
-                t.date,
-                history,
-                params.routine_lookback_years,
-            )
+            && !routine.is_routine(t.owner, t.issuer, t.date, params.routine_lookback_years)
     });
 
     let mut by_issuer: BTreeMap<Cik, Vec<&InsiderTrade>> = BTreeMap::new();

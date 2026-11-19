@@ -2,7 +2,8 @@
 //! element names (as `oe-form4` does) so unknown elements are skipped.
 
 use crate::{Acquisition, Form144, PriorSale, SecuritiesToSell};
-use oe_core::{Cik, Date};
+use oe_core::text::{parse_decimal, parse_flag};
+use oe_core::{parse_us_date, Cik, Date};
 use oe_form4::xml::{tokenize, Token, XmlError};
 use std::fmt;
 
@@ -37,44 +38,21 @@ impl From<XmlError> for ParseError {
 
 /// `MM/DD/YYYY` (what Form 144 uses) or `YYYY-MM-DD`.
 fn parse_date(field: &'static str, text: &str) -> Result<Date, ParseError> {
-    let bad = || ParseError::Invalid {
-        field,
-        value: text.to_string(),
-    };
     let t = text.trim();
-    if let Some((m, rest)) = t.split_once('/') {
-        let (d, y) = rest.split_once('/').ok_or_else(bad)?;
-        return Date::from_ymd(
-            y.trim().parse().map_err(|_| bad())?,
-            m.trim().parse().map_err(|_| bad())?,
-            d.trim().parse().map_err(|_| bad())?,
-        )
-        .ok_or_else(bad);
-    }
-    t.parse::<Date>().map_err(|_| bad())
-}
-
-fn parse_number(field: &'static str, text: &str) -> Result<f64, ParseError> {
-    let cleaned: String = text.chars().filter(|c| !matches!(c, ',' | '$')).collect();
-    cleaned
-        .trim()
-        .parse::<f64>()
-        .ok()
-        .filter(|v| v.is_finite())
+    parse_us_date(t)
+        .or_else(|| t.parse::<Date>().ok().filter(|_| t.len() == 10))
         .ok_or(ParseError::Invalid {
             field,
             value: text.to_string(),
         })
 }
 
-fn parse_flag(text: &str) -> Option<bool> {
-    match text.trim().to_ascii_lowercase().as_str() {
-        "y" | "yes" | "true" | "1" => Some(true),
-        "n" | "no" | "false" | "0" => Some(false),
-        _ => None,
-    }
+fn parse_number(field: &'static str, text: &str) -> Result<f64, ParseError> {
+    parse_decimal(text).ok_or(ParseError::Invalid {
+        field,
+        value: text.to_string(),
+    })
 }
-
 #[derive(Default)]
 struct Builder {
     submission_type: Option<String>,

@@ -8,6 +8,8 @@
 //! prospectuses. Like the daily index, the feed lists a Form 4 once per filer
 //! (issuer and each reporting owner), so entries repeat accession numbers.
 
+use crate::markup::{between, element_attribute, unescape};
+
 /// The feed URL for ownership forms, newest 100 entries (about 50 filings).
 pub const LATEST_OWNERSHIP_FEED_URL: &str =
     "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=only&count=100&output=atom";
@@ -59,7 +61,7 @@ pub fn parse_atom_feed(text: &str) -> Result<Vec<FeedEntry>, FeedError> {
 
 fn parse_entry(chunk: &str) -> Option<FeedEntry> {
     let chunk = chunk.split("</entry>").next()?;
-    let title = unescape(&between(chunk, "<title>", "</title>")?);
+    let title = unescape(between(chunk, "<title>", "</title>")?);
     let (form_and_name, role) = split_role(&title)?;
     let (form_in_title, name_and_cik) = form_and_name.split_once(" - ")?;
     let (name, cik) = name_and_cik.rsplit_once(" (")?;
@@ -68,7 +70,8 @@ fn parse_entry(chunk: &str) -> Option<FeedEntry> {
     let id = between(chunk, "<id>", "</id>")?;
     let accession = id.split("accession-number=").nth(1)?.trim().to_string();
 
-    let form = attribute(chunk, "<category", "term").unwrap_or_else(|| form_in_title.to_string());
+    let form =
+        element_attribute(chunk, "<category", "term").unwrap_or_else(|| form_in_title.to_string());
     Some(FeedEntry {
         form,
         accession,
@@ -78,7 +81,7 @@ fn parse_entry(chunk: &str) -> Option<FeedEntry> {
         updated: between(chunk, "<updated>", "</updated>")?
             .trim()
             .to_string(),
-        index_url: attribute(chunk, "<link", "href").unwrap_or_default(),
+        index_url: element_attribute(chunk, "<link", "href").unwrap_or_default(),
     })
 }
 
@@ -86,31 +89,6 @@ fn parse_entry(chunk: &str) -> Option<FeedEntry> {
 fn split_role(title: &str) -> Option<(&str, &str)> {
     let (rest, role) = title.trim_end().rsplit_once(" (")?;
     Some((rest, role.strip_suffix(')')?))
-}
-
-fn between(s: &str, open: &str, close: &str) -> Option<String> {
-    let start = s.find(open)? + open.len();
-    let end = s[start..].find(close)? + start;
-    Some(s[start..end].to_string())
-}
-
-/// Value of `name="..."` inside the first `tag` element of `s`.
-fn attribute(s: &str, tag: &str, name: &str) -> Option<String> {
-    let element = &s[s.find(tag)?..];
-    let element = &element[..element.find('>')?];
-    let needle = format!("{name}=\"");
-    let start = element.find(&needle)? + needle.len();
-    let end = element[start..].find('"')? + start;
-    Some(unescape(&element[start..end]))
-}
-
-fn unescape(s: &str) -> String {
-    s.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&#39;", "'")
-        .replace("&amp;", "&")
 }
 
 /// The distinct accession numbers of entries whose form is in `forms`, in feed

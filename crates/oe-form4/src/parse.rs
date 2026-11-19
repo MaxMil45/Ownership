@@ -5,6 +5,7 @@
 //! and footnote references inside values are ignored.
 
 use crate::xml::{tokenize, Token, XmlError};
+use oe_core::text::{parse_decimal, parse_flag as flag};
 use oe_core::{
     AcquiredDisposed, Cik, Date, Issuer, OwnershipDocument, OwnershipNature, Relationship,
     ReportingOwner, Transaction, TransactionCode,
@@ -199,25 +200,12 @@ fn assign_txn(t: &mut TxnBuilder, stack: &[&str], value: Option<String>) {
 }
 
 /// SEC filings write booleans as `1`/`0` or `true`/`false`.
-fn flag(s: &str) -> Option<bool> {
-    match s.trim().to_ascii_lowercase().as_str() {
-        "1" | "true" | "y" | "yes" => Some(true),
-        "0" | "false" | "n" | "no" => Some(false),
-        _ => None,
-    }
-}
-
 fn number(field: &'static str, s: Option<String>) -> Result<Option<f64>, ParseError> {
     match s {
         None => Ok(None),
-        Some(raw) => {
-            let cleaned: String = raw.chars().filter(|c| *c != ',' && *c != '$').collect();
-            cleaned
-                .trim()
-                .parse::<f64>()
-                .map(Some)
-                .map_err(|_| ParseError::Invalid { field, value: raw })
-        }
+        Some(raw) => parse_decimal(&raw)
+            .map(Some)
+            .ok_or(ParseError::Invalid { field, value: raw }),
     }
 }
 

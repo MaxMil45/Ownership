@@ -14,7 +14,8 @@
 pub mod ixbrl;
 
 use ixbrl::{contexts, facts, Context, Fact};
-use oe_core::{Cik, Date};
+use oe_core::text::parse_decimal;
+use oe_core::{parse_us_date, Cik, Date};
 use std::collections::BTreeMap;
 
 /// One trading plan and what the filing says about it.
@@ -249,13 +250,8 @@ pub fn parse_date(text: &str) -> Option<Date> {
             return Some(d);
         }
     }
-    if let Some((m, rest)) = t.split_once('/') {
-        let (d, y) = rest.split_once('/')?;
-        return Date::from_ymd(
-            y.trim().parse().ok()?,
-            m.trim().parse().ok()?,
-            d.trim().parse().ok()?,
-        );
+    if t.contains('/') {
+        return parse_us_date(t);
     }
     let mut words = t
         .split(|c: char| c.is_whitespace() || c == ',')
@@ -297,11 +293,7 @@ fn month_number(word: &str) -> Option<u32> {
 
 /// The numeric value of an `ix:nonFraction` fact, with its `scale` and `sign`.
 fn parse_number(text: &str, f: &Fact) -> Option<f64> {
-    let cleaned: String = text
-        .chars()
-        .filter(|c| !matches!(c, ',' | '$' | ' '))
-        .collect();
-    let mut v: f64 = cleaned.parse().ok()?;
+    let mut v = parse_decimal(&text.replace(' ', ""))?;
     v *= 10f64.powi(f.scale);
     Some(if f.negative { -v } else { v })
 }

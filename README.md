@@ -26,7 +26,18 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | `insider.plan_terminated@1` rule | `oe-events` | Done, tested on real reports (spec in `events/specs/`) |
 | Schedule 13D/13G parser (large holders) | `oe-sched13` | Done; reads 382 real filings; 14 real fixtures |
 | `activist.new_13d@1` and `activist.passive_to_active@1` rules | `oe-events` | Done, tested on real filings (specs in `events/specs/`) |
-| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `daily-13dg`, `parse-13`, `activist-events`, `db-*`, `fetch` |
+| `activist.proxy_contest@1` (contested proxy filings, from their SGML headers) | `oe-edgar`, `oe-events` | Done; 70 real filings from 21 days, 26 contests; 12 real fixtures |
+| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `daily-13dg`, `parse-13`, `activist-events`, `daily-proxy`, `proxy-contests`, `db-*`, `fetch` |
+
+## How to run it
+
+See **[docs/how-to-run.md](docs/how-to-run.md)** for the full guide. The short version, once Rust is installed and `.env` holds your SEC contact line:
+
+```powershell
+.\scripts\run-day.ps1 -Date 2026-11-18
+```
+
+This downloads one day from every source and prints every event found so far.
 
 ## Quick start (Windows)
 
@@ -68,6 +79,7 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
    cargo run -p oe-cli -- daily-13dg 2026-11-18 --all --include-amendments
    cargo run -p oe-cli -- activist-events data/sched13
    ```n   `activist-events` lists new 13Ds (`activist.new_13d@1`, at least 5%, change with `--min-percent`) and 13Ds that follow an earlier 13G (`activist.passive_to_active@1`). On deadline days there are over a thousand 13Gs; use `--limit`.
+9. **Proxy contests.** `daily-proxy <date> --all` downloads the 1 KB headers of the day's contested-solicitation filings; `proxy-contests data/proxy` groups them into contests (who is challenging which company).
 
 On macOS or Linux, install Rust with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` and use `export OE_USER_AGENT="..."` instead.
 

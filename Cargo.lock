@@ -507,6 +507,7 @@ name = "oe-events"
 version = "0.1.0-dev"
 dependencies = [
  "oe-core",
+ "oe-edgar",
  "oe-form144",
  "oe-form4",
  "oe-item408",

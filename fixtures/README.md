@@ -62,6 +62,10 @@ Chosen from 382 downloaded filings for coverage: Rule 13d-1(b), (c) and (d) 13Gs
 
 `crates/oe-sched13/tests/real_fixtures.rs` and `crates/oe-events/tests/activist_real.rs` run them.
 
+## Proxy-contest fixtures
+
+`proxy/real/` holds 12 real SGML headers (`<accession>.hdr.sgml`, under 1 KB each) of contested-solicitation filings from 2026: WEX/Impactive, Two Harbors (two rival bidders), Sturm Ruger/Beretta, Pacira (company only), Janus Henderson/Trian, Genco/Diana Shipping, Warner Bros. Discovery/Paramount Skydance and CEA Industries/YZi Labs. `MANIFEST.tsv` gives, per file, the form, subject CIK, filer CIKs and whether a challenger filed; `EVENTS.tsv` gives, per company, the expected contest (filings, challengers, who filed a proxy statement). Both come from regexes over the raw headers. Only contests whose challengers are companies or funds were used (headers carry addresses). Tests: `crates/oe-edgar/tests/proxy_headers.rs`, `crates/oe-events/tests/proxy_contest_real.rs`.
+
 ## Adding real fixtures
 
 1. Set your SEC contact details (PowerShell): `$env:OE_USER_AGENT = "Your Name your.email@example.com"`

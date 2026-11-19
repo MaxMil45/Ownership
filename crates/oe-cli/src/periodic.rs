@@ -8,11 +8,10 @@
 //! other reports are logged in `checked.tsv` so a rerun does not look at them
 //! again.
 
-use super::{meta_path, render_meta};
+use super::{args, meta_path, render_meta};
 use oe_core::Date;
 use oe_edgar::{
-    daily_index_url, filing_folder_url, parse_filing_summary, parse_form_index, parse_header_sgml,
-    EdgarClient, EdgarError,
+    filing_folder_url, parse_filing_summary, parse_header_sgml, EdgarClient, EdgarError,
 };
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -46,16 +45,9 @@ pub fn parse_periodic_args(args: &[String]) -> Result<PeriodicArgs, String> {
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
-            "--limit" => {
-                parsed.limit = Some(
-                    it.next()
-                        .and_then(|v| v.parse().ok())
-                        .filter(|n| *n > 0)
-                        .ok_or("--limit needs a positive number")?,
-                )
-            }
+            "--limit" => parsed.limit = Some(args::positive(&mut it, "--limit")?),
             "--all" => parsed.limit = None,
-            "--out" => parsed.out = PathBuf::from(it.next().ok_or("--out needs a folder")?),
+            "--out" => parsed.out = args::folder(&mut it, "--out")?,
             "--forms" => {
                 parsed.forms = it
                     .next()
@@ -70,20 +62,9 @@ pub fn parse_periodic_args(args: &[String]) -> Result<PeriodicArgs, String> {
             }
             "--save-all" => parsed.save_all = true,
             "--audit" => {
-                parsed.audit = it
-                    .next()
-                    .and_then(|v| v.parse().ok())
-                    .ok_or("--audit needs a number of reports")?
+                parsed.audit = args::value(&mut it, "--audit", "a number of reports", |_| true)?
             }
-            other if date.is_none() => {
-                date = Some(
-                    other
-                        .parse::<Date>()
-                        .ok()
-                        .filter(|_| other.len() == 10)
-                        .ok_or_else(|| format!("{other:?} is not a date like 2026-11-09"))?,
-                )
-            }
+            other if date.is_none() => date = Some(args::date(other, "2026-11-09")?),
             other => return Err(format!("unexpected argument {other:?}")),
         }
     }
@@ -116,17 +97,7 @@ pub fn daily_periodic(args: &[String]) -> Result<(), String> {
     let args = parse_periodic_args(args)?;
     let client = EdgarClient::from_env().map_err(|e| e.to_string())?;
 
-    let url = daily_index_url(args.date);
-    let body = client.get_text(&url).map_err(|e| match e {
-        EdgarError::Status {
-            code: 403 | 404, ..
-        } => format!(
-            "no daily index for {} (weekend, holiday, or not published yet): {url}",
-            args.date
-        ),
-        other => other.to_string(),
-    })?;
-    let index = parse_form_index(&body);
+    let index = super::live::fetch_daily_index(&client, args.date)?;
     let forms: Vec<&str> = args.forms.iter().map(String::as_str).collect();
     let filings = index.unique_filings(&forms);
     println!(

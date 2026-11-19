@@ -9,6 +9,7 @@
 //! formatted text that has nothing to do with these facts. Malformed input
 //! gives fewer results, never a panic.
 
+use oe_core::text::tag_end;
 use oe_core::Date;
 use std::collections::HashMap;
 
@@ -124,7 +125,7 @@ pub fn facts(html: &str, wanted: impl Fn(&str) -> bool) -> Vec<Fact> {
             Some(c) if c.is_whitespace() || c == '>' || c == '/' => {}
             _ => continue,
         }
-        let Some(tag_len) = tag_end(&html[start..]) else {
+        let Some(tag_len) = tag_end(&html[start..]).map(|i| i + 1) else {
             continue;
         };
         let tag = &html[start..start + tag_len];
@@ -157,21 +158,6 @@ pub fn facts(html: &str, wanted: impl Fn(&str) -> bool) -> Vec<Fact> {
     out
 }
 
-/// Length of a start tag, from `<` to and including `>`, ignoring `>` inside
-/// quotes. `None` if the tag never closes.
-fn tag_end(s: &str) -> Option<usize> {
-    let mut quote: Option<char> = None;
-    for (i, c) in s.char_indices() {
-        match (quote, c) {
-            (None, '"') | (None, '\'') => quote = Some(c),
-            (Some(q), c) if c == q => quote = None,
-            (None, '>') => return Some(i + 1),
-            _ => {}
-        }
-    }
-    None
-}
-
 /// The value of ` name="..."` in a tag.
 fn attr(tag: &str, name: &str) -> Option<String> {
     let needle = format!(" {name}=\"");
@@ -193,7 +179,7 @@ fn matching_close(after_open: &str, element: &str) -> Option<usize> {
         match next_open {
             Some(o) if o < next_close => {
                 // A nested start tag; self-closing ones do not add depth.
-                let tag_len = tag_end(&after_open[o..])?;
+                let tag_len = tag_end(&after_open[o..])? + 1;
                 if !after_open[o..o + tag_len].ends_with("/>") {
                     depth += 1;
                 }
@@ -240,50 +226,8 @@ pub fn text_of(fragment: &str) -> String {
 }
 
 /// Decodes the five XML entities and numeric references; `&nbsp;` becomes a
-/// space. Anything else is left as written.
-pub fn decode_entities(s: &str) -> String {
-    if !s.contains('&') {
-        return s.to_string();
-    }
-    let mut out = String::with_capacity(s.len());
-    let mut rest = s;
-    while let Some(amp) = rest.find('&') {
-        out.push_str(&rest[..amp]);
-        rest = &rest[amp..];
-        let Some(semi) = rest.find(';').filter(|&p| p <= 10) else {
-            out.push('&');
-            rest = &rest[1..];
-            continue;
-        };
-        let entity = &rest[1..semi];
-        let decoded = match entity {
-            "amp" => Some('&'),
-            "lt" => Some('<'),
-            "gt" => Some('>'),
-            "quot" => Some('"'),
-            "apos" => Some('\''),
-            "nbsp" => Some(' '),
-            _ => entity
-                .strip_prefix("#x")
-                .or_else(|| entity.strip_prefix("#X"))
-                .and_then(|h| u32::from_str_radix(h, 16).ok())
-                .or_else(|| entity.strip_prefix('#').and_then(|d| d.parse().ok()))
-                .and_then(char::from_u32),
-        };
-        match decoded {
-            Some(c) => {
-                out.push(c);
-                rest = &rest[semi + 1..];
-            }
-            None => {
-                out.push('&');
-                rest = &rest[1..];
-            }
-        }
-    }
-    out.push_str(rest);
-    out
-}
+/// space. Anything else is left as written. (The one copy lives in `oe-core`.)
+pub use oe_core::text::decode_entities_lenient as decode_entities;
 
 #[cfg(test)]
 mod tests {

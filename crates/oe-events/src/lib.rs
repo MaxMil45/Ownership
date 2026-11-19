@@ -8,6 +8,7 @@ pub mod activist;
 pub mod cluster_buy;
 pub mod plan_terminated;
 pub mod planned_sale;
+pub mod proxy_contest;
 pub mod trades;
 
 pub use activist::{
@@ -18,4 +19,5 @@ pub use plan_terminated::{detect_plan_terminations, PlanTerminatedEvent};
 pub use planned_sale::{
     detect_planned_sales, planned_sale_event, PlannedSaleEvent, PlannedSaleParams,
 };
+pub use proxy_contest::{detect_proxy_contests, ContestFiling, ProxyContestEvent};
 pub use trades::{trades_from_document, InsiderTrade};

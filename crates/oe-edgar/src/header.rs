@@ -7,7 +7,8 @@
 //! 2 November 2026, `FILING-DATE` 3 November. Like the full submission's
 //! header, the time is US Eastern.
 
-use oe_core::Date;
+use crate::sgml::{compact_date, format_stamp};
+use oe_core::{Cik, Date, Party};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilingHeader {
@@ -20,6 +21,13 @@ pub struct FilingHeader {
     pub period: Option<Date>,
     /// `FILING-DATE`: EDGAR's filing date (not always the acceptance date).
     pub filing_date: Option<Date>,
+    /// `SUBJECT-COMPANY`: the company a filing is about (proxy materials,
+    /// 13D/G, tender offers). Absent for a company's own reports.
+    pub subject: Option<Party>,
+    /// `FILED-BY`: everyone who filed it about the subject company.
+    pub filed_by: Vec<Party>,
+    /// `FILER`: the filer of a company's own report (10-Q, 8-K, ...).
+    pub filers: Vec<Party>,
 }
 
 impl FilingHeader {
@@ -69,33 +77,30 @@ pub fn parse_header_sgml(text: &str) -> Result<FilingHeader, HeaderError> {
         accepted_eastern,
         period: field("PERIOD").ok().and_then(|p| compact_date(&p)),
         filing_date: field("FILING-DATE").ok().and_then(|p| compact_date(&p)),
+        subject: parties(text, "SUBJECT-COMPANY").into_iter().next(),
+        filed_by: parties(text, "FILED-BY"),
+        filers: parties(text, "FILER"),
     })
 }
 
-/// `20260930` → 2026-09-30.
-fn compact_date(s: &str) -> Option<Date> {
-    if s.len() != 8 || !s.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    Date::from_ymd(
-        s[..4].parse().ok()?,
-        s[4..6].parse().ok()?,
-        s[6..].parse().ok()?,
-    )
-}
-
-/// `20261102180039` → `2026-11-02T18:00:39`.
-fn format_stamp(s: &str) -> Option<String> {
-    if s.len() != 14 || !s.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    let date = compact_date(&s[..8])?;
-    let (h, m, sec): (u32, u32, u32) = (
-        s[8..10].parse().ok()?,
-        s[10..12].parse().ok()?,
-        s[12..].parse().ok()?,
-    );
-    (h < 24 && m < 60 && sec < 60).then(|| format!("{date}T{h:02}:{m:02}:{sec:02}"))
+/// Every `<block>` ... `</block>` with a readable `<CIK>`, as a party.
+fn parties(text: &str, block: &str) -> Vec<Party> {
+    let (open, close) = (format!("<{block}>"), format!("</{block}>"));
+    text.split(open.as_str())
+        .skip(1)
+        .filter_map(|chunk| {
+            let body = chunk.split(close.as_str()).next().unwrap_or(chunk);
+            let value = |tag: &str| {
+                body.lines()
+                    .find_map(|l| l.trim().strip_prefix(tag))
+                    .map(str::trim)
+            };
+            Some(Party {
+                cik: value("<CIK>")?.parse::<Cik>().ok()?,
+                name: value("<CONFORMED-NAME>").unwrap_or_default().to_string(),
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -138,9 +143,48 @@ mod tests {
             parse_header_sgml(&bad),
             Err(HeaderError::Missing(_))
         ));
-        // PERIOD and FILING-DATE are optional.
+        // PERIOD, FILING-DATE and the party blocks are optional.
         let slim = "<SEC-HEADER>x\n<ACCEPTANCE-DATETIME>20261102180039\n<ACCESSION-NUMBER>0000000000-26-000001\n<TYPE>8-K\n";
         let h = parse_header_sgml(slim).unwrap();
         assert_eq!((h.period, h.filing_date), (None, None));
+        assert!(h.subject.is_none() && h.filed_by.is_empty() && h.filers.is_empty());
+    }
+
+    #[test]
+    fn a_company_report_names_its_filer() {
+        let h = parse_header_sgml(&fixture()).unwrap();
+        assert_eq!(h.subject, None);
+        assert!(h.filed_by.is_empty());
+        assert_eq!(
+            h.filers,
+            [Party {
+                cik: Cik(9_999_901),
+                name: "SYNTHETIC WIDGETS INC".into()
+            }]
+        );
+    }
+
+    #[test]
+    fn a_contest_filing_names_the_subject_and_every_filer() {
+        let path = format!(
+            "{}/../../fixtures/edgar/filing_header_contest_synthetic.hdr.sgml",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let h = parse_header_sgml(&std::fs::read_to_string(path).unwrap()).unwrap();
+        assert_eq!(h.form, "DFAN14A");
+        assert_eq!(
+            h.subject,
+            Some(Party {
+                cik: Cik(9_999_902),
+                name: "GADGET HOLDINGS CORP".into()
+            })
+        );
+        let names: Vec<&str> = h.filed_by.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(
+            names,
+            ["EXAMPLE ACTIVIST FUND LP", "EXAMPLE ACTIVIST GP LLC"]
+        );
+        assert_eq!(h.filed_by[1].cik, Cik(9_999_942));
+        assert_eq!(h.known_on(), Date::from_ymd(2026, 4, 14));
     }
 }

@@ -10,7 +10,9 @@ pub mod feed;
 pub mod filing_summary;
 pub mod header;
 pub mod json;
+mod markup;
 pub mod ratelimit;
+mod sgml;
 pub mod submission;
 pub mod submissions;
 

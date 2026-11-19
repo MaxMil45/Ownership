@@ -6,6 +6,8 @@
 //! page (about 10 to 60 KB) that shows the Item 408 facts. Reading that page
 //! first avoids downloading a 2 MB report that has nothing to report.
 
+use crate::markup::{attribute, between, unescape};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReportRef {
     pub short_name: String,
@@ -67,27 +69,6 @@ pub fn parse_filing_summary(text: &str) -> FilingSummary {
         });
     }
     summary
-}
-
-fn between<'a>(s: &'a str, open: &str, close: &str) -> Option<&'a str> {
-    let start = s.find(open)? + open.len();
-    let end = s[start..].find(close)? + start;
-    Some(&s[start..end])
-}
-
-fn attribute(attrs: &str, name: &str) -> Option<String> {
-    let needle = format!("{name}=\"");
-    let at = attrs.find(&needle)? + needle.len();
-    let len = attrs[at..].find('"')?;
-    Some(unescape(&attrs[at..at + len]))
-}
-
-fn unescape(s: &str) -> String {
-    s.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&amp;", "&")
 }
 
 #[cfg(test)]

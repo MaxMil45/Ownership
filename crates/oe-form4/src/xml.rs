@@ -6,6 +6,7 @@
 //! parser builds with no dependencies. See `docs/adr/0001-std-only-core.md`
 //! for when to swap it for `quick-xml`.
 
+use oe_core::text::{entity_char, tag_end};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -124,20 +125,6 @@ fn find_from(haystack: &str, needle: &str, offset: usize) -> Result<usize, XmlEr
         .ok_or_else(|| err(offset, format!("missing '{needle}'")))
 }
 
-/// Finds the `>` that ends a start tag, skipping any inside quoted attributes.
-fn tag_end(s: &str) -> Option<usize> {
-    let mut quote: Option<char> = None;
-    for (idx, c) in s.char_indices().skip(1) {
-        match (quote, c) {
-            (None, '"') | (None, '\'') => quote = Some(c),
-            (Some(q), c) if c == q => quote = None,
-            (None, '>') => return Some(idx),
-            _ => {}
-        }
-    }
-    None
-}
-
 fn local_name(name: &str) -> &str {
     name.rsplit(':').next().unwrap_or(name)
 }
@@ -155,25 +142,9 @@ fn decode_entities(raw: &str, offset: usize) -> Result<String, XmlError> {
             .find(';')
             .ok_or_else(|| err(offset, "unterminated entity"))?;
         let entity = &after[..semi];
-        let decoded = match entity {
-            "amp" => '&',
-            "lt" => '<',
-            "gt" => '>',
-            "quot" => '"',
-            "apos" => '\'',
-            _ => {
-                let code =
-                    if let Some(hex) = entity.strip_prefix("#x").or(entity.strip_prefix("#X")) {
-                        u32::from_str_radix(hex, 16).ok()
-                    } else if let Some(dec) = entity.strip_prefix('#') {
-                        dec.parse().ok()
-                    } else {
-                        None
-                    };
-                code.and_then(char::from_u32)
-                    .ok_or_else(|| err(offset, format!("unknown entity &{entity};")))?
-            }
-        };
+        // Strict: XML allows only the five named entities and numeric references.
+        let decoded =
+            entity_char(entity).ok_or_else(|| err(offset, format!("unknown entity &{entity};")))?;
         out.push(decoded);
         rest = &after[semi + 1..];
     }

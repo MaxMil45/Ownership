@@ -7,6 +7,7 @@
 //! reporting owner, all pointing at the same accession number. Callers that
 //! want filings, not rows, should use [`FormIndex::unique_filings`].
 
+use crate::sgml::compact_date;
 use oe_core::Date;
 use std::collections::HashSet;
 
@@ -144,7 +145,7 @@ fn parse_row(line: &str, form_width: usize) -> Option<IndexEntry> {
     let (rest, file_name) = rest.rsplit_once(char::is_whitespace)?;
     let (rest, date) = rest.trim_end().rsplit_once(char::is_whitespace)?;
     let (company, cik) = rest.trim_end().rsplit_once(char::is_whitespace)?;
-    let date_filed = parse_compact_date(date)?;
+    let date_filed = compact_date(date)?;
     Some(IndexEntry {
         form: form.to_string(),
         company: company.trim().to_string(),
@@ -153,18 +154,6 @@ fn parse_row(line: &str, form_width: usize) -> Option<IndexEntry> {
         file_name: file_name.to_string(),
     })
     .filter(|e| !e.form.is_empty() && !e.company.is_empty() && e.file_name.starts_with("edgar/"))
-}
-
-/// `20261118` → 2026-11-18.
-fn parse_compact_date(s: &str) -> Option<Date> {
-    if s.len() != 8 || !s.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    Date::from_ymd(
-        s[..4].parse().ok()?,
-        s[4..6].parse().ok()?,
-        s[6..].parse().ok()?,
-    )
 }
 
 #[cfg(test)]

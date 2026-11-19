@@ -35,16 +35,9 @@ pub struct Sidecar {
 impl Sidecar {
     pub fn parse(text: &str) -> Sidecar {
         let mut s = Sidecar::default();
-        for line in text.lines() {
-            let Some((key, value)) = line.split_once('=') else {
-                continue;
-            };
-            let value = value.trim();
-            if value.is_empty() {
-                continue;
-            }
+        for (key, value) in oe_core::text::key_values(text) {
             let value = Some(value.to_string());
-            match key.trim() {
+            match key {
                 "accession" => s.accession = value,
                 "form" => s.form = value,
                 "accepted" => s.accepted_utc = value,

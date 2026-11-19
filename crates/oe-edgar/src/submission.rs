@@ -11,6 +11,7 @@
 //! is UTC. Checked on a real filing: header `20261005184245`, API
 //! `2026-10-05T22:42:45.000Z`.
 
+use crate::sgml::format_stamp;
 use oe_core::Date;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,25 +100,6 @@ pub fn parse_full_submission(text: &str) -> Result<FullSubmission, SubmissionErr
         ownership_xml,
         primary_xml,
     })
-}
-
-/// `20261005184245` → `2026-10-05T18:42:45`, or `None` if it is not 14 digits
-/// forming a real date and time.
-fn format_stamp(s: &str) -> Option<String> {
-    if s.len() != 14 || !s.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    let date = Date::from_ymd(
-        s[..4].parse().ok()?,
-        s[4..6].parse().ok()?,
-        s[6..8].parse().ok()?,
-    )?;
-    let (h, m, sec): (u32, u32, u32) = (
-        s[8..10].parse().ok()?,
-        s[10..12].parse().ok()?,
-        s[12..].parse().ok()?,
-    );
-    (h < 24 && m < 60 && sec < 60).then(|| format!("{date}T{h:02}:{m:02}:{sec:02}"))
 }
 
 #[cfg(test)]

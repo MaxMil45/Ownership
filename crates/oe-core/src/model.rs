@@ -149,6 +149,13 @@ impl OwnershipDocument {
     }
 }
 
+/// A filer as EDGAR names it: a CIK and a conformed name.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Party {
+    pub cik: Cik,
+    pub name: String,
+}
+
 /// Where and when a document became public. Kept apart from the document
 /// itself because the XML does not contain it: it comes from the EDGAR index.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

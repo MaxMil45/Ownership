@@ -73,13 +73,7 @@ pub fn parse_load_args(args: &[String]) -> Result<LoadArgs, String> {
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
-            "--batch" => {
-                parsed.batch = it
-                    .next()
-                    .and_then(|v| v.parse().ok())
-                    .filter(|n| *n > 0)
-                    .ok_or("--batch needs a positive number")?
-            }
+            "--batch" => parsed.batch = super::args::positive(&mut it, "--batch")?,
             "--dry-run" => parsed.dry_run = true,
             other if folder.is_none() => folder = Some(PathBuf::from(other)),
             other => return Err(format!("unexpected argument {other:?}")),
@@ -109,8 +103,7 @@ impl std::fmt::Display for Skip {
 
 fn prepare_file(xml_path: &Path) -> Result<Prepared, Skip> {
     let xml = std::fs::read_to_string(xml_path).map_err(|e| Skip::Unreadable(e.to_string()))?;
-    let meta = std::fs::read_to_string(xml_path.with_extension("meta.txt"))
-        .map_err(|_| Skip::NoSidecar)?;
+    let meta = std::fs::read_to_string(super::meta_path(xml_path)).map_err(|_| Skip::NoSidecar)?;
     let mut sidecar = Sidecar::parse(&meta);
     // Old sidecars may lack the accession line; the file name is the accession.
     if sidecar.accession.is_none() {
