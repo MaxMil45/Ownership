@@ -1,0 +1,10 @@
+[package]
+name = "oe-form4"
+description = "Parser for SEC ownership documents (Forms 3, 4, 5 and amendments)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+oe-core.workspace = true

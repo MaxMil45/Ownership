@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/oe-core",
+    "crates/oe-form4",
+    "crates/oe-ledger",
+    "crates/oe-events",
+    "crates/oe-edgar",
+    "crates/oe-cli",
+]
+
+[workspace.package]
+version = "0.1.0-dev"
+edition = "2021"
+license = "Apache-2.0"
+rust-version = "1.75"
+repository = "https://github.com/YOUR-USERNAME/ownership-engine"
+
+[workspace.dependencies]
+oe-core = { path = "crates/oe-core" }
+oe-form4 = { path = "crates/oe-form4" }
+oe-ledger = { path = "crates/oe-ledger" }
+oe-events = { path = "crates/oe-events" }
+oe-edgar = { path = "crates/oe-edgar", default-features = false }

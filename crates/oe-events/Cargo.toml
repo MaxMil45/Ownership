@@ -1,0 +1,13 @@
+[package]
+name = "oe-events"
+description = "Versioned ownership event rules, starting with insider.cluster_buy@1."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+oe-core.workspace = true
+
+[dev-dependencies]
+oe-form4.workspace = true

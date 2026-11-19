@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<!-- SYNTHETIC FIXTURE: a buy 18 days after the first one, outside the 10-day window; price given only as a footnote. -->
+<ownershipDocument>
+    <schemaVersion>X0508</schemaVersion>
+    <documentType>4/A</documentType>
+    <periodOfReport>2026-03-20</periodOfReport>
+    <issuer>
+        <issuerCik>0009999901</issuerCik>
+        <issuerName>Synthetic Widgets Inc</issuerName>
+        <issuerTradingSymbol>SYNW</issuerTradingSymbol>
+    </issuer>
+    <reportingOwner>
+        <reportingOwnerId>
+            <rptOwnerCik>0009000005</rptOwnerCik>
+            <rptOwnerName>Director Echo</rptOwnerName>
+        </reportingOwnerId>
+        <reportingOwnerRelationship>
+            <isDirector>1</isDirector>
+        </reportingOwnerRelationship>
+    </reportingOwner>
+    <nonDerivativeTable>
+        <nonDerivativeTransaction>
+            <securityTitle><value>Common Stock</value></securityTitle>
+            <transactionDate><value>2026-03-20</value></transactionDate>
+            <transactionCoding>
+                <transactionFormType>4</transactionFormType>
+                <transactionCode>P</transactionCode>
+            </transactionCoding>
+            <transactionAmounts>
+                <transactionShares><value>1000</value></transactionShares>
+                <transactionPricePerShare><footnoteId id="F1"/></transactionPricePerShare>
+                <transactionAcquiredDisposedCode><value>A</value></transactionAcquiredDisposedCode>
+            </transactionAmounts>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction><value>3000</value></sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership><value>D</value></directOrIndirectOwnership>
+            </ownershipNature>
+        </nonDerivativeTransaction>
+    </nonDerivativeTable>
+    <footnotes>
+        <footnote id="F1">Price reported in an attachment.</footnote>
+    </footnotes>
+</ownershipDocument>

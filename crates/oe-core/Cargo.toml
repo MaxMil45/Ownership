@@ -1,0 +1,9 @@
+[package]
+name = "oe-core"
+description = "Core types for the ownership engine: dates, identifiers, filing models."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]

@@ -1,0 +1,19 @@
+/target/
+**/*.rs.bk
+*.pdb
+
+# Local data: downloaded bulk files and databases stay out of git.
+/data/
+*.parquet
+*.duckdb
+*.sqlite
+
+# Secrets and local settings
+.env
+.env.*
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

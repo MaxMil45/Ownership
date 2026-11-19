@@ -1,0 +1,15 @@
+[package]
+name = "oe-edgar"
+description = "Polite, rate-limited access to SEC EDGAR."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["net"]
+# The HTTP client. Turn it off to build the rest of the project offline.
+net = ["dep:ureq"]
+
+[dependencies]
+ureq = { version = "2.10", optional = true }

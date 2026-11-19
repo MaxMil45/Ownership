@@ -1,0 +1,21 @@
+[package]
+name = "oe-cli"
+description = "Command-line tool for the ownership engine."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "oe"
+path = "src/main.rs"
+
+[features]
+default = ["net"]
+net = ["oe-edgar/net"]
+
+[dependencies]
+oe-core.workspace = true
+oe-form4.workspace = true
+oe-events.workspace = true
+oe-edgar.workspace = true

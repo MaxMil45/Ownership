@@ -1,0 +1,10 @@
+[package]
+name = "oe-ledger"
+description = "Append-only, point-in-time fact ledger: what was true, and when the public could know it."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+oe-core.workspace = true
