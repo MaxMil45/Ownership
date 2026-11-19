@@ -1,6 +1,6 @@
 accession=0001628280-26-071244
 form=3
-known_on=2026-11-06
+known_on=2026-11-05
 accepted=2026-11-06T00:10:59.000Z
 filing_date=2026-11-05
 report_date=2026-10-26

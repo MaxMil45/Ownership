@@ -1,0 +1,52 @@
+<SEC-DOCUMENT>0009999901-26-000011.txt : 20260311
+<SEC-HEADER>0009999901-26-000011.hdr.sgml : 20260311
+<ACCEPTANCE-DATETIME>20260311165450
+ACCESSION NUMBER:		0009999901-26-000011
+CONFORMED SUBMISSION TYPE:	4
+PUBLIC DOCUMENT COUNT:		1
+CONFORMED PERIOD OF REPORT:	20260309
+FILED AS OF DATE:		20260311
+DATE AS OF CHANGE:		20260311
+
+REPORTING-OWNER:
+
+	OWNER DATA:
+		COMPANY CONFORMED NAME:			Insider, Alpha
+		CENTRAL INDEX KEY:			0009999911
+
+ISSUER:
+
+	COMPANY DATA:
+		COMPANY CONFORMED NAME:			Synthetic Widgets Inc
+		CENTRAL INDEX KEY:			0009999901
+</SEC-HEADER>
+<DOCUMENT>
+<TYPE>4
+<SEQUENCE>1
+<FILENAME>form4.xml
+<DESCRIPTION>FORM 4
+<XML>
+<?xml version="1.0"?>
+<ownershipDocument>
+    <schemaVersion>X0508</schemaVersion>
+    <documentType>4</documentType>
+    <periodOfReport>2026-03-09</periodOfReport>
+    <issuer>
+        <issuerCik>0009999901</issuerCik>
+        <issuerName>Synthetic Widgets Inc</issuerName>
+        <issuerTradingSymbol>SYNW</issuerTradingSymbol>
+    </issuer>
+    <reportingOwner>
+        <reportingOwnerId>
+            <rptOwnerCik>0009999911</rptOwnerCik>
+            <rptOwnerName>Insider, Alpha</rptOwnerName>
+        </reportingOwnerId>
+        <reportingOwnerRelationship>
+            <isDirector>1</isDirector>
+        </reportingOwnerRelationship>
+    </reportingOwner>
+    <nonDerivativeTable></nonDerivativeTable>
+</ownershipDocument>
+</XML>
+</DOCUMENT>
+</SEC-DOCUMENT>

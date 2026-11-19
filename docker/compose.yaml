@@ -1,0 +1,40 @@
+# Local PostgreSQL for the ownership ledger. Development only.
+#
+# From the repository root (the file lives in docker/ so compose does not try to
+# read the root .env, which is PowerShell, not compose syntax):
+#   docker-compose -f docker/compose.yaml up -d      start (data kept in the oe-pgdata volume)
+#   docker-compose -f docker/compose.yaml down       stop (data kept)
+#   docker-compose -f docker/compose.yaml down -v    stop and DELETE the data
+#
+# Connection strings (also in README, "Loading into PostgreSQL"):
+#   DATABASE_URL         = postgres://oe:oe_dev_only@127.0.0.1:55432/ownership
+#   OE_TEST_DATABASE_URL = postgres://oe:oe_dev_only@127.0.0.1:55432/ownership_test
+#
+# The password is a development placeholder: the port is bound to 127.0.0.1,
+# so only this machine can connect. Do not reuse it for a server anyone else
+# can reach.
+
+name: ownership-engine
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: oe-postgres
+    environment:
+      POSTGRES_USER: oe
+      POSTGRES_PASSWORD: oe_dev_only
+      POSTGRES_DB: ownership
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - oe-pgdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oe -d ownership"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  oe-pgdata:

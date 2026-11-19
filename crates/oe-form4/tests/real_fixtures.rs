@@ -104,11 +104,22 @@ fn every_real_fixture_has_a_sidecar_with_known_on() {
         let meta = real_dir().join(row.file.replace(".xml", ".meta.txt"));
         let text =
             std::fs::read_to_string(&meta).unwrap_or_else(|e| panic!("{}: {e}", meta.display()));
-        let known_on = text
-            .lines()
-            .find_map(|l| l.strip_prefix("known_on="))
-            .unwrap_or("");
-        assert_eq!(known_on.len(), 10, "{}: known_on missing", row.file);
+        let field = |key: &str| {
+            text.lines()
+                .find_map(|l| l.strip_prefix(&format!("{key}=")))
+                .unwrap_or("")
+        };
+        assert_eq!(
+            field("known_on").len(),
+            10,
+            "{}: known_on missing",
+            row.file
+        );
         assert!(text.contains("accession="), "{}: accession", row.file);
+        // `accepted` is the SEC's UTC timestamp; `known_on` must be its US
+        // Eastern date (a UTC date would be a day late after about 8 pm ET).
+        let eastern = oe_core::us_eastern_date(field("accepted"))
+            .unwrap_or_else(|| panic!("{}: accepted is not a timestamp", row.file));
+        assert_eq!(field("known_on"), eastern.to_string(), "{}", row.file);
     }
 }

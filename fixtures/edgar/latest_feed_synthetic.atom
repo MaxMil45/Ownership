@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<title>Latest Filings - Wed, 11 Mar 2026 16:55:30 EDT</title>
+<link rel="alternate" href="/cgi-bin/browse-edgar?action=getcurrent"/>
+<id>https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent</id>
+<author><name>Webmaster</name><email>webmaster@sec.gov</email></author>
+<updated>2026-03-11T16:55:30-05:00</updated>
+<entry>
+<title>4 - Insider, Alpha (0009999911) (Reporting)</title>
+<link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/9999911/000999990126000011/0009999901-26-000011-index.htm"/>
+<summary type="html">
+ &lt;b&gt;Filed:&lt;/b&gt; 2026-03-11 &lt;b&gt;AccNo:&lt;/b&gt; 0009999901-26-000011 &lt;b&gt;Size:&lt;/b&gt; 4 KB
+</summary>
+<updated>2026-03-11T16:54:50-05:00</updated>
+<category scheme="https://www.sec.gov/" label="form type" term="4"/>
+<id>urn:tag:sec.gov,2008:accession-number=0009999901-26-000011</id>
+</entry><entry>
+<title>4 - Widgets &amp; Sons - Class A (Holdings) Inc (0009999901) (Issuer)</title>
+<link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/9999901/000999990126000011/0009999901-26-000011-index.htm"/>
+<summary type="html">
+ &lt;b&gt;Filed:&lt;/b&gt; 2026-03-11 &lt;b&gt;AccNo:&lt;/b&gt; 0009999901-26-000011 &lt;b&gt;Size:&lt;/b&gt; 4 KB
+</summary>
+<updated>2026-03-11T16:54:50-05:00</updated>
+<category scheme="https://www.sec.gov/" label="form type" term="4"/>
+<id>urn:tag:sec.gov,2008:accession-number=0009999901-26-000011</id>
+</entry><entry>
+<title>4/A - Insider, Beta (0009999912) (Reporting)</title>
+<link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/9999912/000999990426000003/0009999904-26-000003-index.htm"/>
+<summary type="html">
+ &lt;b&gt;Filed:&lt;/b&gt; 2026-03-11 &lt;b&gt;AccNo:&lt;/b&gt; 0009999904-26-000003 &lt;b&gt;Size:&lt;/b&gt; 5 KB
+</summary>
+<updated>2026-03-11T16:50:02-05:00</updated>
+<category scheme="https://www.sec.gov/" label="form type" term="4/A"/>
+<id>urn:tag:sec.gov,2008:accession-number=0009999904-26-000003</id>
+</entry><entry>
+<title>4 - Gadget Holdings Corp (0009999902) (Issuer)</title>
+<link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/9999902/000999990226000007/0009999902-26-000007-index.htm"/>
+<summary type="html">
+ &lt;b&gt;Filed:&lt;/b&gt; 2026-03-11 &lt;b&gt;AccNo:&lt;/b&gt; 0009999902-26-000007 &lt;b&gt;Size:&lt;/b&gt; 4 KB
+</summary>
+<updated>2026-03-11T16:47:10-05:00</updated>
+<category scheme="https://www.sec.gov/" label="form type" term="4"/>
+<id>urn:tag:sec.gov,2008:accession-number=0009999902-26-000007</id>
+</entry><entry>
+<title>4 - Insider, Gamma (0009999913) (Reporting)</title>
+<link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/9999913/000999990226000007/0009999902-26-000007-index.htm"/>
+<summary type="html">
+ &lt;b&gt;Filed:&lt;/b&gt; 2026-03-11 &lt;b&gt;AccNo:&lt;/b&gt; 0009999902-26-000007 &lt;b&gt;Size:&lt;/b&gt; 4 KB
+</summary>
+<updated>2026-03-11T16:47:10-05:00</updated>
+<category scheme="https://www.sec.gov/" label="form type" term="4"/>
+<id>urn:tag:sec.gov,2008:accession-number=0009999902-26-000007</id>
+</entry>
+</feed>

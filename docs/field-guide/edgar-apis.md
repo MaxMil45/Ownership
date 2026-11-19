@@ -17,10 +17,30 @@ The SEC publishes JSON APIs at `data.sec.gov`. They need no account and no API k
 ## Submissions API: what matters
 
 - `filings.recent` is a table stored column by column: `accessionNumber[i]`, `form[i]`, `filingDate[i]`, `acceptanceDateTime[i]`, `primaryDocument[i]` all describe filing `i`. Newest first.
-- It holds at least one year or 1,000 filings, whichever is more. Older filings are in extra files named in `filings.files`.
-- `acceptanceDateTime` is when the SEC accepted the filing. This project stores its date as `known_on`, the earliest the public could know.
+- It holds at least one year or 1,000 filings, whichever is more (JPMorgan's held 26,419 in November 2026). Older filings are in extra pages named in `filings.files`, each with `filingFrom` and `filingTo` dates. A page is `https://data.sec.gov/submissions/<name>` and holds the same columns as `filings.recent`, but at the top level of the JSON, newest first. `oe-edgar` reads them with `parse_history_page`, and `oe recent-form4` follows them (newest page first) when the recent list has fewer Form 4s than `--limit`.
+- `acceptanceDateTime` is when the SEC accepted the filing, **in UTC** (see "The time zone trap" below). This project stores its US Eastern date as `known_on`, the earliest the public could know.
 - `formerNames` gives free alias history for the investor registry.
 - Form 4s about a company appear in the company's own history and in each insider's history.
+
+## Finding filings across all companies
+
+Three more sources, all measured on real data (November 2026):
+
+| Source | URL | What it is |
+| --- | --- | --- |
+| Daily form index | `https://www.sec.gov/Archives/edgar/daily-index/YYYY/QTRn/form.YYYYMMDD.idx` | Every filing of one past day, fixed-width text, about 830 KB. 2026-11-18 held 4,269 rows and 762 distinct Form 4 / 4/A filings. A weekend or holiday gives 404. Not available for the current day. |
+| Latest filings feed | `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=only&count=100&output=atom` | Atom feed of the newest 100 entries (about 50 filings). Use `owner=only`: with `owner=include` the `type=4` filter is ignored and most entries are prospectuses. It timed out once in testing, so a follower must treat a failed poll as normal. Declared encoding is ISO-8859-1. |
+| Complete submission | `https://www.sec.gov/Archives/edgar/data/<any filer CIK>/<accession>.txt` | SGML header plus the ownership XML, one request. About 20 KB for a Form 4. |
+
+Things to know:
+
+- **A Form 4 is listed once per filer** (the issuer and each reporting owner), all with the same accession number. Count accession numbers, not rows. Any of the CIKs works in the `.txt` path.
+- The index columns are: form type (first 17 characters, may contain spaces such as `SC 13D`), company name, CIK, date filed (`YYYYMMDD`), file path. All 4,269 rows of 2026-11-18 followed this shape.
+- **The submission header's `<ACCEPTANCE-DATETIME>` is US Eastern**, unlike the submissions API's UTC. Header `20261005184245` is API `2026-10-05T22:42:45Z`. Checked to the second on filings either side of the November 2025 clock change (EDT and EST). Its date part is `known_on` directly.
+- The feed's `<updated>` carries an explicit offset (`-05:00`).
+- Some Form 4s have no transaction rows, only holdings (for example directors reporting RSU holdings). That is not a parse failure.
+
+`oe daily-form4` and `oe follow` use these; see `crates/oe-edgar/src/{daily_index,feed,submission}.rs`.
 
 ## The trap: `primaryDocument` for Form 4s
 
@@ -32,6 +52,15 @@ https://www.sec.gov/Archives/edgar/data/{CIK}/{accession without dashes}/{primar
 
 `FilingRef::raw_document_url` in `oe-edgar` does this.
 
+## The time zone trap: `acceptanceDateTime` is UTC
+
+The trailing `Z` is honest. Measured on 325 real Form 4s (November 2026): most were accepted between 20:00 and 23:59 UTC, which is the afternoon in New York, and 58 of them (18%) were accepted after midnight UTC. For all of those, EDGAR's own `filingDate` is the **previous** day, because filing dates and deadlines are in US Eastern time.
+
+So the first ten characters of `acceptanceDateTime` are a day late for anything accepted after about 8 pm in New York (7 pm in winter). Example: accepted `2026-01-01T02:09:16Z` is 9:09 pm on 31 December in New York, `filingDate` 2025-12-31. That is why `known_on` is the Eastern date, computed by `oe_core::us_eastern_date` (daylight saving rules in code, no time-zone database). Checked against the Windows time-zone database and `filingDate` for 135 JPMorgan filings: no differences.
+
+The sidecar keeps the raw UTC value as `accepted=` and `oe` re-derives `known_on` from it when it reads a sidecar, so a sidecar written before this fix is corrected on read.
+
 ## To check
 
-- The time zone of `acceptanceDateTime`: it is written with a trailing `Z`; confirm against EDGAR's filing index pages before relying on times rather than dates.
+- Filings accepted after 10 pm Eastern get the next business day as `filingDate`, but the public could see them at acceptance. `known_on` follows acceptance, not `filingDate`. No such case turned up in the data yet.
+- Whether history pages for the busiest filers hold the same columns as the first page (only page 001 was read, for JPMorgan and Tesla).

@@ -11,11 +11,14 @@ name = "oe"
 path = "src/main.rs"
 
 [features]
-default = ["net"]
+default = ["net", "db"]
 net = ["oe-edgar/net"]
+# PostgreSQL ledger commands (db-migrate, db-load, db-status).
+db = ["dep:oe-store"]
 
 [dependencies]
 oe-core.workspace = true
 oe-form4.workspace = true
 oe-events.workspace = true
 oe-edgar.workspace = true
+oe-store = { workspace = true, optional = true }

@@ -2,7 +2,7 @@
 
 An open-source engine that reads US ownership filings, works out who each investor really is, and sends evidence-backed alerts when something meaningful changes. It tells you what changed, how fresh the data is, and what history honestly says about it, with the filings behind every claim.
 
-> **Status: Phase 1, week 1.** The Form 4 parser, the point-in-time ledger model and the first event rule (`insider.cluster_buy@1`) work and are tested against synthetic fixtures. Live EDGAR ingestion and alerts come next. See [ROADMAP.md](ROADMAP.md).
+> **Status: Phase 1, week 1.** The Form 4 parser, the point-in-time ledger model and the first event rule (`insider.cluster_buy@1`) work and are tested against synthetic and real fixtures. Live EDGAR download (per company, per day, and a live follower) works; storing into the database and alerts come next. See [ROADMAP.md](ROADMAP.md).
 
 ## Why it exists
 
@@ -14,11 +14,13 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | --- | --- | --- |
 | Dates, CIKs, accession numbers, filing models | `oe-core` | Done, tested |
 | Form 3/4/5 XML parser (no dependencies) | `oe-form4` | Done, tested on synthetic fixtures |
-| Point-in-time ledger (in memory) + PostgreSQL schema | `oe-ledger`, `migrations/` | Model done; database wiring next |
+| Point-in-time ledger (in memory) + PostgreSQL schema | `oe-ledger`, `migrations/` | Model done and tested |
+| PostgreSQL loader (`db-migrate`, `db-load`, `db-status`) | `oe-store` | Done; tested against PostgreSQL 16 in Docker; 332 real filings loaded |
 | `insider.cluster_buy@1` rule | `oe-events` | Done, tested |
-| Rate-limited EDGAR client (SEC fair-access rules) | `oe-edgar` | Written; first real use on your machine |
-| SEC submissions API and ticker list (dependency-free JSON reader) | `oe-edgar` | Done, tested on synthetic JSON |
-| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `fetch` |
+| Rate-limited EDGAR client (SEC fair-access rules) | `oe-edgar` | Done; run against the real SEC |
+| SEC submissions API (with older history pages) and ticker list (dependency-free JSON reader) | `oe-edgar` | Done, tested on synthetic JSON and run live |
+| Daily form index, latest-filings feed, complete submission files | `oe-edgar` | Done, tested on synthetic samples and run live |
+| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `fetch` |
 
 ## Quick start (Windows)
 
@@ -39,8 +41,38 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
    cargo run -p oe-cli -- cluster-buys data/form4/0000320193
    ```
    `recent-form4` accepts a ticker or a CIK, finds the company's latest Form 4s through the SEC submissions API, downloads the raw XML into `data/form4/<CIK>/` and saves each filing's SEC acceptance date in a `.meta.txt` file beside it. `cluster-buys` then reports real "knowable on" dates. The `data/` folder is not committed; copy interesting filings into `fixtures/form4/real/` as test cases.
+5. **Look across all companies.** Download Form 4s from every company for one day, or follow new ones as they are filed:
+   ```powershell
+   cargo run -p oe-cli -- daily-form4 2026-11-18 --limit 25
+   cargo run -p oe-cli -- follow
+   ```
+   `daily-form4` reads the EDGAR daily index (a day has about 800 Form 4s; `--all` takes them all). `follow` polls the latest-filings feed every 30 seconds until you press Ctrl-C (`--polls 2` stops after two polls). Both save into `data/form4/<issuer CIK>/` and skip filings already saved.
 
 On macOS or Linux, install Rust with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` and use `export OE_USER_AGENT="..."` instead.
+
+## Loading into PostgreSQL
+
+The ledger tables are in `migrations/0001_init.sql`. The easiest server is the Docker one in `docker/compose.yaml` (PostgreSQL 16, reachable from this machine only, data kept in a Docker volume). With Docker Desktop running:
+
+```powershell
+docker-compose -f docker/compose.yaml up -d
+$env:DATABASE_URL = "postgres://oe:oe_dev_only@127.0.0.1:55432/ownership"
+cargo run -p oe-cli -- db-migrate
+cargo run -p oe-cli -- db-load data/form4 --dry-run   # counts everything, no database needed
+cargo run -p oe-cli -- db-load data/form4
+cargo run -p oe-cli -- db-status
+```
+
+`db-load` is safe to repeat. Amendment (4/A, 5/A) filings are stored but their transaction rows are held back, and joint filings keep only their first owner; see [ADR 0004](docs/adr/0004-postgres-store-crate.md). To run the database tests (they make and drop a private schema in the database you name; the Docker setup creates an empty `ownership_test` for this):
+
+```powershell
+$env:OE_TEST_DATABASE_URL = "postgres://oe:oe_dev_only@127.0.0.1:55432/ownership_test"
+cargo test -p oe-store --test postgres -- --ignored --test-threads=1
+```
+
+Any PostgreSQL 15+ server works instead of Docker: point `DATABASE_URL` at an empty database. The connection uses no TLS, so use a local or trusted-network server. `docker-compose -f docker/compose.yaml down` stops the container and keeps the data; adding `-v` deletes it.
+
+Use `docker-compose` (with a hyphen) if `docker compose` says "unknown command". The compose file lives in `docker/` so that compose does not try to read the `.env` in the repository root.
 
 ## Repository layout
 
@@ -51,10 +83,12 @@ crates/
   oe-ledger/    append-only, point-in-time fact store
   oe-events/    versioned event rules (insider.cluster_buy@1)
   oe-edgar/     polite EDGAR HTTP client with rate limiting
+  oe-store/     PostgreSQL loader (the only crate with a database driver)
   oe-cli/       the `oe` binary
 events/specs/   written spec for every event rule version
 fixtures/       filings the tests parse (synthetic now, real next)
 migrations/     PostgreSQL schema for the live ledger
+docker/         local PostgreSQL 16 for development (compose.yaml)
 docs/           Field Guide to SEC filings, design decisions, methodology
 ```
 

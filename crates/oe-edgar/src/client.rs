@@ -3,6 +3,7 @@
 use crate::ratelimit::RateLimiter;
 use crate::{validate_user_agent, UserAgentError, REQUESTS_PER_SECOND};
 use std::fmt;
+use std::io::Read;
 use std::time::Duration;
 
 #[derive(Debug)]
@@ -76,9 +77,14 @@ impl EdgarClient {
                 message: other.to_string(),
             },
         })?;
-        response.into_string().map_err(|e| EdgarError::Body {
-            url: url.to_string(),
-            message: e.to_string(),
-        })
+        let mut bytes = Vec::new();
+        response
+            .into_reader()
+            .read_to_end(&mut bytes)
+            .map_err(|e| EdgarError::Body {
+                url: url.to_string(),
+                message: e.to_string(),
+            })?;
+        Ok(crate::decode_body(bytes))
     }
 }

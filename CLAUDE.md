@@ -24,9 +24,9 @@ Fixtures: `fixtures/form4/synthetic/` (invented), `fixtures/form4/real/` (real f
 ## Next steps (in order)
 1. DONE (2026-11-19): tests pass, `recent-form4` ran against the real SEC, 339 real filings parsed with no failures.
 2. DONE (2026-11-19): 24 real fixtures in `fixtures/form4/real/`, listed in `MANIFEST.tsv` and checked by `crates/oe-form4/tests/real_fixtures.rs`.
-3. Follow `filings.files` pagination for older history; check acceptanceDateTime time zone.
-4. EDGAR daily index / live feed follower.
-5. Bulk backfill into PostgreSQL (`migrations/0001_init.sql`).
+3. DONE (2026-11-19): history pages followed (`parse_history_page`, `recent-form4` reads them newest first when the recent list is short); `acceptanceDateTime` is UTC, `known_on` is now the US Eastern date (`oe_core::us_eastern_date`). 18% of filings had a `known_on` one day late before this.
+4. DONE (2026-11-19): `oe daily-form4 <date>` (daily index) and `oe follow` (latest-filings Atom feed, `owner=only`); both fetch each filing's complete submission `.txt` (XML + exact acceptance time in US Eastern). Files only, no database. Not measured: how long after acceptance the feed shows a filing.
+5. PARTLY DONE (2026-11-19): loader done and verified (crate `oe-store`, `oe db-migrate|db-load|db-status`, ADR 0004). Database: PostgreSQL 16 in Docker, `docker-compose -f docker/compose.yaml up -d` (use `docker-compose` with a hyphen on this machine; the compose file is in `docker/` because the root `.env` is PowerShell syntax and breaks compose). URLs: `postgres://oe:oe_dev_only@127.0.0.1:55432/ownership` and `.../ownership_test`. The local PostgreSQL 16 install is incomplete (no initdb/pg_ctl); not used. DB tests: `cargo test -p oe-store --test postgres -- --ignored --test-threads=1` (6 pass). Still open: the since-2015 download (~75 h estimated), amendment linking, joint-filing co-owners.
 6. Form 144 parser + `insider.planned_sale@1`; Item 408 + `insider.plan_terminated@1`.
 7. 13D/13G parsers + activist events; proxy-contest events; alerts and watchlists.
 8. Gate 1: public v0.1 by end of Feb 2027. Before publishing, replace the placeholder `LICENSE` with the official Apache-2.0 text.

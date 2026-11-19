@@ -5,13 +5,21 @@
 //! requests per second. This crate enforces both, so no other code has to
 //! remember to.
 
+pub mod daily_index;
+pub mod feed;
 pub mod json;
 pub mod ratelimit;
+pub mod submission;
 pub mod submissions;
 
+pub use daily_index::{daily_index_url, parse_form_index, FormIndex, IndexEntry};
+pub use feed::{
+    parse_atom_feed, unique_accessions, FeedEntry, FeedError, LATEST_OWNERSHIP_FEED_URL,
+};
+pub use submission::{parse_full_submission, FullSubmission, SubmissionError};
 pub use submissions::{
-    find_ticker, parse_company_tickers, parse_submissions, FilingRef, Submissions,
-    COMPANY_TICKERS_URL,
+    find_ticker, history_page_url, parse_company_tickers, parse_history_page, parse_submissions,
+    FilingRef, HistoryFileRef, Submissions, COMPANY_TICKERS_URL,
 };
 
 #[cfg(feature = "net")]
@@ -66,6 +74,14 @@ pub fn user_agent_from_env() -> Result<String, UserAgentError> {
     validate_user_agent(&raw)
 }
 
+/// Turns a response body into text. EDGAR's Atom feed declares ISO-8859-1, and
+/// older documents can hold stray non-UTF-8 bytes; bytes that are not valid
+/// UTF-8 are read as Latin-1 instead of failing the whole download.
+pub fn decode_body(bytes: Vec<u8>) -> String {
+    String::from_utf8(bytes)
+        .unwrap_or_else(|e| e.into_bytes().into_iter().map(char::from).collect())
+}
+
 /// URL of the EDGAR JSON listing every filing for a filer.
 pub fn submissions_url(cik: u64) -> String {
     format!("https://data.sec.gov/submissions/CIK{cik:010}.json")
@@ -86,6 +102,14 @@ mod tests {
         assert!(validate_user_agent("jane.doe@example.com").is_err());
         assert!(validate_user_agent("Jane Doe").is_err());
         assert!(validate_user_agent("").is_err());
+    }
+
+    #[test]
+    fn decodes_utf8_and_falls_back_to_latin1() {
+        assert_eq!(decode_body("Société".as_bytes().to_vec()), "Société");
+        // 0xE9 alone is Latin-1 "é" and not valid UTF-8.
+        assert_eq!(decode_body(b"Soci\xe9t\xe9".to_vec()), "Société");
+        assert_eq!(decode_body(Vec::new()), "");
     }
 
     #[test]

@@ -12,4 +12,5 @@ default = ["net"]
 net = ["dep:ureq"]
 
 [dependencies]
+oe-core = { workspace = true }
 ureq = { version = "2.10", optional = true }

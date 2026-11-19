@@ -6,6 +6,7 @@ members = [
     "crates/oe-ledger",
     "crates/oe-events",
     "crates/oe-edgar",
+    "crates/oe-store",
     "crates/oe-cli",
 ]
 
@@ -21,4 +22,5 @@ oe-core = { path = "crates/oe-core" }
 oe-form4 = { path = "crates/oe-form4" }
 oe-ledger = { path = "crates/oe-ledger" }
 oe-events = { path = "crates/oe-events" }
+oe-store = { path = "crates/oe-store" }
 oe-edgar = { path = "crates/oe-edgar", default-features = false }

@@ -1,5 +1,10 @@
 //! `oe`: command-line tool for the ownership engine.
 
+#[cfg(feature = "db")]
+mod dbcmd;
+#[cfg(feature = "net")]
+mod live;
+
 use oe_core::FilingMeta;
 use oe_events::{detect_cluster_buys, trades_from_document, ClusterBuyParams, InsiderTrade};
 use std::path::{Path, PathBuf};
@@ -19,6 +24,29 @@ USAGE:
         Download a company's most recent Form 4s from EDGAR (default 10) into
         data/form4/<CIK>/, each with a .meta.txt file recording when the SEC
         accepted it. Needs OE_USER_AGENT (see below).
+
+    oe daily-form4 <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>] [--include-amendments]
+        Download Form 4s filed by ANY company on one day, found through the EDGAR
+        daily index (default: the first 25; a day has about 800). Saved under
+        data/form4/<issuer CIK>/ like recent-form4. Needs OE_USER_AGENT.
+
+    oe follow [--interval <seconds>] [--polls <n>] [--out <folder>] [--include-amendments]
+        Poll the EDGAR latest-filings feed (default every 30 s, at least 10) and
+        download each new Form 4 as it appears. Runs until stopped with Ctrl-C,
+        or for --polls polls. Needs OE_USER_AGENT.
+
+    oe db-migrate
+        Create or update the PostgreSQL ledger tables (migrations/). Needs DATABASE_URL.
+
+    oe db-load <folder> [--batch <n>] [--dry-run]
+        Load downloaded filings (every .xml with its .meta.txt, e.g. data/form4) into
+        PostgreSQL. Safe to repeat: filings already stored are left untouched.
+        --dry-run checks and counts everything without a database.
+        Amendment (4/A, 5/A) filings are stored, but their transaction rows are
+        held back until amendments can be linked to what they replace.
+
+    oe db-status
+        Counts what the ledger holds. Needs DATABASE_URL.
 
     oe fetch <url> <output-file>
         Download one EDGAR document politely.
@@ -42,6 +70,24 @@ fn main() -> ExitCode {
             _ => Err("fetch needs a URL and an output file".into()),
         },
         Some("recent-form4") => recent_form4(&args[1..]),
+        #[cfg(feature = "net")]
+        Some("daily-form4") => live::daily_form4(&args[1..]),
+        #[cfg(feature = "net")]
+        Some("follow") => live::follow(&args[1..]),
+        #[cfg(not(feature = "net"))]
+        Some("daily-form4") | Some("follow") => {
+            Err("this build has no network support; rebuild with the default `net` feature".into())
+        }
+        #[cfg(feature = "db")]
+        Some("db-migrate") => dbcmd::migrate(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("db-load") => dbcmd::load(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("db-status") => dbcmd::status(&args[1..]),
+        #[cfg(not(feature = "db"))]
+        Some("db-migrate") | Some("db-load") | Some("db-status") => {
+            Err("this build has no database support; rebuild with the default `db` feature".into())
+        }
         Some("help") | Some("--help") | Some("-h") | None => {
             print!("{USAGE}");
             Ok(())
@@ -87,18 +133,49 @@ fn read_meta(xml_path: &Path) -> FilingMeta {
     let Ok(text) = std::fs::read_to_string(meta_path(xml_path)) else {
         return meta;
     };
+    let mut stored_known_on = None;
+    let mut accepted_eastern = None;
     for line in text.lines() {
         let Some((key, value)) = line.split_once('=') else {
             continue;
         };
         match key.trim() {
             "accession" => meta.accession = value.trim().parse().ok(),
-            "known_on" => meta.known_on = value.trim().parse().ok(),
+            "known_on" => stored_known_on = value.trim().parse().ok(),
+            // The raw SEC timestamp is UTC. Converting it here, rather than
+            // trusting the stored `known_on`, corrects sidecars written
+            // before the conversion existed (they were a day late for
+            // filings accepted after about 8 pm in New York).
+            "accepted" => accepted_eastern = oe_core::us_eastern_date(value),
             "url" => meta.source = Some(value.trim().to_string()),
             _ => {}
         }
     }
+    meta.known_on = accepted_eastern.or(stored_known_on);
     meta
+}
+
+/// The first `max` filings that are Form 4 (and 4/A if asked), in list order.
+#[cfg_attr(not(feature = "net"), allow(dead_code))]
+fn select_form4s(
+    filings: &[oe_edgar::FilingRef],
+    include_amendments: bool,
+    max: usize,
+) -> Vec<oe_edgar::FilingRef> {
+    filings
+        .iter()
+        .filter(|f| f.form == "4" || (include_amendments && f.form == "4/A"))
+        .take(max)
+        .cloned()
+        .collect()
+}
+
+/// Older history pages, newest first. The SEC's own order is not relied on.
+#[cfg_attr(not(feature = "net"), allow(dead_code))]
+fn newest_pages_first(files: &[oe_edgar::HistoryFileRef]) -> Vec<&oe_edgar::HistoryFileRef> {
+    let mut pages: Vec<_> = files.iter().collect();
+    pages.sort_by(|a, b| b.filing_to.cmp(&a.filing_to));
+    pages
 }
 
 fn parse_form4(path: &Path) -> Result<(), String> {
@@ -277,7 +354,10 @@ fn parse_recent_args(args: &[String]) -> Result<RecentArgs, String> {
 
 #[cfg(feature = "net")]
 fn recent_form4(args: &[String]) -> Result<(), String> {
-    use oe_edgar::{find_ticker, parse_company_tickers, parse_submissions, submissions_url};
+    use oe_edgar::{
+        find_ticker, history_page_url, parse_company_tickers, parse_history_page,
+        parse_submissions, submissions_url,
+    };
 
     let args = parse_recent_args(args)?;
     let client = oe_edgar::EdgarClient::from_env().map_err(|e| e.to_string())?;
@@ -299,12 +379,39 @@ fn recent_form4(args: &[String]) -> Result<(), String> {
         .get_text(&submissions_url(cik))
         .map_err(|e| e.to_string())?;
     let subs = parse_submissions(&body).map_err(|e| e.to_string())?;
-    let wanted: Vec<_> = subs
-        .recent
-        .iter()
-        .filter(|f| f.form == "4" || (args.include_amendments && f.form == "4/A"))
-        .take(args.limit)
-        .collect();
+    let mut wanted = select_form4s(&subs.recent, args.include_amendments, args.limit);
+    // The recent list holds about the latest thousand filings. If it does not
+    // contain enough Form 4s, follow the older history pages, newest first.
+    for page in newest_pages_first(&subs.older_files) {
+        if wanted.len() >= args.limit {
+            break;
+        }
+        println!(
+            "only {} found so far; reading older history {} ({} to {})",
+            wanted.len(),
+            page.name,
+            page.filing_from,
+            page.filing_to
+        );
+        let rows = client
+            .get_text(&history_page_url(&page.name))
+            .map_err(|e| e.to_string())
+            .and_then(|body| parse_history_page(&body).map_err(|e| e.to_string()));
+        match rows {
+            Ok(rows) => wanted.extend(select_form4s(
+                &rows,
+                args.include_amendments,
+                args.limit - wanted.len(),
+            )),
+            Err(e) => {
+                eprintln!(
+                    "  could not read {}: {e}; stopping the history search",
+                    page.name
+                );
+                break;
+            }
+        }
+    }
     if wanted.is_empty() {
         println!("{} has no Form 4s in its recent filings", subs.name);
         return Ok(());
@@ -346,10 +453,11 @@ fn recent_form4(args: &[String]) -> Result<(), String> {
             }
         };
         std::fs::write(&xml_path, &xml).map_err(|e| format!("{}: {e}", xml_path.display()))?;
+        let known_on = filing.known_on().map(|d| d.to_string()).unwrap_or_default();
         let meta = render_meta(&[
             ("accession", &filing.accession),
             ("form", &filing.form),
-            ("known_on", filing.known_on().unwrap_or("")),
+            ("known_on", &known_on),
             ("accepted", &filing.acceptance_date_time),
             ("filing_date", &filing.filing_date),
             ("report_date", &filing.report_date),
@@ -366,7 +474,7 @@ fn recent_form4(args: &[String]) -> Result<(), String> {
                 println!(
                     "  {}  accepted {}  {:<30} codes [{}]",
                     filing.accession,
-                    filing.known_on().unwrap_or("?"),
+                    if known_on.is_empty() { "?" } else { &known_on },
                     doc.owners.first().map_or("?", |o| o.name.as_str()),
                     codes.join(" ")
                 );
@@ -426,6 +534,76 @@ mod tests {
         let missing = read_meta(&dir.join("absent.xml"));
         assert!(missing.known_on.is_none());
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn sidecar_known_on_is_rederived_from_the_utc_timestamp() {
+        let dir = std::env::temp_dir().join(format!("oe-cli-tz-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let xml = dir.join("0009999901-25-000001.xml");
+        // An old sidecar: known_on is the UTC date, a day late.
+        std::fs::write(
+            meta_path(&xml),
+            render_meta(&[
+                ("accession", "0009999901-25-000001"),
+                ("known_on", "2026-01-01"),
+                ("accepted", "2026-01-01T02:09:16.000Z"),
+            ]),
+        )
+        .unwrap();
+        assert_eq!(
+            read_meta(&xml).known_on,
+            oe_core::Date::from_ymd(2025, 12, 31)
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    fn filing(accession: &str, form: &str) -> oe_edgar::FilingRef {
+        oe_edgar::FilingRef {
+            accession: accession.into(),
+            form: form.into(),
+            filing_date: "2026-01-01".into(),
+            report_date: String::new(),
+            acceptance_date_time: String::new(),
+            primary_document: "x.xml".into(),
+        }
+    }
+
+    #[test]
+    fn selects_form4s_in_order_up_to_the_limit() {
+        let list = [
+            filing("a", "10-K"),
+            filing("b", "4"),
+            filing("c", "4/A"),
+            filing("d", "5"),
+            filing("e", "4"),
+        ];
+        let accs = |v: Vec<oe_edgar::FilingRef>| -> Vec<String> {
+            v.into_iter().map(|f| f.accession).collect()
+        };
+        assert_eq!(accs(select_form4s(&list, false, 10)), ["b", "e"]);
+        assert_eq!(accs(select_form4s(&list, true, 10)), ["b", "c", "e"]);
+        assert_eq!(accs(select_form4s(&list, true, 2)), ["b", "c"]);
+        assert!(select_form4s(&list, true, 0).is_empty());
+    }
+
+    #[test]
+    fn history_pages_are_read_newest_first_whatever_the_sec_order() {
+        let page = |name: &str, to: &str| oe_edgar::HistoryFileRef {
+            name: name.into(),
+            filing_from: String::new(),
+            filing_to: to.into(),
+        };
+        let files = [
+            page("old", "2010-01-01"),
+            page("new", "2018-06-16"),
+            page("mid", "2014-03-03"),
+        ];
+        let order: Vec<&str> = newest_pages_first(&files)
+            .into_iter()
+            .map(|p| p.name.as_str())
+            .collect();
+        assert_eq!(order, ["new", "mid", "old"]);
     }
 
     #[test]

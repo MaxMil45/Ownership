@@ -4,6 +4,7 @@
 //! Both are free and need no API key, only the declared User-Agent.
 
 use crate::json::{self, Json};
+use oe_core::{us_eastern_date, Date};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,11 +76,13 @@ impl FilingRef {
         )
     }
 
-    /// Acceptance date (`YYYY-MM-DD`): the date the public could first know.
-    pub fn known_on(&self) -> Option<&str> {
-        self.acceptance_date_time
-            .get(..10)
-            .or_else(|| self.filing_date.get(..10))
+    /// The US Eastern date the SEC accepted the filing: the day the public
+    /// could first know. `acceptanceDateTime` is UTC, so its first ten
+    /// characters would be a day late for filings accepted after about 8 pm
+    /// in New York; this converts first. Falls back to `filingDate` (already
+    /// an Eastern date) if the timestamp is missing.
+    pub fn known_on(&self) -> Option<Date> {
+        us_eastern_date(&self.acceptance_date_time).or_else(|| self.filing_date.parse().ok())
     }
 
     pub fn is_insider_form(&self) -> bool {
@@ -95,8 +98,18 @@ pub struct Submissions {
     pub former_names: Vec<FormerName>,
     /// Newest first, as the SEC returns them.
     pub recent: Vec<FilingRef>,
-    /// Extra history files (older filings) listed under `filings.files`.
-    pub older_files: Vec<String>,
+    /// Extra history pages (older filings) listed under `filings.files`.
+    pub older_files: Vec<HistoryFileRef>,
+}
+
+/// One entry of `filings.files`: an older page of the filing list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoryFileRef {
+    /// File name, e.g. `CIK0001318605-submissions-001.json`.
+    pub name: String,
+    /// `YYYY-MM-DD` of the oldest and newest filing on the page; empty if absent.
+    pub filing_from: String,
+    pub filing_to: String,
 }
 
 fn str_field(v: &Json, key: &str) -> String {
@@ -143,13 +156,39 @@ pub fn parse_submissions(text: &str) -> Result<Submissions, SubmissionsError> {
     let recent = filings
         .get("recent")
         .ok_or_else(|| shape("missing filings.recent"))?;
+    let recent = parse_filing_table(recent, "filings.recent")?;
 
-    let column = |key: &str| -> Result<Vec<&str>, SubmissionsError> {
-        recent.get(key).and_then(Json::as_str_vec).ok_or_else(|| {
-            shape(format!(
-                "filings.recent.{key} is missing or not a string array"
-            ))
+    let older_files = filings
+        .get("files")
+        .and_then(Json::as_array)
+        .unwrap_or_default()
+        .iter()
+        .map(|f| HistoryFileRef {
+            name: str_field(f, "name"),
+            filing_from: str_field(f, "filingFrom"),
+            filing_to: str_field(f, "filingTo"),
         })
+        .filter(|f| !f.name.is_empty())
+        .collect();
+
+    Ok(Submissions {
+        cik,
+        name: str_field(&root, "name"),
+        tickers,
+        former_names,
+        recent,
+        older_files,
+    })
+}
+
+/// Reads the column-by-column filing table that `filings.recent` and every
+/// older history page share. `place` names the table in error messages.
+fn parse_filing_table(table: &Json, place: &str) -> Result<Vec<FilingRef>, SubmissionsError> {
+    let column = |key: &str| -> Result<Vec<&str>, SubmissionsError> {
+        table
+            .get(key)
+            .and_then(Json::as_str_vec)
+            .ok_or_else(|| shape(format!("{place}.{key} is missing or not a string array")))
     };
     let accession = column("accessionNumber")?;
     let form = column("form")?;
@@ -173,7 +212,7 @@ pub fn parse_submissions(text: &str) -> Result<Submissions, SubmissionsError> {
         }
     }
 
-    let recent = (0..n)
+    Ok((0..n)
         .map(|i| FilingRef {
             accession: accession[i].to_string(),
             form: form[i].to_string(),
@@ -182,25 +221,21 @@ pub fn parse_submissions(text: &str) -> Result<Submissions, SubmissionsError> {
             acceptance_date_time: acceptance[i].to_string(),
             primary_document: primary[i].to_string(),
         })
-        .collect();
+        .collect())
+}
 
-    let older_files = filings
-        .get("files")
-        .and_then(Json::as_array)
-        .unwrap_or_default()
-        .iter()
-        .map(|f| str_field(f, "name"))
-        .filter(|s| !s.is_empty())
-        .collect();
+/// Parses one older history page named in `Submissions::older_files`
+/// (`data.sec.gov/submissions/CIK##########-submissions-001.json`). It holds
+/// the same table as `filings.recent`, but at the top level of the JSON.
+/// Newest first, like the recent table.
+pub fn parse_history_page(text: &str) -> Result<Vec<FilingRef>, SubmissionsError> {
+    let root = json::parse(text)?;
+    parse_filing_table(&root, "history page")
+}
 
-    Ok(Submissions {
-        cik,
-        name: str_field(&root, "name"),
-        tickers,
-        former_names,
-        recent,
-        older_files,
-    })
+/// URL of an older history page, given its `name` from `older_files`.
+pub fn history_page_url(name: &str) -> String {
+    format!("https://data.sec.gov/submissions/{name}")
 }
 
 /// URL of the SEC's ticker-to-CIK list.
@@ -261,7 +296,14 @@ mod tests {
         assert_eq!(s.tickers, vec!["SYNW"]);
         assert_eq!(s.former_names[0].name, "Synthetic Gadgets Corp");
         assert_eq!(s.recent.len(), 4);
-        assert_eq!(s.older_files, vec!["CIK0009999901-submissions-001.json"]);
+        assert_eq!(
+            s.older_files,
+            vec![HistoryFileRef {
+                name: "CIK0009999901-submissions-001.json".into(),
+                filing_from: "2003-01-02".into(),
+                filing_to: "2024-12-31".into(),
+            }]
+        );
 
         let form4s: Vec<&FilingRef> = s.recent.iter().filter(|f| f.is_insider_form()).collect();
         assert_eq!(form4s.len(), 3);
@@ -271,7 +313,43 @@ mod tests {
             first.raw_document_url(s.cik),
             "https://www.sec.gov/Archives/edgar/data/9999901/000999990126000003/wk-form4_1773100000.xml"
         );
-        assert_eq!(first.known_on(), Some("2026-03-11"));
+        assert_eq!(first.known_on(), Date::from_ymd(2026, 3, 11));
+    }
+
+    #[test]
+    fn known_on_uses_the_eastern_date_not_the_utc_date() {
+        // Accepted 02:09 UTC on 1 January = 21:09 in New York on 31 December.
+        let late = FilingRef {
+            accession: "0000000000-25-000001".into(),
+            form: "4".into(),
+            filing_date: "2024-12-31".into(),
+            report_date: String::new(),
+            acceptance_date_time: "2025-01-01T02:09:16.000Z".into(),
+            primary_document: "x.xml".into(),
+        };
+        assert_eq!(late.known_on(), Date::from_ymd(2024, 12, 31));
+        // A bad timestamp falls back to the filing date.
+        let broken = FilingRef {
+            acceptance_date_time: "garbage".into(),
+            ..late
+        };
+        assert_eq!(broken.known_on(), Date::from_ymd(2024, 12, 31));
+    }
+
+    #[test]
+    fn parses_an_older_history_page() {
+        let rows = parse_history_page(&fixture("history_page_synthetic.json")).unwrap();
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[0].accession, "0009999901-24-000009");
+        assert_eq!(rows[0].known_on(), Date::from_ymd(2024, 12, 31));
+        assert_eq!(rows[1].form, "5");
+        assert!(rows[1].is_insider_form());
+        assert_eq!(
+            history_page_url("CIK0009999901-submissions-001.json"),
+            "https://data.sec.gov/submissions/CIK0009999901-submissions-001.json"
+        );
+        // A recent-style document is not a history page.
+        assert!(parse_history_page(&fixture("submissions_synthetic.json")).is_err());
     }
 
     #[test]
@@ -285,7 +363,7 @@ mod tests {
             primary_document: "report/main.htm".into(),
         };
         assert_eq!(f.raw_document(), "report/main.htm");
-        assert_eq!(f.known_on(), Some("2026-02-01"));
+        assert_eq!(f.known_on(), Date::from_ymd(2026, 2, 1));
     }
 
     #[test]

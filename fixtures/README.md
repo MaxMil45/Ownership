@@ -8,7 +8,7 @@ Fixtures are filings the test suite parses. They are the project's memory of eve
 | --- | --- |
 | `form4/synthetic/` | Hand-built Form 4s for a made-up issuer ("Synthetic Widgets Inc", CIK 9999901). **Not real filings.** Each file's header comment says which edge case it covers. |
 | `form4/real/` | Real Forms 3, 4, 4/A, 5 and 5/A downloaded from EDGAR, each with a `.meta.txt` sidecar. `MANIFEST.tsv` lists every file with its document type, owner count, transaction row counts, codes and what it exercises. |
-| `edgar/` | Small **synthetic** samples shaped like the SEC submissions API and ticker list, for testing the JSON parsing. |
+| `edgar/` | Small **synthetic** samples shaped like the SEC submissions API (recent list and an older history page), ticker list, daily form index (`form_index_synthetic.idx`), latest-filings Atom feed (`latest_feed_synthetic.atom`) and a complete submission text file (`submission_synthetic.txt`), for testing the parsers without the network. |
 
 ## Synthetic set: what each file tests
 
@@ -25,6 +25,8 @@ Together, files 01–03 must produce exactly one `insider.cluster_buy@1` event.
 ## Real set
 
 24 filings from 15 companies, all public SEC records, chosen on 2026-11-19 from 325 Form 4s downloaded from 22 companies with `oe recent-form4`. The Forms 3, 5 and 5/A and two of the 4/As were downloaded with `oe fetch` from the submissions API listing, because `recent-form4` only takes Form 4 and 4/A. The files are named `<ticker>_<accession>.xml`. What each one exercises is in `fixtures/form4/real/MANIFEST.tsv`; in short, the set covers codes P, S, A, D, F, G, M, C and J, joint filings (two owners), a Form 4 with no transaction rows, derivative tables, 10b5-1 box ticked, not ticked and absent, a 22-row filing, and Forms 3, 5, 4/A and 5/A.
+
+In each sidecar, `accepted` is the SEC's UTC timestamp and `known_on` is its US Eastern date (the test checks this).
 
 The manifest counts come from counting tags in the raw XML, not from the parser. `crates/oe-form4/tests/real_fixtures.rs` parses every file and fails if the parser disagrees, if a fixture is missing from the manifest, or if a sidecar has no `known_on`. All 24 parse today with no parser failures.
 

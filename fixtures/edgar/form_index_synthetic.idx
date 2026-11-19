@@ -1,0 +1,18 @@
+Description:           Daily Index of EDGAR Dissemination Feed by Form Type
+Last Data Received:    Mar 11, 2026
+Comments:              synthetic sample shaped like the real file (invented companies)
+
+
+
+
+Form Type   Company Name                                                  CIK
+      Date Filed  File Name
+---------------------------------------------------------------------------------------------------------------------------------------------
+10-K             Synthetic Widgets Inc                                         9999901     20260311    edgar/data/9999901/0009999901-26-000010.txt
+4                Synthetic Widgets Inc                                         9999901     20260311    edgar/data/9999901/0009999901-26-000011.txt
+4                Alpha Insider                                                 9999911     20260311    edgar/data/9999911/0009999901-26-000011.txt
+4                Gadget Holdings Corp                                          9999902     20260311    edgar/data/9999902/0009999902-26-000007.txt
+4                Beta Insider                                                  9999912     20260311    edgar/data/9999912/0009999902-26-000007.txt
+4/A              99 Cents  Only Stores 2                                       9999904     20260311    edgar/data/9999904/0009999904-26-000003.txt
+DEF 14A          Gadget Holdings Corp                                          9999902     20260311    edgar/data/9999902/0009999902-26-000008.txt
+SC 13D           Activist Fund LP                                              9999920     20260311    edgar/data/9999920/0009999920-26-000001.txt
