@@ -1,0 +1,8 @@
+accession=0001104659-26-047678
+form=4
+known_on=2026-04-23
+accepted=2026-04-23T20:05:10.000Z
+filing_date=2026-04-23
+report_date=2026-04-21
+company_cik=0001318605
+url=https://www.sec.gov/Archives/edgar/data/1318605/000110465926047678/tm2612285-1_4seq1.xml

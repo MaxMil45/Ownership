@@ -5,7 +5,14 @@
 //! requests per second. This crate enforces both, so no other code has to
 //! remember to.
 
+pub mod json;
 pub mod ratelimit;
+pub mod submissions;
+
+pub use submissions::{
+    find_ticker, parse_company_tickers, parse_submissions, FilingRef, Submissions,
+    COMPANY_TICKERS_URL,
+};
 
 #[cfg(feature = "net")]
 mod client;

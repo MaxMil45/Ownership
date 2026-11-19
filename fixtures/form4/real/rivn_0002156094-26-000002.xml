@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<ownershipDocument>
+
+    <schemaVersion>X0607</schemaVersion>
+
+    <documentType>3</documentType>
+
+    <periodOfReport>2026-10-30</periodOfReport>
+
+    <noSecuritiesOwned>0</noSecuritiesOwned>
+
+    <issuer>
+        <issuerCik>0001874178</issuerCik>
+        <issuerName>Rivian Automotive, Inc. / DE</issuerName>
+        <issuerTradingSymbol>RIVN</issuerTradingSymbol>
+        <issuerForeignTradingSymbol></issuerForeignTradingSymbol>
+    </issuer>
+
+    <reportingOwner>
+        <reportingOwnerId>
+            <rptOwnerCik>0002156094</rptOwnerCik>
+            <rptOwnerName>Mulvey Derek B</rptOwnerName>
+        </reportingOwnerId>
+        <reportingOwnerAddress>
+            <rptOwnerNonUSAddressFlag>false</rptOwnerNonUSAddressFlag>
+            <rptOwnerStreet1>C/O RIVIAN AUTOMOTIVE, INC.</rptOwnerStreet1>
+            <rptOwnerStreet2>14600 MYFORD ROAD</rptOwnerStreet2>
+            <rptOwnerCity>IRVINE</rptOwnerCity>
+            <rptOwnerState>CA</rptOwnerState>
+            <rptOwnerZipCode>92606</rptOwnerZipCode>
+            <rptOwnerStateDescription></rptOwnerStateDescription>
+        </reportingOwnerAddress>
+        <reportingOwnerRelationship>
+            <isDirector>0</isDirector>
+            <isOfficer>1</isOfficer>
+            <isTenPercentOwner>0</isTenPercentOwner>
+            <isOther>0</isOther>
+            <officerTitle>Interim CFO</officerTitle>
+        </reportingOwnerRelationship>
+    </reportingOwner>
+
+    <nonDerivativeTable>
+        <nonDerivativeHolding>
+            <securityTitle>
+                <value>Class A Common Stock</value>
+            </securityTitle>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>296200</value>
+                    <footnoteId id="F1"/>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>D</value>
+                </directOrIndirectOwnership>
+            </ownershipNature>
+        </nonDerivativeHolding>
+    </nonDerivativeTable>
+
+    <derivativeTable></derivativeTable>
+
+    <footnotes>
+        <footnote id="F1">Consists of: (i) 73,057 shares resulting from previously vested Restricted Stock Units (&quot;RSUs&quot;), (ii) 1,798 shares purchased pursuant to the Issuer's 2021 Employee Stock Purchase Plan, (iii) 2,490 shares purchased pursuant to the Issuer's Directed Share Program at the time of its Initial Public Offering, and (iv) 218,855 unvested RSUs. Of the aggregate 218,855 unvested RSUs: (i) 160 of such unvested RSUs will vest on the next quarterly anniversary after August 15, 2026, (ii) 24,500 of such unvested RSUs
+will vest over the next three quarterly anniversaries after August 15, 2026, (iii) 68,803 of such unvested RSUs will vest over the next ten quarterly anniversaries after August 15, 2026, and (iv) 125,392 of such unvested RSUs will vest as to 50% on February 15, 2027 and 50% on August 15, 2027. Each RSU represents a contingent right to receive one share of the Issuer's Class A Common Stock and has no expiration date.</footnote>
+    </footnotes>
+
+    <remarks></remarks>
+
+    <ownerSignature>
+        <signatureName>/s/ Jamie Chung, Attorney-in-Fact</signatureName>
+        <signatureDate>2026-10-30</signatureDate>
+    </ownerSignature>
+</ownershipDocument>

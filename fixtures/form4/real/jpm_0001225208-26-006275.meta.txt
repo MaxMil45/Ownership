@@ -1,0 +1,8 @@
+accession=0001225208-26-006275
+form=4
+known_on=2026-07-01
+accepted=2026-07-01T20:16:42.000Z
+filing_date=2026-07-01
+report_date=2026-06-30
+company_cik=0000019617
+url=https://www.sec.gov/Archives/edgar/data/19617/000122520826006275/doc4.xml

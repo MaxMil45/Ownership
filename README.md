@@ -17,7 +17,8 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | Point-in-time ledger (in memory) + PostgreSQL schema | `oe-ledger`, `migrations/` | Model done; database wiring next |
 | `insider.cluster_buy@1` rule | `oe-events` | Done, tested |
 | Rate-limited EDGAR client (SEC fair-access rules) | `oe-edgar` | Written; first real use on your machine |
-| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `fetch` |
+| SEC submissions API and ticker list (dependency-free JSON reader) | `oe-edgar` | Done, tested on synthetic JSON |
+| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `fetch` |
 
 ## Quick start (Windows)
 
@@ -31,12 +32,13 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
    cargo run -p oe-cli -- cluster-buys fixtures/form4/synthetic
    cargo run -p oe-cli -- parse-form4 fixtures/form4/synthetic/02_ceo_buy_with_footnotes.xml
    ```
-4. **Download a real filing.** The SEC requires your name and email in every request:
+4. **Download real Form 4s.** The SEC requires your name and email in every request; no account or API key is needed:
    ```powershell
    $env:OE_USER_AGENT = "Your Name your.email@example.com"
-   cargo run -p oe-cli -- fetch <url-of-a-form-4-xml-file> fixtures/form4/real/example.xml
-   cargo run -p oe-cli -- parse-form4 fixtures/form4/real/example.xml
+   cargo run -p oe-cli -- recent-form4 AAPL --limit 10
+   cargo run -p oe-cli -- cluster-buys data/form4/0000320193
    ```
+   `recent-form4` accepts a ticker or a CIK, finds the company's latest Form 4s through the SEC submissions API, downloads the raw XML into `data/form4/<CIK>/` and saves each filing's SEC acceptance date in a `.meta.txt` file beside it. `cluster-buys` then reports real "knowable on" dates. The `data/` folder is not committed; copy interesting filings into `fixtures/form4/real/` as test cases.
 
 On macOS or Linux, install Rust with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` and use `export OE_USER_AGENT="..."` instead.
 

@@ -1,0 +1,8 @@
+accession=0001628280-26-064464
+form=4
+known_on=2026-10-02
+accepted=2026-10-02T18:03:30.000Z
+filing_date=2026-10-02
+report_date=2026-09-30
+company_cik=0001744489
+url=https://www.sec.gov/Archives/edgar/data/1744489/000162828026064464/wk-form4_1790964207.xml

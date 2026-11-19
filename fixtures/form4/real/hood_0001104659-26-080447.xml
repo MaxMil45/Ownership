@@ -1,0 +1,362 @@
+<?xml version="1.0"?>
+<ownershipDocument>
+
+    <schemaVersion>X0609</schemaVersion>
+
+    <documentType>4/A</documentType>
+
+    <periodOfReport>2025-08-27</periodOfReport>
+
+    <dateOfOriginalSubmission>2025-08-29</dateOfOriginalSubmission>
+
+    <notSubjectToSection16>0</notSubjectToSection16>
+
+    <issuer>
+        <issuerCik>0001783879</issuerCik>
+        <issuerName>Robinhood Markets, Inc.</issuerName>
+        <issuerTradingSymbol>HOOD</issuerTradingSymbol>
+        <issuerForeignTradingSymbol></issuerForeignTradingSymbol>
+    </issuer>
+
+    <reportingOwner>
+        <reportingOwnerId>
+            <rptOwnerCik>0001571355</rptOwnerCik>
+            <rptOwnerName>Malka Meyer</rptOwnerName>
+        </reportingOwnerId>
+        <reportingOwnerAddress>
+            <rptOwnerNonUSAddressFlag>false</rptOwnerNonUSAddressFlag>
+            <rptOwnerStreet1>C/O RIBBIT CAPITAL</rptOwnerStreet1>
+            <rptOwnerStreet2>364 UNIVERSITY AVE.</rptOwnerStreet2>
+            <rptOwnerCity>PALO ALTO</rptOwnerCity>
+            <rptOwnerState>CA</rptOwnerState>
+            <rptOwnerZipCode>94301</rptOwnerZipCode>
+            <rptOwnerStateDescription></rptOwnerStateDescription>
+        </reportingOwnerAddress>
+        <reportingOwnerRelationship>
+            <isDirector>1</isDirector>
+            <isOfficer>0</isOfficer>
+            <isTenPercentOwner>0</isTenPercentOwner>
+            <isOther>0</isOther>
+            <officerTitle></officerTitle>
+            <otherText></otherText>
+        </reportingOwnerRelationship>
+    </reportingOwner>
+
+    <aff10b5One>0</aff10b5One>
+
+    <nonDerivativeTable>
+        <nonDerivativeTransaction>
+            <securityTitle>
+                <value>Class A Common Stock</value>
+            </securityTitle>
+            <transactionDate>
+                <value>2025-08-27</value>
+            </transactionDate>
+            <deemedExecutionDate></deemedExecutionDate>
+            <transactionCoding>
+                <transactionFormType>4</transactionFormType>
+                <transactionCode>S</transactionCode>
+                <equitySwapInvolved>0</equitySwapInvolved>
+            </transactionCoding>
+            <transactionTimeliness></transactionTimeliness>
+            <transactionAmounts>
+                <transactionShares>
+                    <value>80520</value>
+                </transactionShares>
+                <transactionPricePerShare>
+                    <value>104.0306</value>
+                    <footnoteId id="F1"/>
+                </transactionPricePerShare>
+                <transactionAcquiredDisposedCode>
+                    <value>D</value>
+                </transactionAcquiredDisposedCode>
+            </transactionAmounts>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>5069522</value>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>I</value>
+                </directOrIndirectOwnership>
+                <natureOfOwnership>
+                    <value>By Trusts</value>
+                    <footnoteId id="F2"/>
+                </natureOfOwnership>
+            </ownershipNature>
+        </nonDerivativeTransaction>
+        <nonDerivativeTransaction>
+            <securityTitle>
+                <value>Class A Common Stock</value>
+            </securityTitle>
+            <transactionDate>
+                <value>2025-08-28</value>
+            </transactionDate>
+            <deemedExecutionDate></deemedExecutionDate>
+            <transactionCoding>
+                <transactionFormType>4</transactionFormType>
+                <transactionCode>S</transactionCode>
+                <equitySwapInvolved>0</equitySwapInvolved>
+            </transactionCoding>
+            <transactionTimeliness></transactionTimeliness>
+            <transactionAmounts>
+                <transactionShares>
+                    <value>554108</value>
+                </transactionShares>
+                <transactionPricePerShare>
+                    <value>103.4194</value>
+                    <footnoteId id="F3"/>
+                </transactionPricePerShare>
+                <transactionAcquiredDisposedCode>
+                    <value>D</value>
+                </transactionAcquiredDisposedCode>
+            </transactionAmounts>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>4515414</value>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>I</value>
+                </directOrIndirectOwnership>
+                <natureOfOwnership>
+                    <value>By Trusts</value>
+                    <footnoteId id="F2"/>
+                </natureOfOwnership>
+            </ownershipNature>
+        </nonDerivativeTransaction>
+        <nonDerivativeTransaction>
+            <securityTitle>
+                <value>Class A Common Stock</value>
+            </securityTitle>
+            <transactionDate>
+                <value>2025-08-28</value>
+            </transactionDate>
+            <deemedExecutionDate></deemedExecutionDate>
+            <transactionCoding>
+                <transactionFormType>4</transactionFormType>
+                <transactionCode>S</transactionCode>
+                <equitySwapInvolved>0</equitySwapInvolved>
+            </transactionCoding>
+            <transactionTimeliness></transactionTimeliness>
+            <transactionAmounts>
+                <transactionShares>
+                    <value>539180</value>
+                </transactionShares>
+                <transactionPricePerShare>
+                    <value>104.3349</value>
+                    <footnoteId id="F4"/>
+                </transactionPricePerShare>
+                <transactionAcquiredDisposedCode>
+                    <value>D</value>
+                </transactionAcquiredDisposedCode>
+            </transactionAmounts>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>3976234</value>
+                    <footnoteId id="F2"/>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>I</value>
+                </directOrIndirectOwnership>
+                <natureOfOwnership>
+                    <value>By Trusts</value>
+                    <footnoteId id="F2"/>
+                </natureOfOwnership>
+            </ownershipNature>
+        </nonDerivativeTransaction>
+        <nonDerivativeHolding>
+            <securityTitle>
+                <value>Class A Common Stock</value>
+            </securityTitle>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>7010</value>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>D</value>
+                    <footnoteId id="F5"/>
+                </directOrIndirectOwnership>
+            </ownershipNature>
+        </nonDerivativeHolding>
+        <nonDerivativeHolding>
+            <securityTitle>
+                <value>Class A Common Stock</value>
+            </securityTitle>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>102183</value>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>I</value>
+                </directOrIndirectOwnership>
+                <natureOfOwnership>
+                    <value>By LLC</value>
+                    <footnoteId id="F6"/>
+                </natureOfOwnership>
+            </ownershipNature>
+        </nonDerivativeHolding>
+        <nonDerivativeHolding>
+            <securityTitle>
+                <value>Class A Common Stock</value>
+            </securityTitle>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>3235585</value>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>I</value>
+                </directOrIndirectOwnership>
+                <natureOfOwnership>
+                    <value>By Fund</value>
+                    <footnoteId id="F7"/>
+                </natureOfOwnership>
+            </ownershipNature>
+        </nonDerivativeHolding>
+    </nonDerivativeTable>
+
+    <derivativeTable>
+        <derivativeTransaction>
+            <securityTitle>
+                <value>Put option (right to sell)</value>
+            </securityTitle>
+            <conversionOrExercisePrice>
+                <value>100</value>
+            </conversionOrExercisePrice>
+            <transactionDate>
+                <value>2025-08-27</value>
+            </transactionDate>
+            <deemedExecutionDate></deemedExecutionDate>
+            <transactionCoding>
+                <transactionFormType>4</transactionFormType>
+                <transactionCode>S</transactionCode>
+                <equitySwapInvolved>1</equitySwapInvolved>
+            </transactionCoding>
+            <transactionTimeliness></transactionTimeliness>
+            <transactionAmounts>
+                <transactionShares>
+                    <value>30000</value>
+                </transactionShares>
+                <transactionPricePerShare>
+                    <footnoteId id="F8"/>
+                </transactionPricePerShare>
+                <transactionAcquiredDisposedCode>
+                    <value>D</value>
+                </transactionAcquiredDisposedCode>
+            </transactionAmounts>
+            <exerciseDate>
+                <footnoteId id="F8"/>
+            </exerciseDate>
+            <expirationDate>
+                <footnoteId id="F8"/>
+            </expirationDate>
+            <underlyingSecurity>
+                <underlyingSecurityTitle>
+                    <value>Class A Common Stock</value>
+                </underlyingSecurityTitle>
+                <underlyingSecurityShares>
+                    <value>30000</value>
+                </underlyingSecurityShares>
+            </underlyingSecurity>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>30000</value>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>I</value>
+                </directOrIndirectOwnership>
+                <natureOfOwnership>
+                    <value>By Fund</value>
+                    <footnoteId id="F7"/>
+                </natureOfOwnership>
+            </ownershipNature>
+        </derivativeTransaction>
+        <derivativeTransaction>
+            <securityTitle>
+                <value>Call option (obligation to sell)</value>
+            </securityTitle>
+            <conversionOrExercisePrice>
+                <value>150</value>
+            </conversionOrExercisePrice>
+            <transactionDate>
+                <value>2025-08-27</value>
+            </transactionDate>
+            <deemedExecutionDate></deemedExecutionDate>
+            <transactionCoding>
+                <transactionFormType>4</transactionFormType>
+                <transactionCode>S</transactionCode>
+                <equitySwapInvolved>1</equitySwapInvolved>
+            </transactionCoding>
+            <transactionTimeliness></transactionTimeliness>
+            <transactionAmounts>
+                <transactionShares>
+                    <value>30000</value>
+                </transactionShares>
+                <transactionPricePerShare>
+                    <footnoteId id="F8"/>
+                </transactionPricePerShare>
+                <transactionAcquiredDisposedCode>
+                    <value>D</value>
+                </transactionAcquiredDisposedCode>
+            </transactionAmounts>
+            <exerciseDate>
+                <footnoteId id="F8"/>
+            </exerciseDate>
+            <expirationDate>
+                <footnoteId id="F8"/>
+            </expirationDate>
+            <underlyingSecurity>
+                <underlyingSecurityTitle>
+                    <value>Class A Common Stock</value>
+                </underlyingSecurityTitle>
+                <underlyingSecurityShares>
+                    <value>30000</value>
+                </underlyingSecurityShares>
+            </underlyingSecurity>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>30000</value>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>I</value>
+                </directOrIndirectOwnership>
+                <natureOfOwnership>
+                    <value>By Fund</value>
+                    <footnoteId id="F7"/>
+                </natureOfOwnership>
+            </ownershipNature>
+        </derivativeTransaction>
+    </derivativeTable>
+
+    <footnotes>
+        <footnote id="F1">Represents 26,840 shares of Class A Common Stock (&quot;Shares&quot;) of Robinhood Markets, Inc. (&quot;Issuer&quot;) sold by each of the Aphrodite EM Trust, the Aphrodite MM Trust and the Aphrodite SM Trust (collectively, the &quot;Aphrodite Trusts&quot;). The price reported in Column 4 is a weighted average price. The shares were sold in multiple transactions at prices ranging from $104.00 to $104.51, inclusive. The Reporting Person undertakes to provide to the Issuer, any security holder of the Issuer or the staff of the Securities and Exchange Commission, upon request, full information regarding the number of shares sold at each separate price at which the transactions were effected.</footnote>
+        <footnote id="F2">Following the transactions reported in this Form 4, (i) 325,411 shares are held by each of the Aphrodite Trusts, (ii) 3,000,000 shares are held directly by the Malka Kleiner Revocable Trust dated July 16, 2012 (the &quot;Malka Trust&quot;) and (iii) one share is held directly by the Tibbir Trust. The Reporting Person serves as trustee of the Malka Trust, and the Reporting Person's immediate family member serves as trustee of the Tibbir Trust and each of the Aphrodite Trusts. The Reporting Person disclaims beneficial ownership of such shares for purposes of Section 16 of the Securities Exchange Act of 1934 (&quot;Section 16&quot;) except to the extent of his pecuniary interest therein, if any, and this report shall not be deemed an admission that such shares are beneficially owned by him for Section 16 or any other purpose.</footnote>
+        <footnote id="F3">Represents (i) 69,000 Shares sold by each of the Aphrodite Trusts and (ii) 347,108 Shares sold by the Malka Trust. The price reported in Column 4 is a weighted average price. The Shares were sold in multiple transactions at prices ranging from $103.00 to $103.995, inclusive. The Reporting Person undertakes to provide to the Issuer, any security holder of the Issuer or the staff of the Securities and Exchange Commission, upon request, full information regarding the number of shares sold at each separate price at which the transactions were effected.</footnote>
+        <footnote id="F4">Represents 539,180 Shares sold by the Malka Trust. The price reported in Column 4 is a weighted average price. The Shares were sold in multiple transactions at prices ranging from $104.00 to $104.94, inclusive. The Reporting Person undertakes to provide to the Issuer, any security holder of the Issuer or the staff of the Securities and Exchange Commission, upon request, full information regarding the number of shares sold at each separate price at which the transactions were effected.</footnote>
+        <footnote id="F5">The Reporting Person is the founder and managing partner of the Ribbit family of funds, and is contractually obligated to transfer and/or remit the proceeds of any sale of shares issued pursuant to stock awards or upon vesting and settlement of restricted stock units to certain entities affiliated with such funds. The Reporting Person disclaims beneficial ownership of such shares for purposes of Section 16 except to the extent of his pecuniary interest therein, if any, and this report shall not be deemed an admission that such shares are beneficially owned by him for Section 16 or any other purpose.</footnote>
+        <footnote id="F6">Shares held by Tibbir Holdings LLC, of which the Reporting Person serves as investment manager. The Reporting Person disclaims beneficial ownership of such Shares for purposes of Section 16 except to the extent of his pecuniary interest therein, if any, and this report shall not be deemed an admission that such shares are beneficially owned by him for Section 16 or any other purpose.</footnote>
+        <footnote id="F7">Shares held by Bullfrog Capital, L.P. (&quot;Bullfrog&quot;), for itself and as nominee for Bullfrog Founder Fund, L.P. (&quot;Bullfrog FF&quot;). Bullfrog Capital GP, L.P. (&quot;BF GP&quot;) is the general partner of Bullfrog and Bullfrog FF, and Bullfrog Capital GP, Ltd. (&quot;BF UGP&quot;) is the general partner of BF GP. The Reporting Person is a director of BF UGP and disclaims beneficial ownership of such shares for purposes of Section 16 except to the extent of his pecuniary interest therein, if any, and this report shall not be deemed an admission that such shares are beneficially owned by him for Section 16 or any other purpose.</footnote>
+        <footnote id="F8">On August 27, 2025, Bullfrog executed a collar hedging arrangement relating to the Shares through a broker-dealer on the Chicago Board Options Exchange. The collar arrangement consisted of Bullfrog (i) purchasing 30,000 European-style listed FLEX put option contracts on the Shares with a strike price equal to $100.00 and (ii) selling 30,000 European-style listed FLEX call option contracts on the Shares with a strike price equal to $150.00. The option contracts will be physically settled and will expire on December 31, 2027.</footnote>
+    </footnotes>
+
+    <remarks>This filing is being amended to correct a typographical error in row 1, column 1 of Table II. As reflected by the code in column 4, the disposition disclosure in column 5 and footnote 8, the transaction disclosed in row 1 was the acquisition of a put option by the Reporting Person, which is a right to sell.</remarks>
+
+    <ownerSignature>
+        <signatureName>/s/ Meyer Malka</signatureName>
+        <signatureDate>2026-07-02</signatureDate>
+    </ownerSignature>
+</ownershipDocument>

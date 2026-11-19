@@ -1,0 +1,8 @@
+accession=0001628280-26-071244
+form=3
+known_on=2026-11-06
+accepted=2026-11-06T00:10:59.000Z
+filing_date=2026-11-05
+report_date=2026-10-26
+company_cik=0000797468
+url=https://www.sec.gov/Archives/edgar/data/797468/000162828026071244/wk-form3_1793923855.xml

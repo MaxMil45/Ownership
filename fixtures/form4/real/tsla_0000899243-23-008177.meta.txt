@@ -1,0 +1,8 @@
+accession=0000899243-23-008177
+form=5/A
+known_on=2023-03-11
+accepted=2023-03-11T00:10:37.000Z
+filing_date=2023-03-10
+report_date=2022-12-31
+company_cik=0001318605
+url=https://www.sec.gov/Archives/edgar/data/1318605/000089924323008177/doc5a.xml

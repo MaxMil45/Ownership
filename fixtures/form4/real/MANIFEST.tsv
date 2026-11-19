@@ -1,0 +1,25 @@
+file	document_type	owners	non_derivative	derivative	codes	aff_10b5_1	note
+aapl_0001140361-26-038674.xml	4	1	7	1	FGMS	yes	Tax withholding (F), gift (G), option exercise (M), sale (S) in one filing; derivative table; 12 footnotes; 10b5-1 box ticked
+aapl_0001140361-26-044773.xml	4	1	3	0	GS	no	Gift (G) plus sale (S); 10b5-1 box present but not ticked; one indirect holding
+amzn_0001018724-26-000046.xml	4	1	1	1	M	no	Option exercise (M) with derivative and non-derivative rows
+brk_0001193125-26-333151.xml	4	2	1	0	S	no	Joint filing, two owners (company and its chairman); sale (S) of DaVita shares
+brk_0001193125-26-445930.xml	4	2	3	0	P	no	Joint filing, two owners; three purchases (P) of Sirius XM shares across three days
+cvna_0001088011-26-000008.xml	4/A	1	2	0	P	no	Form 4/A: amendment of two open-market purchases (P)
+dis_0001628280-26-064464.xml	4	1	2	0	AF	no	Award (A) and tax withholding (F) in one filing
+gme_0000921895-26-002531.xml	4	1	1	0	P	no	Open-market purchase (P); the shape insider.cluster_buy@1 looks for
+hood_0001104659-26-080447.xml	4/A	1	3	2	S	no	Form 4/A: amendment with sales (S) and two derivative rows
+jpm_0001225208-26-006275.xml	4	1	1	0	A	no	Stock award (A) with an indirect holding and a footnote
+jpm_0001225208-26-006542.xml	4	1	0	0	-	no	Form 4 with empty transaction tables and notSubjectToSection16 set (a filing without transactions)
+meta_0000950103-26-017123.xml	4	1	0	1	J	no	Code J (other) on a derivative row, 13 indirect holdings, 16 footnotes
+msft_0000789019-26-000213.xml	4	1	1	0	F	no	Tax withholding only (F), no footnotes
+msft_0000789019-26-000230.xml	4	1	1	0	G	no	Gifts (G) across five indirect holdings
+nvda_0001045810-25-000054.xml	5	1	2	0	S	no	Form 5 (annual statement)
+nvda_0001045810-25-000070.xml	5/A	1	2	0	S	no	Form 5/A: same owner as the Form 5 above, filed nine days later
+nvda_0001199039-26-000012.xml	4	1	7	0	S	no	Seven sale rows (S), eight indirect holdings, nine footnotes
+nvda_0002152188-26-000007.xml	4/A	1	1	0	A	no	Amendment (4/A) of a stock award
+oxy_0001628280-26-071244.xml	3	1	0	0	-	-	Form 3 (initial statement of holdings): no transactions
+pltr_0001824159-26-000017.xml	4	1	9	2	CS	yes	Conversion (C) and sales (S); two derivative and nine non-derivative rows; 10b5-1 box ticked
+rivn_0002156094-26-000002.xml	3	1	0	0	-	-	Form 3 (initial statement of holdings): no transactions
+tsla_0000899243-23-008177.xml	5/A	1	7	0	G	-	Form 5/A from 2023: older schema, no 10b5-1 box
+tsla_0001104659-26-001460.xml	4	1	22	0	S	yes	Largest filing: 22 non-derivative sale rows, 23 indirect holdings, 50 KB
+tsla_0001104659-26-047678.xml	4	1	1	0	D	no	Disposition to the issuer (D) of 96,000,000 shares at price 0

@@ -1,0 +1,8 @@
+accession=0000921895-26-002531
+form=4
+known_on=2026-09-10
+accepted=2026-09-10T21:55:14.000Z
+filing_date=2026-09-10
+report_date=2026-09-10
+company_cik=0001326380
+url=https://www.sec.gov/Archives/edgar/data/1326380/000092189526002531/form413177gme_09102026.xml

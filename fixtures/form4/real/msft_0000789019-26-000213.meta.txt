@@ -1,0 +1,8 @@
+accession=0000789019-26-000213
+form=4
+known_on=2026-09-15
+accepted=2026-09-15T22:04:25.000Z
+filing_date=2026-09-15
+report_date=2026-09-15
+company_cik=0000789019
+url=https://www.sec.gov/Archives/edgar/data/789019/000078901926000213/form4.xml

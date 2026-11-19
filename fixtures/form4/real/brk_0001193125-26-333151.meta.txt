@@ -1,0 +1,8 @@
+accession=0001193125-26-333151
+form=4
+known_on=2026-08-04
+accepted=2026-08-04T21:27:36.000Z
+filing_date=2026-08-04
+report_date=2026-07-31
+company_cik=0001067983
+url=https://www.sec.gov/Archives/edgar/data/1067983/000119312526333151/ownership.xml
