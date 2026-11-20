@@ -1,0 +1,3 @@
+source=https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=SCHEDULE%2013&owner=include&count=100&output=atom
+fetched=2026-11-20T15:37:27Z
+note=Real EDGAR latest-filings feed, entries 1-4 and 9-10 of 100 kept (entity filers only); nothing else changed.

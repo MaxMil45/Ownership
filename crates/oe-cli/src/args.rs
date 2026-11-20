@@ -39,9 +39,14 @@ pub fn folder(it: &mut Args, flag: &str) -> Result<PathBuf, String> {
         .ok_or_else(|| format!("{flag} needs a folder"))
 }
 
+/// The file after `flag`.
+pub fn file(it: &mut Args, flag: &str) -> Result<PathBuf, String> {
+    it.next()
+        .map(PathBuf::from)
+        .ok_or_else(|| format!("{flag} needs a file"))
+}
+
 /// A date written exactly as `YYYY-MM-DD`; `example` is shown in the error.
-/// (Only the network commands take a date.)
-#[cfg_attr(not(feature = "net"), allow(dead_code))]
 pub fn date(text: &str, example: &str) -> Result<Date, String> {
     text.parse::<Date>()
         .ok()

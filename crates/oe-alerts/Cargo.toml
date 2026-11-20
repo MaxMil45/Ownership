@@ -1,0 +1,18 @@
+[package]
+name = "oe-alerts"
+description = "Turns ownership events into alerts with receipts, filters them by watchlist, remembers what was sent, and delivers them to webhooks and Discord."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["net"]
+# Delivery over HTTP. Without it, alerts can still be built, filtered and printed.
+net = ["dep:ureq"]
+
+[dependencies]
+oe-core.workspace = true
+oe-events.workspace = true
+oe-edgar.workspace = true
+ureq = { version = "2.10", optional = true }

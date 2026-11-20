@@ -12,7 +12,7 @@ path = "src/main.rs"
 
 [features]
 default = ["net", "db"]
-net = ["oe-edgar/net"]
+net = ["oe-edgar/net", "oe-alerts/net"]
 # PostgreSQL ledger commands (db-migrate, db-load, db-status).
 db = ["dep:oe-store"]
 
@@ -25,3 +25,4 @@ oe-sched13.workspace = true
 oe-events.workspace = true
 oe-edgar.workspace = true
 oe-store = { workspace = true, optional = true }
+oe-alerts.workspace = true

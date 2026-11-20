@@ -14,6 +14,7 @@ The core crates (`oe-core`, `oe-form4`, `oe-ledger`, `oe-events`) hold the logic
 - Dates use a small civil-date type in `oe-core` rather than `chrono`, because filings only carry calendar dates.
 
 - **Update 2026-11-19:** `oe-edgar` also reads the SEC's JSON APIs (submissions, ticker list) with its own small JSON reader (`oe-edgar/src/json.rs`) instead of `serde_json`, for the same reason: it can be built and tested offline. The only external dependency in the workspace is `ureq`, behind the `net` feature.
+- **Update 2026-11-20:** `oe-alerts` also uses `ureq`, behind its own `net` feature, to deliver alerts (ADR 0006); the rest of that crate is standard library only. (`oe-store` uses the `postgres` driver, ADR 0004.)
 
 ## Consequences
 

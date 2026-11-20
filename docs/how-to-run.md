@@ -51,13 +51,42 @@ Set a short name for the program first: `$oe = ".\target\release\oe.exe"`.
 | **Large holders** (Schedule 13D/13G): new 13Ds, and holders switching from passive to active | `& $oe daily-13dg 2026-11-18 --all --include-amendments` | `& $oe activist-events data/sched13` |
 | **Proxy contests** (PREC14A, DEFC14A, PREN14A, DFAN14A ...) | `& $oe daily-proxy 2026-05-18 --all` | `& $oe proxy-contests data/proxy` |
 | **Insider plan terminations** (10-Q/10-K Item 408) | `& $oe daily-periodic 2026-11-05 --all` (several minutes on a reporting-deadline day) | `& $oe plan-terminations data/periodic` |
-| **Live** Form 4 feed | `& $oe follow` (polls every 30 s until Ctrl-C; `--polls 2` to stop after two) | then `cluster-buys` as above |
+| **Live** feeds (Form 4, Form 144, 13D/G, proxy contests) | `& $oe follow` (polls every 30 s until Ctrl-C; `--polls 2` to stop after two; `--forms 4,144` to pick feeds) | the commands above, or `& $oe follow --alert` to alert as filings arrive |
+| **Everything** | any of the above | `& $oe alerts` (every rule, every folder; see section 3b) |
 
 Looking at a single file: `parse-form4`, `parse-form144`, `parse-13`, `parse-408` (each takes a file path).
 
 Downloads go to `data/` (not committed), one folder per company CIK, each filing with a `.meta.txt` note of when the SEC accepted it. Commands never download the same filing twice. Weekends and holidays have no index ("no daily index for ...").
 
 Useful options: `--limit <n>` / `--all`, `--out <folder>`, `--include-amendments`; for rules, `--min-value` (Form 144, dollars), `--min-percent` (13D), `--window` and `--min` (cluster buys).
+
+## 3b. Alerts
+
+`& $oe alerts` runs every rule over the `data/` folders and shows each **new** event once, with links to the SEC filings it rests on. Run it again and it shows only what is new since (it keeps a log in `data/alerts/sent.tsv`). Only events from the last 3 days count (`--max-age 7` for a week); `--dry-run` shows what would happen and records nothing.
+
+To get alerts in Discord, create a webhook in your Discord channel (Channel settings, Integrations, Webhooks) and put its URL in `.env`, next to your SEC contact. Treat the URL like a password:
+
+```powershell
+$env:OE_DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/..."
+```
+
+`OE_ALERT_WEBHOOK_URL` does the same for any service that accepts JSON (Zapier, Make, n8n, your own server); each alert arrives as one JSON object. With a destination set, alerts go there instead of the screen.
+
+To get only the companies and people you care about, make a text file, for example `watchlist.txt`:
+
+```text
+ticker AAPL
+issuer 320193        # a company by CIK
+insider 1494730      # a person or fund by CIK
+name Elliott         # any holder or insider whose name contains this
+rule activist.new_13d@1
+```
+
+and add `--watchlist watchlist.txt`. For alerts within about a minute or two of filing, leave this running. It follows Form 4s, Form 144s, 13D/13Gs and contested proxies; 10-Q/10-K plan terminations still come only from `daily-periodic` the next day:
+
+```powershell
+& $oe follow --alert --watchlist watchlist.txt
+```
 
 ## 4. The database
 

@@ -1,10 +1,12 @@
 //! `oe`: command-line tool for the ownership engine.
 
+mod alerts;
 mod args;
 #[cfg(feature = "db")]
 mod dbcmd;
 #[cfg(feature = "net")]
 mod live;
+mod load;
 #[cfg(feature = "net")]
 mod periodic;
 
@@ -34,10 +36,14 @@ USAGE:
         daily index (default: the first 25; a day has about 800). Saved under
         data/form4/<issuer CIK>/ like recent-form4. Needs OE_USER_AGENT.
 
-    oe follow [--interval <seconds>] [--polls <n>] [--out <folder>] [--include-amendments]
-        Poll the EDGAR latest-filings feed (default every 30 s, at least 10) and
-        download each new Form 4 as it appears. Runs until stopped with Ctrl-C,
-        or for --polls polls. Needs OE_USER_AGENT.
+    oe follow [--forms 4,144,13,proxy] [--interval <seconds>] [--polls <n>] [--root <folder>]
+              [--out <folder>] [--include-amendments] [--alert] [--watchlist <file>]
+        Poll the EDGAR latest-filings feeds (default every 30 s, at least 10) and
+        download each new Form 4, Form 144, Schedule 13D/13G and contested-proxy header
+        as it appears, into <root>/form4, form144, sched13 and proxy (root: data; --out
+        sets the Form 4 folder alone). --forms picks feeds. Runs until Ctrl-C, or for
+        --polls polls. With --alert (implied by --watchlist), runs `oe alerts` on the
+        folders that got new filings after every poll. Needs OE_USER_AGENT.
 
     oe daily-form144 <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>] [--include-amendments]
         Download Form 144 notices (planned insider sales) filed by any company on one
@@ -64,6 +70,17 @@ USAGE:
 
     oe proxy-contests [<folder>]
         Run activist.proxy_contest@1 over downloaded headers (default folder: data/proxy).
+
+    oe alerts [--form4 <dir>] [--form144 <dir>] [--sched13 <dir>] [--proxy <dir>] [--periodic <dir>]
+              [--watchlist <file>] [--max-age <days>] [--today <YYYY-MM-DD>] [--include-undated]
+              [--state <file>] [--dry-run]
+        Run every event rule over the downloaded folders (default: the data/ folders that
+        exist; naming one means only those) and deliver each fresh event (default: known
+        in the last 3 days) once. Destinations: OE_DISCORD_WEBHOOK_URL (a Discord webhook)
+        and OE_ALERT_WEBHOOK_URL (any HTTPS endpoint, JSON POST); with neither set, new
+        alerts are printed. Deliveries are logged in data/alerts/sent.tsv. A watchlist
+        has lines like `ticker AAPL`, `issuer 320193`, `insider 1494730`, `name Elliott`,
+        `rule activist.new_13d@1`.
 
     oe parse-13 <primary_doc.xml>
         Print the key facts of one Schedule 13D/13G XML file.
@@ -127,6 +144,7 @@ fn main() -> ExitCode {
         Some("plan-terminations") => plan_terminations(&args[1..]),
         Some("planned-sales") => planned_sales(&args[1..]),
         Some("cluster-buys") => cluster_buys(&args[1..]),
+        Some("alerts") => alerts::alerts(&args[1..]),
         Some("fetch") => match (args.get(1), args.get(2)) {
             (Some(url), Some(out)) => fetch(url, Path::new(out)),
             _ => Err("fetch needs a URL and an output file".into()),
@@ -485,23 +503,9 @@ fn activist_events(args: &[String]) -> Result<(), String> {
     }
     let folder = folder.unwrap_or_else(|| PathBuf::from("data/sched13"));
 
-    let files = find_xml_files(&folder)?;
-    let mut filings = Vec::new();
-    let mut failed = 0usize;
-    for path in &files {
-        let parsed = std::fs::read_to_string(path)
-            .map_err(|e| e.to_string())
-            .and_then(|xml| oe_sched13::parse(&xml).map_err(|e| e.to_string()));
-        match parsed {
-            Ok(s) => filings.push((s, read_meta(path))),
-            Err(e) => {
-                failed += 1;
-                eprintln!("  {}: {e}", path.display());
-            }
-        }
-    }
-
-    let mut events = oe_events::detect_activist_events(&filings, &params);
+    let loaded = load::schedule13(&folder)?;
+    let (files, failed) = (loaded.files, loaded.failed);
+    let mut events = oe_events::detect_activist_events(&loaded.items, &params);
     // Newest first; within a day, the larger holding first.
     events.sort_by(|a, b| {
         b.known_on.cmp(&a.known_on).then(
@@ -512,8 +516,7 @@ fn activist_events(args: &[String]) -> Result<(), String> {
     });
     let count = |id: &str| events.iter().filter(|e| e.rule_id == id).count();
     println!(
-        "{} file(s), {failed} unreadable: {} event(s) from activist.new_13d@1 (at least {}%), {} from activist.passive_to_active@1",
-        files.len(),
+        "{files} file(s), {failed} unreadable: {} event(s) from activist.new_13d@1 (at least {}%), {} from activist.passive_to_active@1",
         count(oe_events::activist::NEW_13D_RULE_ID),
         params.min_percent,
         count(oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID)
@@ -542,35 +545,13 @@ fn proxy_contests(args: &[String]) -> Result<(), String> {
         [one] => PathBuf::from(one),
         _ => return Err("proxy-contests takes one folder, for example data/proxy".into()),
     };
-    let files = find_files(&folder, "sgml")?;
-    let mut filings = Vec::new();
-    let mut failed = 0usize;
-    for path in &files {
-        let header = std::fs::read_to_string(path)
-            .map_err(|e| e.to_string())
-            .and_then(|t| oe_edgar::parse_header_sgml(&t).map_err(|e| e.to_string()));
-        match header {
-            Ok(h) => match h.subject.clone() {
-                Some(subject) => filings.push(oe_events::ContestFiling {
-                    known_on: h.known_on(),
-                    form: h.form,
-                    accession: h.accession,
-                    subject,
-                    filed_by: h.filed_by,
-                }),
-                None => failed += 1,
-            },
-            Err(e) => {
-                failed += 1;
-                eprintln!("  {}: {e}", path.display());
-            }
-        }
-    }
-    let mut events = oe_events::detect_proxy_contests(&filings);
+    let loaded = load::contest_filings(&folder)?;
+    let mut events = oe_events::detect_proxy_contests(&loaded.items);
     events.sort_by_key(|e| std::cmp::Reverse(e.last_known_on));
     println!(
-        "{} header(s), {failed} unreadable or without a subject: {} event(s) from activist.proxy_contest@1",
-        files.len(),
+        "{} header(s), {} unreadable or without a subject: {} event(s) from activist.proxy_contest@1",
+        loaded.files,
+        loaded.failed,
         events.len()
     );
     println!(
@@ -609,29 +590,16 @@ fn plan_terminations(args: &[String]) -> Result<(), String> {
         [one] => PathBuf::from(one),
         _ => return Err("plan-terminations takes one folder, for example data/periodic".into()),
     };
-    let files = find_files(&folder, "htm")?;
-    let mut events = Vec::new();
-    let (mut with_tags, mut failed) = (0usize, 0usize);
-    for path in &files {
-        let html = match std::fs::read_to_string(path) {
-            Ok(h) => h,
-            Err(e) => {
-                failed += 1;
-                eprintln!("  {}: {e}", path.display());
-                continue;
-            }
-        };
-        let doc = oe_item408::extract(&html);
-        with_tags += usize::from(doc.uses_ecd_tags);
-        events.extend(oe_events::detect_plan_terminations(&doc, &read_meta(path)));
-    }
+    let (loaded, with_tags) = load::plan_termination_events(&folder)?;
+    let mut events = loaded.items;
 
     // Newest first.
     events.sort_by_key(|e| std::cmp::Reverse(e.known_on));
     println!(
-        "{} report(s), {} with insider-trading tags, {failed} unreadable, {} event(s) from insider.plan_terminated@1",
-        files.len(),
+        "{} report(s), {} with insider-trading tags, {} unreadable, {} event(s) from insider.plan_terminated@1",
+        loaded.files,
         with_tags,
+        loaded.failed,
         events.len()
     );
     println!("known_on\tissuer\tperson\ttitle\tterminated\tperiod_end\treplaced\tform");
@@ -674,23 +642,9 @@ fn planned_sales(args: &[String]) -> Result<(), String> {
     }
     let folder = folder.ok_or("planned-sales needs a folder, for example data/form144")?;
 
-    let files = find_xml_files(&folder)?;
-    let mut filings = Vec::new();
-    let mut failed = 0usize;
-    for path in &files {
-        let parsed = std::fs::read_to_string(path)
-            .map_err(|e| e.to_string())
-            .and_then(|xml| oe_form144::parse(&xml).map_err(|e| e.to_string()));
-        match parsed {
-            Ok(form) => filings.push((form, read_meta(path))),
-            Err(e) => {
-                failed += 1;
-                eprintln!("  {}: {e}", path.display());
-            }
-        }
-    }
-
-    let mut events = detect_planned_sales(&filings, &params);
+    let loaded = load::form144(&folder)?;
+    let (files, failed) = (loaded.files, loaded.failed);
+    let mut events = detect_planned_sales(&loaded.items, &params);
     // Newest first; within a day, the largest sale first.
     events.sort_by(|a, b| {
         b.known_on.cmp(&a.known_on).then(
@@ -700,9 +654,7 @@ fn planned_sales(args: &[String]) -> Result<(), String> {
         )
     });
     println!(
-        "{} file(s), {} not Form 144 XML, {} event(s) from insider.planned_sale@1 (at least ${:.0})",
-        files.len(),
-        failed,
+        "{files} file(s), {failed} not Form 144 XML, {} event(s) from insider.planned_sale@1 (at least ${:.0})",
         events.len(),
         params.min_value
     );

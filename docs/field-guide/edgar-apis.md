@@ -29,7 +29,7 @@ Three more sources, all measured on real data (November 2026):
 | Source | URL | What it is |
 | --- | --- | --- |
 | Daily form index | `https://www.sec.gov/Archives/edgar/daily-index/YYYY/QTRn/form.YYYYMMDD.idx` | Every filing of one past day, fixed-width text, about 830 KB. 2026-11-18 held 4,269 rows and 762 distinct Form 4 / 4/A filings. A weekend or holiday gives 404. Not available for the current day. |
-| Latest filings feed | `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=only&count=100&output=atom` | Atom feed of the newest 100 entries (about 50 filings). Use `owner=only`: with `owner=include` the `type=4` filter is ignored and most entries are prospectuses. It timed out once in testing, so a follower must treat a failed poll as normal. Declared encoding is ISO-8859-1. |
+| Latest filings feed | `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=only&count=100&output=atom` | Atom feed of the newest 100 entries (about 50 filings). Use `owner=only`: with `owner=include` the `type=4` filter is ignored and most entries are prospectuses. It timed out once in testing, so a follower must treat a failed poll as normal. Declared encoding is ISO-8859-1. **Other forms** (checked 2026-11-20): use `owner=include`; `type` is a **prefix** match (`type=144` gives 144 and 144/A, `type=SCHEDULE%2013` gives 13D, 13D/A, 13G and 13G/A, `type=DEF` every DEF form); the pre-2025 name `SC 13D` gives nothing. Roles in the titles are `Reporting`/`Subject` (144) and `Filed by`/`Subject` (13D/G, proxy). 100 entries reached back about a day for Form 144 and two days for 13D/G. An entry's `<updated>` equals the SEC acceptance time. |
 | Complete submission | `https://www.sec.gov/Archives/edgar/data/<any filer CIK>/<accession>.txt` | SGML header plus the ownership XML, one request. About 20 KB for a Form 4. |
 
 Things to know:
@@ -40,7 +40,7 @@ Things to know:
 - The feed's `<updated>` carries an explicit offset (`-05:00`).
 - Some Form 4s have no transaction rows, only holdings (for example directors reporting RSU holdings). That is not a parse failure.
 
-`oe daily-form4` and `oe follow` use these; see `crates/oe-edgar/src/{daily_index,feed,submission}.rs`.
+`oe daily-*` and `oe follow` use these (`follow` polls Form 4, Form 144, `SCHEDULE 13` and the six contest-form prefixes); see `crates/oe-edgar/src/{daily_index,feed,submission}.rs`.
 
 ## Who filed about whom: the SGML header's parties
 

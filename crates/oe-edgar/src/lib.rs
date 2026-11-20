@@ -18,7 +18,8 @@ pub mod submissions;
 
 pub use daily_index::{daily_index_url, parse_form_index, FormIndex, IndexEntry};
 pub use feed::{
-    parse_atom_feed, unique_accessions, FeedEntry, FeedError, LATEST_OWNERSHIP_FEED_URL,
+    latest_filings_url, parse_atom_feed, unique_accessions, FeedEntry, FeedError,
+    LATEST_OWNERSHIP_FEED_URL,
 };
 pub use filing_summary::{parse_filing_summary, FilingSummary, ReportRef};
 pub use header::{parse_header_sgml, FilingHeader, HeaderError};

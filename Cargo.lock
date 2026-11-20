@@ -477,9 +477,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "oe-alerts"
+version = "0.1.0-dev"
+dependencies = [
+ "oe-core",
+ "oe-edgar",
+ "oe-events",
+ "ureq",
+]
+
+[[package]]
 name = "oe-cli"
 version = "0.1.0-dev"
 dependencies = [
+ "oe-alerts",
  "oe-core",
  "oe-edgar",
  "oe-events",

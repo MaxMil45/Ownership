@@ -14,6 +14,19 @@ use crate::markup::{between, element_attribute, unescape};
 pub const LATEST_OWNERSHIP_FEED_URL: &str =
     "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=only&count=100&output=atom";
 
+/// The newest 100 feed entries whose form type **starts with** `type_prefix`
+/// (checked 2026-11-20: `SCHEDULE 13` gives 13D, 13D/A, 13G and 13G/A; `DEF`
+/// gives every DEF form; `SC 13D`, the pre-2025 name, gives nothing).
+/// `owner_only` must be true for Forms 3/4/5 (see the module docs) and false
+/// for everything else, where `owner=only` would hide the filings.
+pub fn latest_filings_url(type_prefix: &str, owner_only: bool) -> String {
+    format!(
+        "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type={}&owner={}&count=100&output=atom",
+        type_prefix.replace(' ', "%20"),
+        if owner_only { "only" } else { "include" }
+    )
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FeedEntry {
     /// Form type from the entry's category, e.g. `4` or `4/A`.
@@ -149,6 +162,36 @@ mod tests {
             .collect();
         assert_eq!(only4, ["0009999901-26-000011", "0009999902-26-000007"]);
         assert_eq!(unique_accessions(&entries, &["4", "4/A"]).len(), 3);
+    }
+
+    #[test]
+    fn builds_feed_urls() {
+        assert_eq!(latest_filings_url("4", true), LATEST_OWNERSHIP_FEED_URL);
+        assert_eq!(
+            latest_filings_url("SCHEDULE 13", false),
+            "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=SCHEDULE%2013&owner=include&count=100&output=atom"
+        );
+    }
+
+    #[test]
+    fn reads_a_real_schedule_13_feed() {
+        // Six entries of the real feed for `type=SCHEDULE 13`, 2026-11-20.
+        let path = format!(
+            "{}/../../fixtures/edgar/latest_feed_sched13_real.atom",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let text = std::fs::read_to_string(&path).unwrap();
+        let entries = parse_atom_feed(&text).unwrap();
+        assert_eq!(entries.len(), 6);
+        assert_eq!(entries[0].role, "Filed by");
+        assert_eq!(entries[0].name, "Saba Capital Management, L.P.");
+        assert_eq!(entries[1].role, "Subject");
+        assert_eq!(entries[1].cik, 836_412);
+        let d = unique_accessions(&entries, &["SCHEDULE 13D"]);
+        // Saba filed two 13Ds (Virtus, Destiny); each is listed once per party.
+        assert_eq!(d.len(), 2);
+        assert_eq!(d[0].accession, "0001062993-26-006214");
+        assert_eq!(unique_accessions(&entries, &["SCHEDULE 13G"]).len(), 1);
     }
 
     #[test]

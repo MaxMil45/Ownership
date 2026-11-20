@@ -23,6 +23,10 @@ The full plan lives in the "Ownership Event Intelligence Engine — Master Plan"
 - [x] Schedule 13D/13G parser; `activist.new_13d@1`, `activist.passive_to_active@1` (`oe-sched13`, `oe daily-13dg`, `oe activist-events`; 382 real filings parse; 31 new_13d and 3 passive_to_active events in the sample; 14 real fixtures; the passive-to-active rule trusts the filer's own flag and does not look up earlier 13Gs; not in the database yet)
 - [x] Proxy contest filings; `activist.proxy_contest@1` (`oe daily-proxy`, `oe proxy-contests`; reads the SGML header, not the documents; 70 real filings, 26 contests; one event per company per batch, so it repeats across days until the history is in the database)
 - [ ] Alerts: email, webhook, Discord; watchlists by ticker and insider
+  - [x] `oe alerts` and `oe follow --alert` (crate `oe-alerts`, ADR 0006): every rule's events become alerts with receipts, filtered by watchlist (ticker, issuer, insider, name, rule) and age, delivered once per destination to Discord and JSON webhooks, logged in `data/alerts/sent.tsv`. Checked on real data: 51 alerts delivered to a local stand-in for Discord and a webhook, a second run sent none; one live cluster buy alerted from the feed (alert pass 44 ms). Not yet tried against a real Discord channel.
+  - [x] Feed delay measured once (2026-11-20, 10:21–10:28 am Eastern, 4 filings): 34 to 66 s from acceptance, with 30 s polling.
+  - [x] Live feeds for Form 144, 13D/G and proxy filings: `oe follow` polls all four kinds by default (`--forms` to pick). Run live for 9 minutes: 50 Form 4s, 50 Form 144s, 26 13D/Gs and 6 proxy headers saved, 31 alerts; a new Form 4 and a new Form 144 arrived 86 s and 62 s after acceptance. 10-Q/10-K plan terminations still come from the next-day index.
+  - [ ] Email
 - [x] Clean-up (2026-11-19): shared helpers for flags, numbers, dates, entities, tags, sidecars and CLI arguments (one copy each); `insider.cluster_buy@1` routine filter indexed (96,000 trades: 8.98 s to 17 ms); outputs on all real data unchanged
 - [ ] **Gate 1:** public v0.1 release; alerts within 5 minutes of filing; fixture suite green
 

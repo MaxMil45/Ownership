@@ -27,7 +27,8 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | Schedule 13D/13G parser (large holders) | `oe-sched13` | Done; reads 382 real filings; 14 real fixtures |
 | `activist.new_13d@1` and `activist.passive_to_active@1` rules | `oe-events` | Done, tested on real filings (specs in `events/specs/`) |
 | `activist.proxy_contest@1` (contested proxy filings, from their SGML headers) | `oe-edgar`, `oe-events` | Done; 70 real filings from 21 days, 26 contests; 12 real fixtures |
-| `oe` command-line tool | `oe-cli` | `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `daily-13dg`, `parse-13`, `activist-events`, `daily-proxy`, `proxy-contests`, `db-*`, `fetch` |
+| Alerts with receipts: watchlists, delivered once to Discord and JSON webhooks | `oe-alerts` | Done; tested over real HTTP to a local stand-in; not yet tried on a real Discord channel; no email yet (ADR 0006) |
+| `oe` command-line tool | `oe-cli` | `alerts`, `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `daily-13dg`, `parse-13`, `activist-events`, `daily-proxy`, `proxy-contests`, `db-*`, `fetch` |
 
 ## How to run it
 
@@ -63,7 +64,7 @@ This downloads one day from every source and prints every event found so far.
    cargo run -p oe-cli -- daily-form4 2026-11-18 --limit 25
    cargo run -p oe-cli -- follow
    ```
-   `daily-form4` reads the EDGAR daily index (a day has about 800 Form 4s; `--all` takes them all). `follow` polls the latest-filings feed every 30 seconds until you press Ctrl-C (`--polls 2` stops after two polls). Both save into `data/form4/<issuer CIK>/` and skip filings already saved.
+   `daily-form4` reads the EDGAR daily index (a day has about 800 Form 4s; `--all` takes them all). `follow` polls the latest-filings feeds for Form 4, Form 144, Schedule 13D/13G and contested proxies every 30 seconds until you press Ctrl-C (`--polls 2` stops after two polls; `--forms 4` for Form 4 only). Both save into `data/<kind>/<issuer CIK>/` (`form4`, `form144`, `sched13`, `proxy`) and skip filings already saved.
 6. **Planned sales (Form 144).** Insiders file Form 144 before selling restricted or control shares, so it comes before the Form 4:
    ```powershell
    cargo run -p oe-cli -- daily-form144 2026-11-18 --all
@@ -120,6 +121,7 @@ crates/
   oe-events/    versioned event rules (insider.cluster_buy@1)
   oe-edgar/     polite EDGAR HTTP client with rate limiting
   oe-store/     PostgreSQL loader (the only crate with a database driver)
+  oe-alerts/    alerts: receipts, watchlists, sent log, Discord and webhook delivery
   oe-cli/       the `oe` binary
 events/specs/   written spec for every event rule version
 fixtures/       filings the tests parse (synthetic now, real next)

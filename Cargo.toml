@@ -10,6 +10,7 @@ members = [
     "crates/oe-events",
     "crates/oe-edgar",
     "crates/oe-store",
+    "crates/oe-alerts",
     "crates/oe-cli",
 ]
 
@@ -29,4 +30,5 @@ oe-sched13 = { path = "crates/oe-sched13" }
 oe-ledger = { path = "crates/oe-ledger" }
 oe-events = { path = "crates/oe-events" }
 oe-store = { path = "crates/oe-store" }
+oe-alerts = { path = "crates/oe-alerts", default-features = false }
 oe-edgar = { path = "crates/oe-edgar", default-features = false }

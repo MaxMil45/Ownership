@@ -9,7 +9,7 @@ use super::{args, meta_path, render_meta};
 use oe_core::Date;
 use oe_edgar::{
     daily_index_url, filing_folder_url, parse_atom_feed, parse_form_index, parse_full_submission,
-    unique_accessions, EdgarClient, EdgarError, FormIndex, LATEST_OWNERSHIP_FEED_URL,
+    unique_accessions, EdgarClient, EdgarError, FormIndex,
 };
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -102,13 +102,96 @@ pub fn parse_daily_args(args: &[String], default_root: &str) -> Result<DailyArgs
     Ok(parsed)
 }
 
+/// A live feed `oe follow` can poll.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LiveKind {
+    Form4,
+    Form144,
+    Schedule13,
+    Proxy,
+}
+
+impl LiveKind {
+    pub const ALL: [LiveKind; 4] = [
+        LiveKind::Form4,
+        LiveKind::Form144,
+        LiveKind::Schedule13,
+        LiveKind::Proxy,
+    ];
+
+    /// The name used by `--forms`.
+    pub fn name(self) -> &'static str {
+        match self {
+            LiveKind::Form4 => "4",
+            LiveKind::Form144 => "144",
+            LiveKind::Schedule13 => "13",
+            LiveKind::Proxy => "proxy",
+        }
+    }
+
+    fn parse(name: &str) -> Option<LiveKind> {
+        LiveKind::ALL.into_iter().find(|k| k.name() == name)
+    }
+
+    /// Feed type prefixes to poll (the feed's filter is a prefix match). The
+    /// contest forms get one feed each: they are rare, so a narrow feed's 100
+    /// entries reach back days, where `DEF` would be full of ordinary proxies.
+    fn type_prefixes(self) -> &'static [&'static str] {
+        match self {
+            LiveKind::Form4 => &["4"],
+            LiveKind::Form144 => &["144"],
+            LiveKind::Schedule13 => &["SCHEDULE 13"],
+            LiveKind::Proxy => &[
+                "PREC14", "DEFC14", "PREN14A", "PRRN14A", "DEFN14A", "DFAN14A",
+            ],
+        }
+    }
+
+    fn forms(self, include_amendments: bool) -> &'static [&'static str] {
+        match self {
+            LiveKind::Form4 => Kind::Ownership.forms(include_amendments),
+            LiveKind::Form144 => Kind::Form144.forms(include_amendments),
+            LiveKind::Schedule13 => Kind::Schedule13.forms(include_amendments),
+            LiveKind::Proxy => oe_events::proxy_contest::CONTEST_FORMS,
+        }
+    }
+
+    /// Folder under the data root, as the daily commands use.
+    fn folder(self) -> &'static str {
+        match self {
+            LiveKind::Form4 => "form4",
+            LiveKind::Form144 => "form144",
+            LiveKind::Schedule13 => "sched13",
+            LiveKind::Proxy => "proxy",
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct FollowArgs {
     pub interval_secs: u64,
     /// `None` polls until stopped (Ctrl-C).
     pub polls: Option<u32>,
-    pub out: PathBuf,
+    /// Which feeds to poll, in this order.
+    pub kinds: Vec<LiveKind>,
+    /// Data root; each kind saves under `<root>/<kind folder>`.
+    pub root: PathBuf,
+    /// Overrides the Form 4 folder (the option predates `--root`).
+    pub out: Option<PathBuf>,
     pub include_amendments: bool,
+    /// Run `oe alerts` over the folders that got new filings, after each poll.
+    pub alert: bool,
+    /// Watchlist for those alerts.
+    pub watchlist: Option<PathBuf>,
+}
+
+impl FollowArgs {
+    pub fn folder(&self, kind: LiveKind) -> PathBuf {
+        match (kind, &self.out) {
+            (LiveKind::Form4, Some(out)) => out.clone(),
+            _ => self.root.join(kind.folder()),
+        }
+    }
 }
 
 /// Shortest allowed gap between polls. The SEC allows ten requests a second
@@ -119,12 +202,40 @@ pub fn parse_follow_args(args: &[String]) -> Result<FollowArgs, String> {
     let mut parsed = FollowArgs {
         interval_secs: 30,
         polls: None,
-        out: PathBuf::from(DEFAULT_ROOT),
+        kinds: LiveKind::ALL.to_vec(),
+        root: PathBuf::from("data"),
+        out: None,
         include_amendments: false,
+        alert: false,
+        watchlist: None,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
+            "--forms" => {
+                let list = it
+                    .next()
+                    .ok_or("--forms needs a list such as 4,144,13,proxy")?;
+                let mut kinds = Vec::new();
+                for name in list.split(',').map(str::trim).filter(|n| !n.is_empty()) {
+                    let kind = LiveKind::parse(name).ok_or_else(|| {
+                        format!("--forms: unknown form {name:?} (use 4, 144, 13 or proxy)")
+                    })?;
+                    if !kinds.contains(&kind) {
+                        kinds.push(kind);
+                    }
+                }
+                if kinds.is_empty() {
+                    return Err("--forms needs at least one of 4, 144, 13, proxy".into());
+                }
+                parsed.kinds = kinds;
+            }
+            "--root" => parsed.root = args::folder(&mut it, "--root")?,
+            "--alert" => parsed.alert = true,
+            "--watchlist" => {
+                parsed.watchlist = Some(args::file(&mut it, "--watchlist")?);
+                parsed.alert = true;
+            }
             "--interval" => {
                 parsed.interval_secs = args::value(
                     &mut it,
@@ -134,7 +245,7 @@ pub fn parse_follow_args(args: &[String]) -> Result<FollowArgs, String> {
                 )?
             }
             "--polls" => parsed.polls = Some(args::positive(&mut it, "--polls")?),
-            "--out" => parsed.out = args::folder(&mut it, "--out")?,
+            "--out" => parsed.out = Some(args::folder(&mut it, "--out")?),
             "--include-amendments" => parsed.include_amendments = true,
             other => return Err(format!("unexpected argument {other:?}")),
         }
@@ -429,47 +540,52 @@ pub fn daily_proxy(args: &[String]) -> Result<(), String> {
             skipped += 1;
             continue;
         }
-        let url = format!(
-            "{}{accession}.hdr.sgml",
-            filing_folder_url(entry.cik, &accession.replace('-', ""))
-        );
-        let header = client
-            .get_text(&url)
-            .map_err(|e| e.to_string())
-            .and_then(|text| {
-                oe_edgar::parse_header_sgml(&text)
-                    .map(|h| (h, text))
-                    .map_err(|e| e.to_string())
-            });
-        let (h, text) = match header {
-            Ok(x) => x,
+        match save_proxy_header(&client, entry.cik, accession, &args.out) {
+            Ok(line) => {
+                println!("  {line}");
+                saved += 1;
+                known.insert(accession.to_string());
+            }
             Err(e) => {
                 eprintln!("  {accession}: {e}");
                 failed += 1;
-                continue;
             }
-        };
-        let Some(subject) = &h.subject else {
-            eprintln!("  {accession}: the header names no subject company");
-            failed += 1;
-            continue;
-        };
-        let dir = args.out.join(subject.cik.to_string());
-        std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-        let path = dir.join(format!("{accession}.hdr.sgml"));
-        std::fs::write(&path, &text).map_err(|e| format!("{}: {e}", path.display()))?;
-        let filers: Vec<&str> = h.filed_by.iter().map(|p| p.name.as_str()).collect();
-        println!(
-            "  {accession}  {:<8} {:<34.34} filed by {}",
-            h.form,
-            subject.name,
-            filers.join("; ")
-        );
-        saved += 1;
-        known.insert(accession.to_string());
+        }
     }
     println!("done: {saved} saved, {skipped} already present, {failed} failed");
     Ok(())
+}
+
+/// Downloads one filing's SGML header (under 1 KB) and saves it under
+/// `root/<subject CIK>/<accession>.hdr.sgml`. `cik` is any party to the
+/// filing (the archive lists it under each). Returns a one-line description.
+fn save_proxy_header(
+    client: &EdgarClient,
+    cik: u64,
+    accession: &str,
+    root: &Path,
+) -> Result<String, String> {
+    let url = format!(
+        "{}{accession}.hdr.sgml",
+        filing_folder_url(cik, &accession.replace('-', ""))
+    );
+    let text = client.get_text(&url).map_err(|e| e.to_string())?;
+    let h = oe_edgar::parse_header_sgml(&text).map_err(|e| e.to_string())?;
+    let subject = h
+        .subject
+        .as_ref()
+        .ok_or("the header names no subject company")?;
+    let dir = root.join(subject.cik.to_string());
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let path = dir.join(format!("{accession}.hdr.sgml"));
+    std::fs::write(&path, &text).map_err(|e| format!("{}: {e}", path.display()))?;
+    let filers: Vec<&str> = h.filed_by.iter().map(|p| p.name.as_str()).collect();
+    Ok(format!(
+        "{accession}  {:<8} {:<34.34} filed by {}",
+        h.form,
+        subject.name,
+        filers.join("; ")
+    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -478,27 +594,50 @@ pub fn daily_proxy(args: &[String]) -> Result<(), String> {
 pub fn follow(args: &[String]) -> Result<(), String> {
     let args = parse_follow_args(args)?;
     let client = client()?;
-    let forms = Kind::Ownership.forms(args.include_amendments);
-    let mut known = saved_accessions(&args.out);
+    let mut known: Vec<HashSet<String>> = args
+        .kinds
+        .iter()
+        .map(|k| saved_accessions(&args.folder(*k)))
+        .collect();
+    let names: Vec<String> = args
+        .kinds
+        .iter()
+        .zip(&known)
+        .map(|(k, seen)| {
+            format!(
+                "{} ({} saved in {})",
+                k.name(),
+                seen.len(),
+                args.folder(*k).display()
+            )
+        })
+        .collect();
     println!(
-        "following the EDGAR latest-filings feed every {}s; {} filing(s) already saved in {}",
+        "following the EDGAR latest-filings feeds every {}s: {}",
         args.interval_secs,
-        known.len(),
-        args.out.display()
+        names.join(", ")
     );
 
     let mut poll = 0u32;
     loop {
         poll += 1;
-        match poll_once(&client, forms, &args.out, &mut known) {
-            Ok((entries, new)) => {
-                println!("poll {poll}: {entries} feed entries, {new} new filing(s)")
+        let mut summary = Vec::new();
+        let mut changed = Vec::new();
+        for (kind, seen) in args.kinds.iter().zip(known.iter_mut()) {
+            match poll_kind(&client, *kind, &args, seen) {
+                Ok(new) => {
+                    summary.push(format!("{} new {}", new, kind.name()));
+                    if new > 0 {
+                        changed.push(*kind);
+                    }
+                }
+                // A failed poll (the feed does time out now and then) is not fatal.
+                Err(e) => summary.push(format!("{} failed ({e})", kind.name())),
             }
-            // A failed poll (the feed does time out now and then) is not fatal.
-            Err(e) => eprintln!(
-                "poll {poll} failed: {e}; trying again in {}s",
-                args.interval_secs
-            ),
+        }
+        println!("poll {poll}: {}", summary.join(", "));
+        if args.alert && !changed.is_empty() {
+            alert_pass(&args, &changed);
         }
         if args.polls.is_some_and(|max| poll >= max) {
             return Ok(());
@@ -507,46 +646,107 @@ pub fn follow(args: &[String]) -> Result<(), String> {
     }
 }
 
-/// One poll. Returns (entries in the feed, new filings handled).
-fn poll_once(
-    client: &EdgarClient,
-    forms: &[&str],
-    root: &Path,
-    known: &mut HashSet<String>,
-) -> Result<(usize, usize), String> {
-    let body = client
-        .get_text(LATEST_OWNERSHIP_FEED_URL)
-        .map_err(|e| e.to_string())?;
-    let entries = parse_atom_feed(&body).map_err(|e| e.to_string())?;
-    let fresh: Vec<_> = unique_accessions(&entries, forms)
-        .into_iter()
-        .filter(|e| !known.contains(&e.accession))
-        .collect();
-
-    // The feed is newest first; handle the oldest new filing first.
-    for entry in fresh.iter().rev() {
-        let url = format!(
-            "https://www.sec.gov/Archives/edgar/data/{}/{}.txt",
-            entry.cik, entry.accession
-        );
-        match save_filing(client, &url, root, Kind::Ownership) {
-            Ok(Saved::Parsed(line)) => {
-                println!("  {line}  (feed time {})", entry.updated);
-                known.insert(entry.accession.clone());
-            }
-            Ok(Saved::ParserFailed(msg)) => {
-                eprintln!("  {msg}");
-                known.insert(entry.accession.clone());
-            }
-            Ok(Saved::NoOwnershipXml(msg)) => {
-                eprintln!("  {msg}");
-                known.insert(entry.accession.clone());
-            }
-            // Not marked as seen: the next poll tries again.
-            Err(e) => eprintln!("  {}: {e}", entry.accession),
+/// `oe alerts` over the folders that got new filings in this poll. A failure
+/// is reported, never fatal: following the feeds matters more than one run.
+fn alert_pass(args: &FollowArgs, changed: &[LiveKind]) {
+    let started = std::time::Instant::now();
+    let mut sources = crate::alerts::Sources::default();
+    for kind in changed {
+        let dir = Some(args.folder(*kind));
+        match kind {
+            LiveKind::Form4 => sources.form4 = dir,
+            LiveKind::Form144 => sources.form144 = dir,
+            LiveKind::Schedule13 => sources.sched13 = dir,
+            LiveKind::Proxy => sources.proxy = dir,
         }
     }
-    Ok((entries.len(), fresh.len()))
+    let alert_args = crate::alerts::AlertArgs {
+        sources,
+        watchlist: args.watchlist.clone(),
+        selection: oe_alerts::select::Selection::default(),
+        state: PathBuf::from(crate::alerts::DEFAULT_STATE),
+        dry_run: false,
+        today: None,
+    };
+    match crate::alerts::run(&alert_args) {
+        Ok(r) => println!(
+            "alerts: {} delivered, {} failed ({} ms)",
+            r.delivered,
+            r.failed,
+            started.elapsed().as_millis()
+        ),
+        Err(e) => eprintln!("alerts failed: {e}"),
+    }
+}
+
+/// One poll of one kind's feeds. Returns the number of new filings handled.
+fn poll_kind(
+    client: &EdgarClient,
+    kind: LiveKind,
+    args: &FollowArgs,
+    known: &mut HashSet<String>,
+) -> Result<usize, String> {
+    let forms = kind.forms(args.include_amendments);
+    let root = args.folder(kind);
+    let mut new = 0usize;
+    for prefix in kind.type_prefixes() {
+        let url = oe_edgar::latest_filings_url(prefix, kind == LiveKind::Form4);
+        let body = client.get_text(&url).map_err(|e| e.to_string())?;
+        let entries = parse_atom_feed(&body).map_err(|e| e.to_string())?;
+        let fresh: Vec<_> = unique_accessions(&entries, forms)
+            .into_iter()
+            .filter(|e| !known.contains(&e.accession))
+            .collect();
+        new += fresh.len();
+        // The feed is newest first; handle the oldest new filing first.
+        for entry in fresh.iter().rev() {
+            if save_feed_entry(client, kind, entry, &root) {
+                known.insert(entry.accession.clone());
+            }
+        }
+    }
+    Ok(new)
+}
+
+/// Saves one new feed entry. Returns whether it counts as seen: a download
+/// error does not, so the next poll tries again.
+fn save_feed_entry(
+    client: &EdgarClient,
+    kind: LiveKind,
+    entry: &oe_edgar::FeedEntry,
+    root: &Path,
+) -> bool {
+    let saved = match kind {
+        LiveKind::Proxy => {
+            save_proxy_header(client, entry.cik, &entry.accession, root).map(Saved::Parsed)
+        }
+        _ => {
+            let url = format!(
+                "https://www.sec.gov/Archives/edgar/data/{}/{}.txt",
+                entry.cik, entry.accession
+            );
+            let k = match kind {
+                LiveKind::Form144 => Kind::Form144,
+                LiveKind::Schedule13 => Kind::Schedule13,
+                _ => Kind::Ownership,
+            };
+            save_filing(client, &url, root, k)
+        }
+    };
+    match saved {
+        Ok(Saved::Parsed(line)) => {
+            println!("  {line}  (feed time {})", entry.updated);
+            true
+        }
+        Ok(Saved::ParserFailed(msg)) | Ok(Saved::NoOwnershipXml(msg)) => {
+            eprintln!("  {msg}");
+            true
+        }
+        Err(e) => {
+            eprintln!("  {}: {e}", entry.accession);
+            false
+        }
+    }
 }
 
 #[cfg(test)]
@@ -606,6 +806,59 @@ mod tests {
         assert!(parse_follow_args(&args(&["--interval", "5"])).is_err());
         assert!(parse_follow_args(&args(&["--polls", "0"])).is_err());
         assert!(parse_follow_args(&args(&["--nope"])).is_err());
+        assert!(!parse_follow_args(&[]).unwrap().alert);
+        assert!(parse_follow_args(&args(&["--alert"])).unwrap().alert);
+        let a = parse_follow_args(&args(&["--watchlist", "w.txt"])).unwrap();
+        assert!(a.alert, "a watchlist implies --alert");
+        assert_eq!(a.watchlist, Some(PathBuf::from("w.txt")));
+        assert!(parse_follow_args(&args(&["--watchlist"])).is_err());
+    }
+
+    #[test]
+    fn follow_polls_every_kind_by_default_and_forms_picks_some() {
+        let a = parse_follow_args(&[]).unwrap();
+        assert_eq!(a.kinds, LiveKind::ALL);
+        assert_eq!(a.folder(LiveKind::Form144), PathBuf::from("data/form144"));
+        assert_eq!(a.folder(LiveKind::Proxy), PathBuf::from("data/proxy"));
+
+        let a = parse_follow_args(&args(&["--forms", "144, 13,144", "--root", "x"])).unwrap();
+        assert_eq!(a.kinds, [LiveKind::Form144, LiveKind::Schedule13]);
+        assert_eq!(
+            a.folder(LiveKind::Schedule13),
+            PathBuf::from("x").join("sched13")
+        );
+
+        // --out still names the Form 4 folder, and only that one.
+        let a = parse_follow_args(&args(&["--out", "f4"])).unwrap();
+        assert_eq!(a.folder(LiveKind::Form4), PathBuf::from("f4"));
+        assert_eq!(a.folder(LiveKind::Form144), PathBuf::from("data/form144"));
+
+        assert!(parse_follow_args(&args(&["--forms", "13F"])).is_err());
+        assert!(parse_follow_args(&args(&["--forms", ","])).is_err());
+        assert!(parse_follow_args(&args(&["--forms"])).is_err());
+    }
+
+    #[test]
+    fn live_kinds_match_the_daily_commands() {
+        assert_eq!(LiveKind::Form4.forms(false), ["4"]);
+        assert_eq!(
+            LiveKind::Schedule13.forms(false),
+            ["SCHEDULE 13D", "SCHEDULE 13G"]
+        );
+        assert_eq!(LiveKind::Form144.forms(true), ["144", "144/A"]);
+        // Every contest form is covered by one of the proxy feed prefixes.
+        for form in oe_events::proxy_contest::CONTEST_FORMS {
+            assert!(
+                LiveKind::Proxy
+                    .type_prefixes()
+                    .iter()
+                    .any(|p| form.starts_with(p)),
+                "{form} is not polled"
+            );
+        }
+        for kind in LiveKind::ALL {
+            assert_eq!(LiveKind::parse(kind.name()), Some(kind));
+        }
     }
 
     #[test]
