@@ -18,8 +18,8 @@ ADR 0001 keeps the core crates on the standard library. The live ledger needs a 
 
 ## Choices the schema forced
 
-- `filing.filer_cik` is the first reporting owner; the issuer is on each transaction row. A joint filing's co-owners are not stored yet.
-- A `4/A` or `5/A` is stored as a `filing` row (the receipt) but its transaction rows are **not loaded**. The ledger links an amendment to the row it replaces (`supersedes_id`), a 4/A does not say which filing it amends, and a guessed link would show both versions in `insider_transaction_as_of`. Revisit when amendments can be linked with evidence.
+- `filing.filer_cik` is the first reporting owner; the issuer is on each transaction row. A joint filing's co-owners were not stored at first; since ADR 0005 they are in `filing_owner`.
+- A `4/A` or `5/A` is stored as a `filing` row (the receipt) but its transaction rows are **not loaded**. The ledger links an amendment to the row it replaces (`supersedes_id`), a 4/A does not say which filing it amends, and a guessed link would show both versions in `insider_transaction_as_of`. Revisit when amendments can be linked with evidence. **Superseded by ADR 0005** (2026-11-20): amendments are now linked by evidence, and restatements are loaded.
 - `accepted_at` comes from the sidecar. Eastern timestamps (from `oe daily-form4` and `oe follow`) are sent to PostgreSQL as `... America/New_York`, so the server applies daylight saving. A filing with no acceptance time is rejected, not given an invented one.
 
 ## Consequences

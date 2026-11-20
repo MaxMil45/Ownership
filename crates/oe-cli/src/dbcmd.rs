@@ -41,8 +41,16 @@ pub fn status(_args: &[String]) -> Result<(), String> {
     let s = oe_store::status(&mut client).map_err(|e| e.to_string())?;
     println!("migrations applied: {}", s.migrations.join(", "));
     println!(
-        "filings: {} ({} amendments, whose rows are not loaded)",
-        s.filings, s.amendment_filings
+        "filings: {} ({} joint filings with more than one owner)",
+        s.filings, s.joint_filings
+    );
+    println!(
+        "amendments: {} ({} linked and loaded, {} linked but held back, {} ambiguous, {} waiting for the report they amend)",
+        s.amendment_filings,
+        s.amendments_loaded,
+        s.amendments_held_back,
+        s.amendments_ambiguous,
+        s.amendments_waiting
     );
     println!(
         "transactions: {} ({} visible as of now)",
@@ -131,10 +139,11 @@ pub fn load(args: &[String]) -> Result<(), String> {
             Err(why) => skipped.push((path.clone(), why)),
         }
     }
-    let rows: usize = prepared.iter().map(|p| p.transactions.len()).sum();
-    let held: usize = prepared.iter().map(|p| p.held_back_amendment_rows).sum();
+    let rows: usize = prepared.iter().map(|p| p.ledger_rows().len()).sum();
+    let amendments = prepared.iter().filter(|p| p.is_amendment()).count();
+    let held: usize = prepared.iter().map(|p| p.amendment_rows().len()).sum();
     println!(
-        "prepared {} filing(s) with {rows} transaction row(s); {held} amendment row(s) held back; {} skipped",
+        "prepared {} filing(s) with {rows} transaction row(s); {amendments} amendment(s) with {held} row(s) that load only once linked; {} skipped",
         prepared.len(),
         skipped.len()
     );
@@ -151,6 +160,7 @@ pub fn load(args: &[String]) -> Result<(), String> {
     }
 
     let mut client = connect()?;
+    oe_store::check_schema(&mut client).map_err(|e| e.to_string())?;
     let mut total = LoadReport::default();
     for (n, batch) in prepared.chunks(args.batch).enumerate() {
         let report = oe_store::load_batch(&mut client, batch).map_err(|e| e.to_string())?;
@@ -165,6 +175,11 @@ pub fn load(args: &[String]) -> Result<(), String> {
     println!(
         "done: {} filing(s) new, {} already present; {} row(s) new, {} already present",
         total.filings_new, total.filings_existing, total.rows_new, total.rows_existing
+    );
+    let l = &total.links;
+    println!(
+        "amendments: {} linked and loaded ({} row(s)), {} linked but held back, {} ambiguous; {} in the database still waiting for the report they amend",
+        l.loaded, l.rows_loaded, l.held_back, l.ambiguous, l.waiting
     );
     if !total.changed_source.is_empty() {
         eprintln!(

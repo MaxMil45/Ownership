@@ -5,9 +5,13 @@
 //! batch, and safe to repeat: filings and rows already present are left
 //! exactly as they are (the ledger is append-only, ADR 0002).
 //!
+//! After each batch, amendments are linked to the report they amend
+//! ([`link_amendments`], ADR 0005).
+//!
 //! Connections use no TLS, so point `DATABASE_URL` at a local or trusted-network
 //! server only.
 
+use crate::amend::{compare, RowShape, Verdict};
 use crate::rows::Prepared;
 use postgres::{Client, NoTls};
 use std::fmt;
@@ -15,16 +19,22 @@ use std::io::Write;
 
 /// Schema migrations in order. The SQL is compiled in, so the binary does not
 /// depend on where it is run from.
-pub const MIGRATIONS: &[(&str, &str)] = &[(
-    "0001_init",
-    include_str!("../../../migrations/0001_init.sql"),
-)];
+pub const MIGRATIONS: &[(&str, &str)] = &[
+    (
+        "0001_init",
+        include_str!("../../../migrations/0001_init.sql"),
+    ),
+    (
+        "0002_amendments",
+        include_str!("../../../migrations/0002_amendments.sql"),
+    ),
+];
 
 #[derive(Debug)]
 pub enum StoreError {
     Db(postgres::Error),
     Io(std::io::Error),
-    /// The schema has not been applied (run the migrations first).
+    /// The schema is missing or older than this program (run the migrations).
     NoSchema,
 }
 
@@ -37,9 +47,9 @@ impl fmt::Display for StoreError {
                 None => write!(f, "database error: {e}"),
             },
             StoreError::Io(e) => write!(f, "I/O error while talking to the database: {e}"),
-            StoreError::NoSchema => {
-                f.write_str("the ledger tables do not exist yet; run `oe db-migrate` first")
-            }
+            StoreError::NoSchema => f.write_str(
+                "the ledger tables are missing or out of date; run `oe db-migrate` first",
+            ),
         }
     }
 }
@@ -104,6 +114,13 @@ CREATE TEMP TABLE stage_tx (
     is_derivative boolean, transaction_date date, code text, shares text,
     price_per_share text, acquired_disposed text, shares_after text,
     direct_indirect text, plan_10b5_1 text
+) ON COMMIT DROP;
+CREATE TEMP TABLE stage_amend_tx (LIKE stage_tx) ON COMMIT DROP;
+CREATE TEMP TABLE stage_owner (
+    accession text, position integer, owner_cik bigint
+) ON COMMIT DROP;
+CREATE TEMP TABLE stage_ownership (
+    accession text, issuer_cik bigint, date_of_original_submission date
 ) ON COMMIT DROP;";
 
 const INSERT_FILING: &str = "
@@ -124,6 +141,95 @@ FROM stage_tx s
 JOIN filing f ON f.accession = s.accession
 ON CONFLICT (accession, row_in_filing) DO NOTHING";
 
+// The side tables are filled for every staged filing whose stored hash matches
+// (so a repeat load also completes filings loaded before migration 0002), and
+// never from a file whose content changed.
+const INSERT_OWNER: &str = "
+INSERT INTO filing_owner (accession, position, owner_cik)
+SELECT s.accession, s.position, s.owner_cik
+FROM stage_owner s
+JOIN stage_filing sf ON sf.accession = s.accession
+JOIN filing f ON f.accession = s.accession AND f.raw_sha256 = sf.raw_sha256
+ON CONFLICT DO NOTHING";
+
+const INSERT_OWNERSHIP: &str = "
+INSERT INTO ownership_filing (accession, issuer_cik, date_of_original_submission)
+SELECT s.accession, s.issuer_cik, s.date_of_original_submission
+FROM stage_ownership s
+JOIN stage_filing sf ON sf.accession = s.accession
+JOIN filing f ON f.accession = s.accession AND f.raw_sha256 = sf.raw_sha256
+ON CONFLICT DO NOTHING";
+
+const INSERT_AMEND_TX: &str = "
+INSERT INTO amendment_transaction (
+    accession, row_in_filing, issuer_cik, owner_cik, is_derivative,
+    transaction_date, code, shares, price_per_share,
+    acquired_disposed, shares_after, direct_indirect, plan_10b5_1)
+SELECT s.accession, s.row_in_filing, s.issuer_cik, s.owner_cik, s.is_derivative,
+       s.transaction_date, s.code, s.shares::numeric, s.price_per_share::numeric,
+       s.acquired_disposed, s.shares_after::numeric, s.direct_indirect, s.plan_10b5_1::boolean
+FROM stage_amend_tx s
+JOIN stage_filing sf ON sf.accession = s.accession
+JOIN filing f ON f.accession = s.accession AND f.raw_sha256 = sf.raw_sha256
+ON CONFLICT DO NOTHING";
+
+/// Amendments without a link yet, oldest first, with the number of reports
+/// that could be the one amended: same first reporting owner, same issuer,
+/// the base form (4 for a 4/A), accepted on `dateOfOriginalSubmission`
+/// (US Eastern date) and before the amendment.
+const UNLINKED_AMENDMENTS: &str = "
+SELECT a.accession, a.accepted_at::text, count(o.accession), min(o.accession)
+FROM filing a
+JOIN ownership_filing ao ON ao.accession = a.accession
+LEFT JOIN amendment_link l ON l.amendment_accession = a.accession
+LEFT JOIN (filing o JOIN ownership_filing oo ON oo.accession = o.accession)
+       ON o.filer_cik = a.filer_cik
+      AND oo.issuer_cik = ao.issuer_cik
+      AND o.form_type = left(a.form_type, length(a.form_type) - 2)
+      AND (o.accepted_at AT TIME ZONE 'America/New_York')::date = ao.date_of_original_submission
+      AND o.accepted_at < a.accepted_at
+WHERE a.form_type LIKE '%/A' AND l.amendment_accession IS NULL
+GROUP BY a.accession, a.accepted_at
+ORDER BY a.accepted_at, a.accession";
+
+/// The newest loaded amendment of a report, and whether it was accepted after
+/// the amendment being linked (`$2`).
+const LATEST_LOADED_VERSION: &str = "
+SELECT l.amendment_accession, f.accepted_at > $2::text::timestamptz
+FROM amendment_link l
+JOIN filing f ON f.accession = l.amendment_accession
+WHERE l.original_accession = $1 AND l.outcome = 'loaded'
+ORDER BY f.accepted_at DESC, l.amendment_accession DESC
+LIMIT 1";
+
+const LEDGER_SHAPES: &str = "
+SELECT is_derivative, code, transaction_date::text, shares::text
+FROM insider_transaction WHERE accession = $1 ORDER BY row_in_filing";
+
+const AMENDMENT_SHAPES: &str = "
+SELECT is_derivative, code, transaction_date::text, shares::text
+FROM amendment_transaction WHERE accession = $1 ORDER BY row_in_filing";
+
+/// Moves an amendment's rows into the ledger. Row `i` supersedes row `i` of
+/// the version it replaces; rows past its end supersede nothing.
+const PROMOTE_AMENDMENT_ROWS: &str = "
+INSERT INTO insider_transaction (
+    accession, row_in_filing, issuer_cik, owner_cik, is_derivative,
+    transaction_date, known_at, code, shares, price_per_share,
+    acquired_disposed, shares_after, direct_indirect, plan_10b5_1, supersedes_id)
+SELECT a.accession, a.row_in_filing, a.issuer_cik, a.owner_cik, a.is_derivative,
+       a.transaction_date, f.accepted_at, a.code, a.shares, a.price_per_share,
+       a.acquired_disposed, a.shares_after, a.direct_indirect, a.plan_10b5_1, c.id
+FROM amendment_transaction a
+JOIN filing f ON f.accession = a.accession
+LEFT JOIN insider_transaction c ON c.accession = $2 AND c.row_in_filing = a.row_in_filing
+WHERE a.accession = $1
+ON CONFLICT (accession, row_in_filing) DO NOTHING";
+
+const INSERT_LINK: &str = "
+INSERT INTO amendment_link (amendment_accession, original_accession, replaces_accession, outcome, reason)
+VALUES ($1, $2, $3, $4, $5)";
+
 /// Filings whose stored raw hash differs from the one just computed: the
 /// source changed after it was first loaded. Nothing is overwritten.
 const CHANGED_SOURCE: &str = "
@@ -139,10 +245,40 @@ pub struct LoadReport {
     pub filings_existing: u64,
     pub rows_new: u64,
     pub rows_existing: u64,
-    /// Amendment rows deliberately not loaded (see `rows` module docs).
-    pub held_back_amendment_rows: u64,
+    /// Transaction rows of the amendments in the batch (kept in
+    /// `amendment_transaction`; the ledger gets them only through a link).
+    pub amendment_rows: u64,
+    /// What linking did after the batch.
+    pub links: LinkReport,
     /// Accession numbers already stored whose raw XML now hashes differently.
     pub changed_source: Vec<String>,
+}
+
+/// The outcome of one [`link_amendments`] pass.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct LinkReport {
+    /// Linked and restating: their rows are now in the ledger.
+    pub loaded: u64,
+    /// Rows moved into the ledger by those links.
+    pub rows_loaded: u64,
+    /// Linked, but not a restatement (or out of order): rows held back.
+    pub held_back: u64,
+    /// More than one report could be the one amended: not linked.
+    pub ambiguous: u64,
+    /// Amendments in the database still without a candidate report (the
+    /// original is not loaded, or the date does not match). Not a sum: the
+    /// count after the latest pass.
+    pub waiting: u64,
+}
+
+impl LinkReport {
+    pub fn add(&mut self, other: &LinkReport) {
+        self.loaded += other.loaded;
+        self.rows_loaded += other.rows_loaded;
+        self.held_back += other.held_back;
+        self.ambiguous += other.ambiguous;
+        self.waiting = other.waiting;
+    }
 }
 
 impl LoadReport {
@@ -151,7 +287,8 @@ impl LoadReport {
         self.filings_existing += other.filings_existing;
         self.rows_new += other.rows_new;
         self.rows_existing += other.rows_existing;
-        self.held_back_amendment_rows += other.held_back_amendment_rows;
+        self.amendment_rows += other.amendment_rows;
+        self.links.add(&other.links);
         self.changed_source.extend(other.changed_source);
     }
 }
@@ -172,16 +309,45 @@ pub fn load_batch(client: &mut Client, batch: &[Prepared]) -> Result<LoadReport,
     {
         let mut w = tx.copy_in("COPY stage_tx FROM STDIN")?;
         for p in batch {
-            for t in &p.transactions {
+            for t in p.ledger_rows() {
                 w.write_all(t.copy_line().as_bytes())?;
                 staged_rows += 1;
             }
         }
         w.finish()?;
     }
+    let mut amendment_rows = 0u64;
+    {
+        let mut w = tx.copy_in("COPY stage_amend_tx FROM STDIN")?;
+        for p in batch {
+            for t in p.amendment_rows() {
+                w.write_all(t.copy_line().as_bytes())?;
+                amendment_rows += 1;
+            }
+        }
+        w.finish()?;
+    }
+    {
+        let mut w = tx.copy_in("COPY stage_owner FROM STDIN")?;
+        for p in batch {
+            w.write_all(p.owner_copy_lines().as_bytes())?;
+        }
+        w.finish()?;
+    }
+    {
+        let mut w = tx.copy_in("COPY stage_ownership FROM STDIN")?;
+        for p in batch {
+            w.write_all(p.ownership_copy_line().as_bytes())?;
+        }
+        w.finish()?;
+    }
 
     let filings_new = tx.execute(INSERT_FILING, &[])?;
     let rows_new = tx.execute(INSERT_TX, &[])?;
+    tx.execute(INSERT_OWNER, &[])?;
+    tx.execute(INSERT_OWNERSHIP, &[])?;
+    tx.execute(INSERT_AMEND_TX, &[])?;
+    let links = link_amendments(&mut tx)?;
     let changed_source = tx
         .query(CHANGED_SOURCE, &[])?
         .iter()
@@ -194,12 +360,117 @@ pub fn load_batch(client: &mut Client, batch: &[Prepared]) -> Result<LoadReport,
         filings_existing: (batch.len() as u64).saturating_sub(filings_new),
         rows_new,
         rows_existing: staged_rows.saturating_sub(rows_new),
-        held_back_amendment_rows: batch
-            .iter()
-            .map(|p| p.held_back_amendment_rows as u64)
-            .sum(),
+        amendment_rows,
+        links,
         changed_source,
     })
+}
+
+fn shapes(
+    tx: &mut postgres::Transaction<'_>,
+    sql: &str,
+    accession: &str,
+) -> Result<Vec<RowShape>, StoreError> {
+    Ok(tx
+        .query(sql, &[&accession])?
+        .iter()
+        .map(|r| RowShape {
+            is_derivative: r.get(0),
+            code: r.get(1),
+            date: r.get(2),
+            shares: r.get(3),
+        })
+        .collect())
+}
+
+/// Links every amendment that has no link yet, oldest first (ADR 0005):
+///
+/// * no candidate report: left alone and tried again on the next load;
+/// * more than one: recorded as `ambiguous`, rows held back;
+/// * exactly one: its current version (the newest loaded amendment of it, or
+///   the report itself) is compared with the amendment by
+///   [`crate::amend::compare`]. A restatement's rows enter the ledger and
+///   supersede the current version's rows; anything else is `held_back`.
+///
+/// Runs inside the caller's transaction. Safe to repeat.
+pub fn link_amendments(tx: &mut postgres::Transaction<'_>) -> Result<LinkReport, StoreError> {
+    let mut report = LinkReport::default();
+    let pending = tx.query(UNLINKED_AMENDMENTS, &[])?;
+    for row in &pending {
+        let amendment: String = row.get(0);
+        let accepted: String = row.get(1);
+        let candidates: i64 = row.get(2);
+        let original: Option<String> = row.get(3);
+        let original = match (candidates, original) {
+            (1, Some(o)) => o,
+            (n, Some(_)) if n > 1 => {
+                let reason = format!("{n} reports by the same owner and issuer on that date");
+                tx.execute(
+                    INSERT_LINK,
+                    &[
+                        &amendment,
+                        &None::<String>,
+                        &None::<String>,
+                        &"ambiguous",
+                        &reason,
+                    ],
+                )?;
+                report.ambiguous += 1;
+                continue;
+            }
+            _ => {
+                report.waiting += 1;
+                continue;
+            }
+        };
+
+        let latest = tx.query_opt(LATEST_LOADED_VERSION, &[&original, &accepted])?;
+        let (replaces, out_of_order) = match latest {
+            Some(r) => (r.get::<_, String>(0), r.get::<_, bool>(1)),
+            None => (original.clone(), false),
+        };
+        let verdict = if out_of_order {
+            Verdict::HeldBack(format!(
+                "a later amendment of the same report ({replaces}) was loaded first"
+            ))
+        } else {
+            let current = shapes(tx, LEDGER_SHAPES, &replaces)?;
+            let new = shapes(tx, AMENDMENT_SHAPES, &amendment)?;
+            compare(&current, &new)
+        };
+        match verdict {
+            Verdict::Restates { replaced, added } => {
+                let moved = tx.execute(PROMOTE_AMENDMENT_ROWS, &[&amendment, &replaces])?;
+                let reason = format!("restates {replaced} row(s) of {replaces}, adds {added}");
+                tx.execute(
+                    INSERT_LINK,
+                    &[
+                        &amendment,
+                        &Some(&original),
+                        &Some(&replaces),
+                        &"loaded",
+                        &reason,
+                    ],
+                )?;
+                report.loaded += 1;
+                report.rows_loaded += moved;
+            }
+            Verdict::HeldBack(reason) => {
+                tx.execute(
+                    INSERT_LINK,
+                    &[
+                        &amendment,
+                        &Some(&original),
+                        &None::<String>,
+                        &"held_back",
+                        &reason,
+                    ],
+                )?;
+                report.held_back += 1;
+            }
+        }
+    }
+    Ok(report)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -207,6 +478,14 @@ pub struct Status {
     pub migrations: Vec<String>,
     pub filings: i64,
     pub amendment_filings: i64,
+    /// Filings with more than one reporting owner.
+    pub joint_filings: i64,
+    /// Amendments linked and loaded / linked and held back / ambiguous.
+    pub amendments_loaded: i64,
+    pub amendments_held_back: i64,
+    pub amendments_ambiguous: i64,
+    /// Amendments with no link yet (their original is not in the database).
+    pub amendments_waiting: i64,
     pub transactions: i64,
     /// Rows visible through `insider_transaction_as_of(now())`.
     pub transactions_known_now: i64,
@@ -214,13 +493,24 @@ pub struct Status {
     pub latest_accepted: Option<String>,
 }
 
-pub fn status(client: &mut Client) -> Result<Status, StoreError> {
-    let has_schema: bool = client
-        .query_one("SELECT to_regclass('filing') IS NOT NULL", &[])?
+/// Fails with [`StoreError::NoSchema`] unless every migration's tables exist
+/// (the first and the newest table are checked).
+pub fn check_schema(client: &mut Client) -> Result<(), StoreError> {
+    let ok: bool = client
+        .query_one(
+            "SELECT to_regclass('filing') IS NOT NULL AND to_regclass('amendment_link') IS NOT NULL",
+            &[],
+        )?
         .get(0);
-    if !has_schema {
-        return Err(StoreError::NoSchema);
+    if ok {
+        Ok(())
+    } else {
+        Err(StoreError::NoSchema)
     }
+}
+
+pub fn status(client: &mut Client) -> Result<Status, StoreError> {
+    check_schema(client)?;
     let migrations = client
         .query("SELECT version FROM schema_migration ORDER BY version", &[])?
         .iter()
@@ -233,6 +523,27 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
     let amendment_filings = one(
         client,
         "SELECT count(*) FROM filing WHERE form_type LIKE '%/A'",
+    )?;
+    let joint_filings = one(
+        client,
+        "SELECT count(*) FROM (SELECT 1 FROM filing_owner GROUP BY accession HAVING count(*) > 1) j",
+    )?;
+    let outcome = |client: &mut Client, o: &str| -> Result<i64, StoreError> {
+        Ok(client
+            .query_one(
+                "SELECT count(*) FROM amendment_link WHERE outcome = $1",
+                &[&o],
+            )?
+            .get(0))
+    };
+    let amendments_loaded = outcome(client, "loaded")?;
+    let amendments_held_back = outcome(client, "held_back")?;
+    let amendments_ambiguous = outcome(client, "ambiguous")?;
+    let amendments_waiting = one(
+        client,
+        "SELECT count(*) FROM filing f
+         WHERE f.form_type LIKE '%/A'
+           AND NOT EXISTS (SELECT 1 FROM amendment_link l WHERE l.amendment_accession = f.accession)",
     )?;
     let transactions = one(client, "SELECT count(*) FROM insider_transaction")?;
     let transactions_known_now = one(
@@ -247,6 +558,11 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
         migrations,
         filings,
         amendment_filings,
+        joint_filings,
+        amendments_loaded,
+        amendments_held_back,
+        amendments_ambiguous,
+        amendments_waiting,
         transactions,
         transactions_known_now,
         earliest_accepted: range.get(0),

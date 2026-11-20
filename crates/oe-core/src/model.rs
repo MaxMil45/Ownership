@@ -134,6 +134,9 @@ pub struct OwnershipDocument {
     /// "3", "4", "5", "4/A", ...
     pub document_type: String,
     pub period_of_report: Option<Date>,
+    /// On an amendment: the filing date of the report it amends
+    /// (`dateOfOriginalSubmission`). The XML names no accession number.
+    pub date_of_original_submission: Option<Date>,
     pub issuer: Issuer,
     /// More than one owner means a joint filing.
     pub owners: Vec<ReportingOwner>,

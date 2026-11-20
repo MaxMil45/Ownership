@@ -53,7 +53,7 @@ Each value sits inside a `<value>` element and may carry `<footnoteId id="F1"/>`
 - **Indirect ownership** (`I`) through trusts, LLCs, family members: see `natureOfOwnership`.
 - **Joint filings:** several reporting owners on one form, often a fund and its manager. Do not count them as separate insiders.
 - **Option exercise then sale on the same day:** an M row plus an S row. Neither is a buy.
-- **Amendments** restate earlier filings. Append them; never overwrite the original.
+- **Amendments** usually restate the earlier filing with a correction, but some report only the omitted or corrected rows (4 of 36 checked on 2026-11-16..19). The XML gives `dateOfOriginalSubmission`, not the accession number of the filing amended. Append them; never overwrite the original. See ADR 0005.
 - **No ticker** (`NONE` or blank) for some issuers.
 
 ## Common misreadings

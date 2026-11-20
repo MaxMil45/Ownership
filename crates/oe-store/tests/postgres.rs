@@ -8,7 +8,7 @@
 //! cargo test -p oe-store --test postgres -- --ignored --test-threads=1
 //! ```
 
-use oe_store::{load_batch, migrate, prepare, status, Client, Prepared, Sidecar};
+use oe_store::{load_batch, migrate, prepare, status, Client, LinkReport, Prepared, Sidecar};
 use std::path::PathBuf;
 
 /// A connection whose search_path is a private schema, dropped on `finish`.
@@ -60,7 +60,10 @@ fn real_fixtures() -> Vec<Prepared> {
 #[ignore = "needs OE_TEST_DATABASE_URL"]
 fn migrate_is_idempotent() {
     let mut s = Scratch::new("migrate");
-    assert_eq!(migrate(&mut s.client).unwrap(), ["0001_init"]);
+    assert_eq!(
+        migrate(&mut s.client).unwrap(),
+        ["0001_init", "0002_amendments"]
+    );
     assert!(
         migrate(&mut s.client).unwrap().is_empty(),
         "second run applies nothing"
@@ -74,23 +77,53 @@ fn loads_the_real_fixtures_and_a_repeat_changes_nothing() {
     let mut s = Scratch::new("load");
     migrate(&mut s.client).unwrap();
     let batch = real_fixtures();
-    let expected_rows: u64 = batch.iter().map(|p| p.transactions.len() as u64).sum();
+    let expected_rows: u64 = batch.iter().map(|p| p.ledger_rows().len() as u64).sum();
     assert_eq!(expected_rows, 67);
 
     let first = load_batch(&mut s.client, &batch).unwrap();
     assert_eq!((first.filings_new, first.filings_existing), (24, 0));
     assert_eq!((first.rows_new, first.rows_existing), (expected_rows, 0));
-    assert_eq!(first.held_back_amendment_rows, 17);
+    assert_eq!(first.amendment_rows, 17);
     assert!(first.changed_source.is_empty());
+    // Of the five amendments only the NVIDIA Form 5/A has its original among
+    // the fixtures: it restates both rows. The other four wait.
+    assert_eq!(
+        first.links,
+        LinkReport {
+            loaded: 1,
+            rows_loaded: 2,
+            held_back: 0,
+            ambiguous: 0,
+            waiting: 4
+        }
+    );
 
     let again = load_batch(&mut s.client, &batch).unwrap();
     assert_eq!((again.filings_new, again.filings_existing), (0, 24));
     assert_eq!((again.rows_new, again.rows_existing), (0, expected_rows));
+    assert_eq!(
+        again.links,
+        LinkReport {
+            waiting: 4,
+            ..LinkReport::default()
+        }
+    );
 
     let st = status(&mut s.client).unwrap();
     assert_eq!(st.filings, 24);
     assert_eq!(st.amendment_filings, 5);
-    assert_eq!(st.transactions as u64, expected_rows);
+    assert_eq!(st.joint_filings, 2);
+    assert_eq!(
+        (
+            st.amendments_loaded,
+            st.amendments_held_back,
+            st.amendments_ambiguous,
+            st.amendments_waiting
+        ),
+        (1, 0, 0, 4)
+    );
+    // Two amendment rows joined the ledger and hide the two rows they replace.
+    assert_eq!(st.transactions as u64, expected_rows + 2);
     assert_eq!(st.transactions_known_now as u64, expected_rows);
     s.finish();
 }
@@ -216,5 +249,222 @@ fn a_changed_source_is_reported_and_not_overwritten() {
         .unwrap()
         .get(0);
     assert_eq!(stored, original, "the stored hash is never rewritten");
+    s.finish();
+}
+
+const FORM5: &str = "0001045810-25-000054";
+const FORM5A: &str = "0001045810-25-000070";
+
+fn fixture(name: &str) -> Prepared {
+    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/form4/real")
+        .join(name);
+    let xml = std::fs::read_to_string(p.with_extension("xml")).unwrap();
+    let meta = std::fs::read_to_string(p.with_extension("meta.txt")).unwrap();
+    prepare(&xml, &Sidecar::parse(&meta)).unwrap()
+}
+
+/// A copy of a prepared filing under another accession number and time.
+fn copy_as(p: &Prepared, accession: &str, accepted_at: &str) -> Prepared {
+    let mut c = p.clone();
+    c.filing.accession = accession.into();
+    c.filing.accepted_at = accepted_at.into();
+    c.filing.raw_sha256 = format!("{:0>64}", accession.replace('-', ""));
+    for t in &mut c.transactions {
+        t.accession = accession.into();
+    }
+    c
+}
+
+type Link = (String, Option<String>, Option<String>);
+
+fn link(client: &mut Client, amendment: &str) -> Link {
+    let r = client
+        .query_one(
+            "SELECT outcome, original_accession, replaces_accession
+             FROM amendment_link WHERE amendment_accession = $1",
+            &[&amendment],
+        )
+        .unwrap();
+    (r.get(0), r.get(1), r.get(2))
+}
+
+/// The NVIDIA owner's rows visible at a moment, as `accession:row`.
+fn visible(client: &mut Client, as_of: &str) -> Vec<String> {
+    client
+        .query(
+            "SELECT accession || ':' || row_in_filing
+             FROM insider_transaction_as_of($1::text::timestamptz)
+             WHERE issuer_cik = 1045810 AND owner_cik = 1636665 ORDER BY 1",
+            &[&as_of],
+        )
+        .unwrap()
+        .iter()
+        .map(|r| r.get(0))
+        .collect()
+}
+
+fn rows_of(accession: &str) -> Vec<String> {
+    vec![format!("{accession}:0"), format!("{accession}:1")]
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn a_linked_amendment_replaces_its_original_only_from_its_acceptance_on() {
+    let mut s = Scratch::new("pit");
+    migrate(&mut s.client).unwrap();
+    load_batch(
+        &mut s.client,
+        &[
+            fixture("nvda_0001045810-25-000054"),
+            fixture("nvda_0001045810-25-000070"),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        link(&mut s.client, FORM5A),
+        ("loaded".into(), Some(FORM5.into()), Some(FORM5.into()))
+    );
+    // Form 5 accepted 2025-03-12 22:58 UTC, the 5/A 2025-03-22 00:44 UTC.
+    assert!(visible(&mut s.client, "2025-03-12 12:00:00+00").is_empty());
+    assert_eq!(
+        visible(&mut s.client, "2025-03-21 12:00:00+00"),
+        rows_of(FORM5)
+    );
+    assert_eq!(
+        visible(&mut s.client, "2026-01-01 00:00:00+00"),
+        rows_of(FORM5A)
+    );
+    // Each amendment row points at the row in the same position.
+    let pairs: Vec<(i32, i32)> = s
+        .client
+        .query(
+            "SELECT n.row_in_filing, o.row_in_filing FROM insider_transaction n
+             JOIN insider_transaction o ON o.id = n.supersedes_id
+             WHERE n.accession = $1 AND o.accession = $2 ORDER BY 1",
+            &[&FORM5A, &FORM5],
+        )
+        .unwrap()
+        .iter()
+        .map(|r| (r.get(0), r.get(1)))
+        .collect();
+    assert_eq!(pairs, [(0, 0), (1, 1)]);
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn an_amendment_loaded_before_its_original_waits_and_links_later() {
+    let mut s = Scratch::new("wait");
+    migrate(&mut s.client).unwrap();
+    let first = load_batch(&mut s.client, &[fixture("nvda_0001045810-25-000070")]).unwrap();
+    assert_eq!(first.links.waiting, 1);
+    assert!(visible(&mut s.client, "2026-01-01 00:00:00+00").is_empty());
+    let second = load_batch(&mut s.client, &[fixture("nvda_0001045810-25-000054")]).unwrap();
+    assert_eq!((second.links.loaded, second.links.waiting), (1, 0));
+    assert_eq!(
+        visible(&mut s.client, "2026-01-01 00:00:00+00"),
+        rows_of(FORM5A)
+    );
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn a_second_amendment_replaces_the_first_and_a_late_older_one_is_held_back() {
+    let mut s = Scratch::new("chain");
+    migrate(&mut s.client).unwrap();
+    let form5 = fixture("nvda_0001045810-25-000054");
+    let a1 = fixture("nvda_0001045810-25-000070");
+    let a2 = copy_as(&a1, "0001045810-25-000099", "2025-04-01 12:00:00+00");
+    // Accepted between a1 and a2, but loaded only after a2.
+    let late = copy_as(&a1, "0001045810-25-000080", "2025-03-25 12:00:00+00");
+    load_batch(&mut s.client, &[form5, a1, a2.clone()]).unwrap();
+    assert_eq!(
+        link(&mut s.client, &a2.filing.accession),
+        ("loaded".into(), Some(FORM5.into()), Some(FORM5A.into()))
+    );
+    assert_eq!(
+        visible(&mut s.client, "2025-03-30 00:00:00+00"),
+        rows_of(FORM5A)
+    );
+    assert_eq!(
+        visible(&mut s.client, "2026-01-01 00:00:00+00"),
+        rows_of("0001045810-25-000099")
+    );
+
+    load_batch(&mut s.client, std::slice::from_ref(&late)).unwrap();
+    assert_eq!(
+        link(&mut s.client, &late.filing.accession),
+        ("held_back".into(), Some(FORM5.into()), None)
+    );
+    assert_eq!(
+        visible(&mut s.client, "2026-01-01 00:00:00+00"),
+        rows_of("0001045810-25-000099"),
+        "still exactly one version"
+    );
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn a_supplement_is_held_back_and_two_candidate_originals_are_ambiguous() {
+    let form5 = fixture("nvda_0001045810-25-000054");
+
+    let mut s = Scratch::new("held");
+    migrate(&mut s.client).unwrap();
+    let mut supplement = fixture("nvda_0001045810-25-000070");
+    supplement.transactions.truncate(1); // reports only one of the two rows
+    load_batch(&mut s.client, &[form5.clone(), supplement]).unwrap();
+    assert_eq!(
+        link(&mut s.client, FORM5A),
+        ("held_back".into(), Some(FORM5.into()), None)
+    );
+    assert_eq!(
+        visible(&mut s.client, "2026-01-01 00:00:00+00"),
+        rows_of(FORM5),
+        "the original stays visible"
+    );
+    s.finish();
+
+    let mut s = Scratch::new("ambig");
+    migrate(&mut s.client).unwrap();
+    // A second Form 5 by the same owner for the same issuer on the same day.
+    let twin = copy_as(&form5, "0001045810-25-000055", "2025-03-12 23:30:00+00");
+    load_batch(
+        &mut s.client,
+        &[form5, twin, fixture("nvda_0001045810-25-000070")],
+    )
+    .unwrap();
+    assert_eq!(
+        link(&mut s.client, FORM5A),
+        ("ambiguous".into(), None, None)
+    );
+    assert_eq!(visible(&mut s.client, "2026-01-01 00:00:00+00").len(), 4);
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn joint_filings_store_every_owner() {
+    let mut s = Scratch::new("owners");
+    migrate(&mut s.client).unwrap();
+    load_batch(&mut s.client, &real_fixtures()).unwrap();
+    let owners = |client: &mut Client, accession: &str| -> Vec<i64> {
+        client
+            .query(
+                "SELECT owner_cik FROM filing_owner WHERE accession = $1 ORDER BY position",
+                &[&accession],
+            )
+            .unwrap()
+            .iter()
+            .map(|r| r.get(0))
+            .collect()
+    };
+    assert_eq!(
+        owners(&mut s.client, "0001193125-26-445930"),
+        [1_067_983, 315_090]
+    );
+    assert_eq!(owners(&mut s.client, "0001104659-26-047678").len(), 1);
     s.finish();
 }

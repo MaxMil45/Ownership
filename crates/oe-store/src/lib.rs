@@ -1,18 +1,26 @@
 //! Loads parsed ownership filings into the PostgreSQL point-in-time ledger
-//! (`migrations/0001_init.sql`).
+//! (`migrations/`).
 //!
 //! * [`rows`]: filing XML + sidecar → table rows. Pure, tested offline.
+//! * [`amend`]: may an amendment's rows replace the report it amends? Pure,
+//!   tested offline (ADR 0005).
 //! * [`sha256`]: fingerprint of each raw filing, standard library only.
-//! * [`db`]: connect, migrate, load in batches, status. Needs a PostgreSQL server.
+//! * [`db`]: connect, migrate, load in batches, link amendments, status.
+//!   Needs a PostgreSQL server.
 //!
 //! This is the only crate in the workspace that depends on a database driver,
 //! which keeps the core crates dependency-free (ADR 0001, ADR 0004).
 
+pub mod amend;
 pub mod db;
 pub mod rows;
 pub mod sha256;
 
-pub use db::{connect, load_batch, migrate, status, LoadReport, Status, StoreError, MIGRATIONS};
+pub use amend::{compare, RowShape, Verdict};
+pub use db::{
+    check_schema, connect, link_amendments, load_batch, migrate, status, LinkReport, LoadReport,
+    Status, StoreError, MIGRATIONS,
+};
 pub use rows::{prepare, FilingRow, PrepareError, Prepared, Sidecar, TransactionRow};
 pub use sha256::sha256_hex;
 

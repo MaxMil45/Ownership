@@ -62,13 +62,15 @@ Useful options: `--limit <n>` / `--all`, `--out <folder>`, `--include-amendments
 ## 4. The database
 
 ```powershell
-& $oe db-migrate                      # create the tables (once)
+& $oe db-migrate                      # create or update the tables (run after every upgrade)
 & $oe db-load data/form4 --dry-run    # check what would load, no database needed
 & $oe db-load data/form4              # load Form 4 filings (safe to repeat)
 & $oe db-status                       # counts
 ```
 
-Only Form 3/4/5 filings go into the database so far. `docker-compose -f docker/compose.yaml down` stops it and keeps the data.
+Only Form 3/4/5 filings go into the database so far. After each batch, amendments are linked to the report they amend (ADR 0005); `db-status` shows how many were loaded, held back (not a full restatement), ambiguous, or are still waiting because the report they amend is not loaded yet. A waiting amendment is tried again on every load.
+
+After upgrading to migration `0002_amendments`, load your folders once more (for example `& $oe db-load data/form4`): filings loaded earlier only then get their co-owners and amendment details. Nothing already stored changes. `docker-compose -f docker/compose.yaml down` stops it and keeps the data.
 
 ## 5. Checks
 

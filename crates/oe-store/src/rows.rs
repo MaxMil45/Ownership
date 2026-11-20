@@ -6,15 +6,15 @@
 //!
 //! * `filing.filer_cik` is the **first reporting owner** (the person or entity
 //!   that filed). The issuer's CIK is on each transaction row.
-//! * `insider_transaction.owner_cik` holds one owner. On a joint filing the
-//!   co-owners are not stored (the schema has no place for them yet).
+//! * `insider_transaction.owner_cik` holds one owner (the first). Every owner
+//!   of a joint filing, in document order, goes to `filing_owner`.
 //! * `accepted_at` needs a real time. If a sidecar has none, the filing is
 //!   rejected rather than given an invented time.
-//! * **Amendment rows are not loaded.** A `4/A` and a `5/A` get a `filing`
-//!   row (the receipt) but no `insider_transaction` rows: the schema links an
-//!   amendment to the row it replaces (`supersedes_id`), a 4/A does not name
-//!   the filing it amends, and guessing the link would put both versions in
-//!   `insider_transaction_as_of`. The number of rows held back is reported.
+//! * **Amendment rows wait for their link.** The rows of a `3/A`, `4/A` or
+//!   `5/A` go to `amendment_transaction`, not to the ledger. They enter
+//!   `insider_transaction` only when the loader has found the one report the
+//!   amendment amends and the amendment restates it (see [`crate::amend`] and
+//!   ADR 0005).
 
 use crate::sha256::sha256_hex;
 use oe_core::{AcquiredDisposed, OwnershipDocument, OwnershipNature};
@@ -106,9 +106,57 @@ pub struct TransactionRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Prepared {
     pub filing: FilingRow,
+    pub issuer_cik: u64,
+    /// Every reporting owner's CIK, in document order; the first is `filing.filer_cik`.
+    pub owners: Vec<u64>,
+    /// Amendments only: `dateOfOriginalSubmission`, `YYYY-MM-DD`.
+    pub date_of_original_submission: Option<String>,
+    /// All transaction rows. For an amendment they go to
+    /// `amendment_transaction` (see module docs).
     pub transactions: Vec<TransactionRow>,
-    /// Transaction rows of an amendment that were not loaded (see module docs).
-    pub held_back_amendment_rows: usize,
+}
+
+impl Prepared {
+    pub fn is_amendment(&self) -> bool {
+        self.filing.form_type.ends_with("/A")
+    }
+
+    /// Rows that go straight into the ledger (none for an amendment).
+    pub fn ledger_rows(&self) -> &[TransactionRow] {
+        if self.is_amendment() {
+            &[]
+        } else {
+            &self.transactions
+        }
+    }
+
+    /// Rows that wait in `amendment_transaction` for the amendment's link.
+    pub fn amendment_rows(&self) -> &[TransactionRow] {
+        if self.is_amendment() {
+            &self.transactions
+        } else {
+            &[]
+        }
+    }
+
+    /// `filing_owner` COPY lines: accession, position, owner CIK.
+    pub fn owner_copy_lines(&self) -> String {
+        self.owners
+            .iter()
+            .enumerate()
+            .map(|(i, cik)| format!("{}\t{i}\t{cik}\n", copy_field(&self.filing.accession)))
+            .collect()
+    }
+
+    /// The `ownership_filing` COPY line.
+    pub fn ownership_copy_line(&self) -> String {
+        format!(
+            "{}\t{}\t{}\n",
+            copy_field(&self.filing.accession),
+            self.issuer_cik,
+            opt_field(self.date_of_original_submission.as_deref())
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -174,18 +222,12 @@ pub fn prepare(xml: &str, sidecar: &Sidecar) -> Result<Prepared, PrepareError> {
         raw_sha256: sha256_hex(xml.as_bytes()),
     };
 
-    if doc.is_amendment() {
-        return Ok(Prepared {
-            filing,
-            transactions: Vec::new(),
-            held_back_amendment_rows: doc.transactions.len(),
-        });
-    }
-    let transactions = transaction_rows(&doc, &accession);
     Ok(Prepared {
         filing,
-        transactions,
-        held_back_amendment_rows: 0,
+        issuer_cik: doc.issuer.cik.0,
+        owners: doc.owners.iter().map(|o| o.cik.0).collect(),
+        date_of_original_submission: doc.date_of_original_submission.map(|d| d.to_string()),
+        transactions: transaction_rows(&doc, &accession),
     })
 }
 
@@ -324,7 +366,10 @@ mod tests {
         assert_eq!(p.filing.form_type, "4");
         assert_eq!(p.filing.raw_sha256, sha256_hex(xml.as_bytes()));
         assert_eq!(p.transactions.len(), 3);
-        assert_eq!(p.held_back_amendment_rows, 0);
+        assert_eq!(p.ledger_rows().len(), 3);
+        assert!(p.amendment_rows().is_empty() && !p.is_amendment());
+        assert_eq!(p.issuer_cik, 320193);
+        assert_eq!(p.date_of_original_submission, None);
         let rows: Vec<i32> = p.transactions.iter().map(|t| t.row_in_filing).collect();
         assert_eq!(rows, [0, 1, 2]);
         assert!(p.transactions.iter().all(|t| t.issuer_cik == 320193));
@@ -344,12 +389,18 @@ mod tests {
     }
 
     #[test]
-    fn amendments_keep_their_receipt_but_hold_back_the_rows() {
+    fn amendment_rows_wait_for_their_link() {
         let (xml, side) = real("nvda_0002152188-26-000007");
         let p = prepare(&xml, &side).unwrap();
         assert_eq!(p.filing.form_type, "4/A");
-        assert!(p.transactions.is_empty());
-        assert_eq!(p.held_back_amendment_rows, 1);
+        assert!(p.is_amendment());
+        assert!(p.ledger_rows().is_empty());
+        assert_eq!(p.amendment_rows().len(), 1);
+        assert_eq!(p.date_of_original_submission.as_deref(), Some("2026-09-11"));
+        assert_eq!(
+            p.ownership_copy_line(),
+            "0002152188-26-000007\t1045810\t2026-09-11\n"
+        );
     }
 
     #[test]
@@ -359,6 +410,16 @@ mod tests {
         assert_eq!(p.filing.filer_cik, 1_067_983); // Berkshire Hathaway, listed first
         assert_eq!(p.transactions.len(), 3);
         assert!(p.transactions.iter().all(|t| t.owner_cik == 1_067_983));
+        // Both owners are kept, in document order (Warren Buffett second).
+        assert_eq!(p.owners, [1_067_983, 315_090]);
+        assert_eq!(
+            p.owner_copy_lines(),
+            "0001193125-26-445930\t0\t1067983\n0001193125-26-445930\t1\t315090\n"
+        );
+        assert_eq!(
+            p.ownership_copy_line(),
+            "0001193125-26-445930\t908937\t\\N\n"
+        );
     }
 
     #[test]
@@ -366,7 +427,7 @@ mod tests {
         let (xml, side) = real("oxy_0001628280-26-071244");
         let p = prepare(&xml, &side).unwrap();
         assert_eq!(p.filing.form_type, "3");
-        assert!(p.transactions.is_empty() && p.held_back_amendment_rows == 0);
+        assert!(p.transactions.is_empty() && !p.is_amendment());
     }
 
     #[test]
@@ -379,16 +440,18 @@ mod tests {
             let rows: usize = c[3].parse::<usize>().unwrap() + c[4].parse::<usize>().unwrap();
             let (xml, side) = real(c[0].trim_end_matches(".xml"));
             let p = prepare(&xml, &side).unwrap_or_else(|e| panic!("{}: {e}", c[0]));
+            assert_eq!(p.transactions.len(), rows, "{}", c[0]);
+            assert_eq!(p.owners.len(), c[2].parse::<usize>().unwrap(), "{}", c[0]);
             if c[1].ends_with("/A") {
                 assert_eq!(
-                    (p.transactions.len(), p.held_back_amendment_rows),
+                    (p.ledger_rows().len(), p.amendment_rows().len()),
                     (0, rows),
                     "{}",
                     c[0]
                 );
                 held += rows;
             } else {
-                assert_eq!(p.transactions.len(), rows, "{}", c[0]);
+                assert_eq!(p.ledger_rows().len(), rows, "{}", c[0]);
                 loaded += rows;
             }
         }

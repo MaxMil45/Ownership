@@ -65,6 +65,7 @@ struct TxnBuilder {
 struct DocBuilder {
     document_type: Option<String>,
     period_of_report: Option<String>,
+    date_of_original_submission: Option<String>,
     aff_10b5_1: Option<String>,
     not_subject_to_section16: Option<String>,
     issuer_cik: Option<String>,
@@ -139,6 +140,7 @@ fn assign_doc(doc: &mut DocBuilder, stack: &[&str], value: Option<String>) {
         match stack[1] {
             "documentType" => doc.document_type = value,
             "periodOfReport" => doc.period_of_report = value,
+            "dateOfOriginalSubmission" => doc.date_of_original_submission = value,
             "aff10b5One" => doc.aff_10b5_1 = value,
             "notSubjectToSection16" => doc.not_subject_to_section16 = value,
             _ => {}
@@ -298,6 +300,11 @@ fn build(doc: DocBuilder) -> Result<OwnershipDocument, ParseError> {
             .period_of_report
             .as_deref()
             .map(|s| date("periodOfReport", s))
+            .transpose()?,
+        date_of_original_submission: doc
+            .date_of_original_submission
+            .as_deref()
+            .map(|s| date("dateOfOriginalSubmission", s))
             .transpose()?,
         issuer,
         owners,

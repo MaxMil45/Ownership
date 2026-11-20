@@ -96,7 +96,7 @@ cargo run -p oe-cli -- db-load data/form4
 cargo run -p oe-cli -- db-status
 ```
 
-`db-load` is safe to repeat. Amendment (4/A, 5/A) filings are stored but their transaction rows are held back, and joint filings keep only their first owner; see [ADR 0004](docs/adr/0004-postgres-store-crate.md). To run the database tests (they make and drop a private schema in the database you name; the Docker setup creates an empty `ownership_test` for this):
+`db-load` is safe to repeat. Amendments (3/A, 4/A, 5/A) are linked to the report they amend by owner, issuer, form and `dateOfOriginalSubmission`; only amendments that restate the report replace its rows, the rest are kept aside with a reason. Every owner of a joint filing is stored. See [ADR 0004](docs/adr/0004-postgres-store-crate.md) and [ADR 0005](docs/adr/0005-amendment-linking.md). To run the database tests (they make and drop a private schema in the database you name; the Docker setup creates an empty `ownership_test` for this):
 
 ```powershell
 $env:OE_TEST_DATABASE_URL = "postgres://oe:oe_dev_only@127.0.0.1:55432/ownership_test"

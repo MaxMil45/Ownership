@@ -123,3 +123,26 @@ fn every_real_fixture_has_a_sidecar_with_known_on() {
         assert_eq!(field("known_on"), eastern.to_string(), "{}", row.file);
     }
 }
+
+#[test]
+fn amendments_name_the_date_of_the_report_they_amend() {
+    for row in manifest() {
+        let xml = std::fs::read_to_string(real_dir().join(&row.file)).unwrap();
+        let doc = parse(&xml).unwrap();
+        assert_eq!(
+            doc.date_of_original_submission.is_some(),
+            doc.is_amendment(),
+            "{}: dateOfOriginalSubmission",
+            row.file
+        );
+    }
+    // The Form 5/A amends the Form 5 next to it, filed 2025-03-12.
+    let xml = std::fs::read_to_string(real_dir().join("nvda_0001045810-25-000070.xml")).unwrap();
+    assert_eq!(
+        parse(&xml)
+            .unwrap()
+            .date_of_original_submission
+            .map(|d| d.to_string()),
+        Some("2025-03-12".to_string())
+    );
+}
