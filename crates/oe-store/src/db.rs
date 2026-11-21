@@ -36,6 +36,10 @@ pub const MIGRATIONS: &[(&str, &str)] = &[
         "0004_link_index",
         include_str!("../../../migrations/0004_link_index.sql"),
     ),
+    (
+        "0005_other_forms",
+        include_str!("../../../migrations/0005_other_forms.sql"),
+    ),
 ];
 
 #[derive(Debug)]
@@ -647,6 +651,11 @@ pub struct Status {
     pub transactions: i64,
     /// Rows visible through `insider_transaction_as_of(now())`.
     pub transactions_known_now: i64,
+    /// Rows in the other forms' tables (migration 0005).
+    pub form144_notices: i64,
+    pub schedule13_filings: i64,
+    pub contest_filings: i64,
+    pub trading_arrangements: i64,
     pub earliest_accepted: Option<String>,
     pub latest_accepted: Option<String>,
 }
@@ -713,6 +722,10 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
            AND NOT EXISTS (SELECT 1 FROM amendment_link l WHERE l.amendment_accession = f.accession)",
     )?;
     let transactions = one(client, "SELECT count(*) FROM insider_transaction")?;
+    let form144_notices = one(client, "SELECT count(*) FROM form144_notice")?;
+    let schedule13_filings = one(client, "SELECT count(*) FROM schedule13_filing")?;
+    let contest_filings = one(client, "SELECT count(*) FROM contest_filing")?;
+    let trading_arrangements = one(client, "SELECT count(*) FROM trading_arrangement")?;
     let transactions_known_now = one(
         client,
         "SELECT count(*) FROM insider_transaction_as_of(now())",
@@ -733,6 +746,10 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
         amendments_waiting,
         transactions,
         transactions_known_now,
+        form144_notices,
+        schedule13_filings,
+        contest_filings,
+        trading_arrangements,
         earliest_accepted: range.get(0),
         latest_accepted: range.get(1),
     })

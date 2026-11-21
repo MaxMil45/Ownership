@@ -59,6 +59,9 @@ pub struct Form144 {
     /// `144` or `144/A`.
     pub submission_type: String,
     pub issuer_cik: Cik,
+    /// The submitting filer (`headerData/filerInfo/filer`), usually the
+    /// seller or the seller's agent. `None` if the notice does not say.
+    pub filer_cik: Option<Cik>,
     pub issuer_name: String,
     /// `nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold`.
     pub seller_name: String,

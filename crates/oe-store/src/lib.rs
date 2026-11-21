@@ -13,6 +13,7 @@
 
 pub mod amend;
 pub mod db;
+pub mod other;
 pub mod rows;
 pub mod sha256;
 
@@ -22,6 +23,7 @@ pub use db::{
     migrate, status, trade_history, FlowDay, HistoryTrade, LinkReport, LoadReport, Status,
     StoreError, MIGRATIONS,
 };
+pub use other::{load_other, prepare_other, ContestHeader, OtherDoc, OtherFiling, OtherReport};
 pub use rows::{prepare, prepare_bulk, FilingRow, PrepareError, Prepared, Sidecar, TransactionRow};
 pub use sha256::sha256_hex;
 

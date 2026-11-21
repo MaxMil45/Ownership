@@ -22,6 +22,8 @@ const CHECKED_FILE: &str = "checked.tsv";
 #[derive(Debug, PartialEq)]
 pub struct PeriodicArgs {
     pub date: Date,
+    /// Last day of a range (`--to`); `None` for one day.
+    pub to: Option<Date>,
     /// `None` means every report of the day.
     pub limit: Option<usize>,
     pub out: PathBuf,
@@ -36,6 +38,7 @@ pub fn parse_periodic_args(args: &[String]) -> Result<PeriodicArgs, String> {
     let mut date = None;
     let mut parsed = PeriodicArgs {
         date: Date::from_ymd(1970, 1, 1).expect("valid date"),
+        to: None,
         limit: Some(25),
         out: PathBuf::from(DEFAULT_ROOT),
         forms: vec!["10-Q".into(), "10-K".into()],
@@ -61,6 +64,10 @@ pub fn parse_periodic_args(args: &[String]) -> Result<PeriodicArgs, String> {
                 }
             }
             "--save-all" => parsed.save_all = true,
+            "--to" => {
+                let text = it.next().ok_or("--to needs a date such as 2026-11-20")?;
+                parsed.to = Some(args::date(text, "2026-11-20")?);
+            }
             "--audit" => {
                 parsed.audit = args::value(&mut it, "--audit", "a number of reports", |_| true)?
             }
@@ -69,6 +76,9 @@ pub fn parse_periodic_args(args: &[String]) -> Result<PeriodicArgs, String> {
         }
     }
     parsed.date = date.ok_or("a date like 2026-11-09 is needed")?;
+    if parsed.to.is_some_and(|t| t < parsed.date) {
+        return Err("--to is before the first date".into());
+    }
     Ok(parsed)
 }
 
@@ -80,7 +90,7 @@ pub fn parse_checked(text: &str) -> HashMap<String, String> {
         .collect()
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct Tally {
     looked_at: usize,
     already: usize,
@@ -93,16 +103,52 @@ struct Tally {
     audit_missed: usize,
 }
 
+impl Tally {
+    fn add(&mut self, o: &Tally) {
+        self.looked_at += o.looked_at;
+        self.already += o.already;
+        self.no_xbrl += o.no_xbrl;
+        self.no_report += o.no_report;
+        self.none += o.none;
+        self.saved += o.saved;
+        self.errors += o.errors;
+        self.audited += o.audited;
+        self.audit_missed += o.audit_missed;
+    }
+}
+
+/// Reports checked at once. Each check waits mostly on the network; the
+/// client's shared rate limiter keeps the total at 8 requests a second.
+const CHECK_THREADS: usize = 6;
+
 pub fn daily_periodic(args: &[String]) -> Result<(), String> {
     let args = parse_periodic_args(args)?;
     let client = EdgarClient::from_env().map_err(|e| e.to_string())?;
+    let range = args.to.is_some();
+    let mut total = Tally::default();
+    for day in super::live::days_between(args.date, args.to) {
+        match periodic_day(&client, &args, day) {
+            Ok(t) => total.add(&t),
+            Err(e) if range && e.starts_with("no daily index") => println!("{day}: skipped, {e}"),
+            Err(e) => return Err(e),
+        }
+    }
+    if range {
+        println!(
+            "all days: {} looked at ({} already logged); {} with a termination saved, {} with the page but no termination, {} without the page, {} without XBRL, {} errors",
+            total.looked_at, total.already, total.saved, total.none, total.no_report, total.no_xbrl, total.errors
+        );
+    }
+    Ok(())
+}
 
-    let index = super::live::fetch_daily_index(&client, args.date)?;
+fn periodic_day(client: &EdgarClient, args: &PeriodicArgs, day: Date) -> Result<Tally, String> {
+    let index = super::live::fetch_daily_index(client, day)?;
     let forms: Vec<&str> = args.forms.iter().map(String::as_str).collect();
     let filings = index.unique_filings(&forms);
     println!(
         "{}: {} rows in the index, {} report(s) of form {}",
-        args.date,
+        day,
         index.entries.len(),
         filings.len(),
         forms.join(", ")
@@ -110,10 +156,10 @@ pub fn daily_periodic(args: &[String]) -> Result<(), String> {
 
     std::fs::create_dir_all(&args.out).map_err(|e| format!("{}: {e}", args.out.display()))?;
     let checked_path = args.out.join(CHECKED_FILE);
-    let mut checked = parse_checked(&std::fs::read_to_string(&checked_path).unwrap_or_default());
+    let checked = parse_checked(&std::fs::read_to_string(&checked_path).unwrap_or_default());
     let mut tally = Tally::default();
     let take = args.limit.unwrap_or(usize::MAX);
-
+    let mut todo: Vec<(u64, String)> = Vec::new();
     for entry in filings.into_iter().take(take) {
         let Some(accession) = entry.accession() else {
             tally.errors += 1;
@@ -123,28 +169,60 @@ pub fn daily_periodic(args: &[String]) -> Result<(), String> {
             tally.already += 1;
             continue;
         }
-        tally.looked_at += 1;
-        let (status, line) = match check_one(&client, entry.cik, accession, &args, &mut tally) {
-            Ok(r) => r,
-            Err(e) => {
-                // Not logged: a transient error should be retried next time.
-                eprintln!("  {accession}: {e}");
-                tally.errors += 1;
-                continue;
-            }
-        };
-        match status.as_str() {
-            "no_xbrl" => tally.no_xbrl += 1,
-            "no_report" => tally.no_report += 1,
-            "none" => tally.none += 1,
-            "saved" => tally.saved += 1,
-            _ => {}
-        }
-        if let Some(line) = line {
-            println!("  {line}");
-        }
-        checked.insert(accession.to_string(), status.clone());
-        append_checked(&checked_path, accession, &status)?;
+        todo.push((entry.cik, accession.to_string()));
+    }
+
+    // The audit counts across reports, so it runs on one thread.
+    let threads = if args.audit > 0 { 1 } else { CHECK_THREADS };
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let log = std::sync::Mutex::new(());
+    let results: Vec<Result<Tally, String>> = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads.min(todo.len()))
+            .map(|_| {
+                scope.spawn(|| -> Result<Tally, String> {
+                    let mut t = Tally::default();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some((cik, accession)) = todo.get(i) else {
+                            return Ok(t);
+                        };
+                        t.looked_at += 1;
+                        let (status, line) = match check_one(client, *cik, accession, args, &mut t)
+                        {
+                            Ok(r) => r,
+                            Err(e) => {
+                                // Not logged: a transient error should be retried next time.
+                                eprintln!("  {accession}: {e}");
+                                t.errors += 1;
+                                continue;
+                            }
+                        };
+                        match status.as_str() {
+                            "no_xbrl" => t.no_xbrl += 1,
+                            "no_report" => t.no_report += 1,
+                            "none" => t.none += 1,
+                            "saved" => t.saved += 1,
+                            _ => {}
+                        }
+                        let _guard = log.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Some(line) = line {
+                            println!("  {line}");
+                        }
+                        append_checked(&checked_path, accession, &status)?;
+                    }
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .map(|w| {
+                w.join()
+                    .unwrap_or_else(|_| Err("a worker thread panicked".into()))
+            })
+            .collect()
+    });
+    for r in results {
+        tally.add(&r?);
     }
 
     println!(
@@ -157,7 +235,7 @@ pub fn daily_periodic(args: &[String]) -> Result<(), String> {
             tally.audited, tally.audit_missed
         );
     }
-    Ok(())
+    Ok(tally)
 }
 
 fn append_checked(path: &Path, accession: &str, status: &str) -> Result<(), String> {
@@ -300,6 +378,13 @@ mod tests {
         assert!(parse_periodic_args(&args(&["2026-11-09", "--forms", ","])).is_err());
         assert!(parse_periodic_args(&args(&["2026-11-09", "--limit", "0"])).is_err());
         assert!(parse_periodic_args(&args(&["2026-11-09", "2026-11-10"])).is_err());
+
+        let r = parse_periodic_args(&args(&["2023-10-02", "--to", "2023-10-09"])).unwrap();
+        assert_eq!(a.to, None);
+        assert_eq!(r.to, Some(Date::from_ymd(2023, 10, 9).unwrap()));
+        // Monday to the next Monday: six weekdays.
+        assert_eq!(super::super::live::days_between(r.date, r.to).len(), 6);
+        assert!(parse_periodic_args(&args(&["2023-10-09", "--to", "2023-10-02"])).is_err());
     }
 
     #[test]

@@ -15,7 +15,7 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | Dates, CIKs, accession numbers, filing models | `oe-core` | Done, tested |
 | Form 3/4/5 XML parser (no dependencies) | `oe-form4` | Done, tested on synthetic fixtures |
 | Point-in-time ledger (in memory) + PostgreSQL schema | `oe-ledger`, `migrations/` | Model done and tested |
-| PostgreSQL loader (`db-migrate`, `db-load`, `db-status`) | `oe-store` | Done; tested against PostgreSQL 16 in Docker; 332 real filings loaded |
+| PostgreSQL loader (`db-migrate`, `db-load`, `db-status`) | `oe-store` | Done; tested against PostgreSQL 16 in Docker; Forms 3/4/5 since 2015 plus Form 144, 13D/G, proxy contests and Item 408 (ADR 0009) |
 | History since 2015 from the SEC's quarterly bulk data sets (`bulk-insider`) | `oe-bulk`, `oe-store` | Done; checked against 200 filings' XML; loaded 2015 Q1 to 2026 Q3 (ADR 0008) |
 | `insider.cluster_buy@1` rule | `oe-events` | Done, tested |
 | Rate-limited EDGAR client (SEC fair-access rules) | `oe-edgar` | Done; run against the real SEC |

@@ -57,6 +57,7 @@ fn parse_number(field: &'static str, text: &str) -> Result<f64, ParseError> {
 struct Builder {
     submission_type: Option<String>,
     issuer_cik: Option<String>,
+    filer_cik: Option<String>,
     issuer_name: Option<String>,
     seller_name: Option<String>,
     relationships: Vec<String>,
@@ -167,6 +168,7 @@ pub fn parse(xml: &str) -> Result<Form144, ParseError> {
             .submission_type
             .ok_or(ParseError::Missing("submissionType"))?,
         issuer_cik,
+        filer_cik: b.filer_cik.and_then(|c| c.parse::<Cik>().ok()),
         issuer_name: b.issuer_name.unwrap_or_default(),
         seller_name: b.seller_name.ok_or(ParseError::Missing(
             "nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold",
@@ -186,6 +188,10 @@ fn assign_top(b: &mut Builder, name: &str, parent: &str, text: &str) -> Result<(
     match (name, parent) {
         ("submissionType", _) => b.submission_type = Some(text.to_string()),
         ("issuerCik", "issuerInfo") => b.issuer_cik = Some(text.to_string()),
+        // headerData/filerInfo/filer/filerCredentials/cik: the first filer.
+        ("cik", "filerCredentials") if b.filer_cik.is_none() => {
+            b.filer_cik = Some(text.to_string())
+        }
         ("issuerName", "issuerInfo") => b.issuer_name = Some(text.to_string()),
         ("nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold", _) => {
             b.seller_name = Some(text.to_string())

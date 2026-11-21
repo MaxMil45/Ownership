@@ -132,3 +132,23 @@ fn every_sidecar_has_a_known_on_and_an_accession() {
         );
     }
 }
+
+#[test]
+fn every_real_fixture_names_its_filer() {
+    for row in manifest() {
+        let xml = std::fs::read_to_string(real_dir().join(&row.file)).unwrap();
+        let f = parse(&xml).unwrap();
+        assert!(
+            f.filer_cik.is_some(),
+            "{}: no filerCredentials/cik",
+            row.file
+        );
+    }
+    // The first fixture's filer, read by hand from its XML.
+    let first = manifest().into_iter().next().unwrap();
+    let xml = std::fs::read_to_string(real_dir().join(&first.file)).unwrap();
+    assert!(xml.contains(&format!(
+        "<cik>{:010}</cik>",
+        parse(&xml).unwrap().filer_cik.unwrap().0
+    )));
+}

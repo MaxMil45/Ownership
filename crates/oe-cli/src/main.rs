@@ -33,10 +33,11 @@ USAGE:
         data/form4/<CIK>/, each with a .meta.txt file recording when the SEC
         accepted it. Needs OE_USER_AGENT (see below).
 
-    oe daily-form4 <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>] [--include-amendments]
-        Download Form 4s filed by ANY company on one day, found through the EDGAR
-        daily index (default: the first 25; a day has about 800). Saved under
-        data/form4/<issuer CIK>/ like recent-form4. Needs OE_USER_AGENT.
+    oe daily-form4 <YYYY-MM-DD> [--to <YYYY-MM-DD>] [--limit <n> | --all] [--out <folder>] [--include-amendments]
+        Download Forms 3, 4 and 5 filed by ANY company on one day (or every weekday up
+        to --to), found through the EDGAR daily index (default: the first 25 a day; a
+        day has about 800 Form 4s). Saved under data/form4/<issuer CIK>/ like
+        recent-form4. Needs OE_USER_AGENT. The other daily-* commands take --to too.
 
     oe follow [--forms 4,144,13,proxy] [--interval <seconds>] [--polls <n>] [--root <folder>]
               [--out <folder>] [--include-amendments] [--alert] [--watchlist <file>] [--db]
@@ -45,7 +46,8 @@ USAGE:
         as it appears, into <root>/form4, form144, sched13 and proxy (root: data; --out
         sets the Form 4 folder alone). --forms picks feeds. Runs until Ctrl-C, or for
         --polls polls. With --alert (implied by --watchlist), runs `oe alerts` on the
-        folders that got new filings after every poll. Needs OE_USER_AGENT.
+        folders that got new filings after every poll. --db loads each new Form 3/4/5 into PostgreSQL
+        (DATABASE_URL) after each poll, keeping the ledger current. Needs OE_USER_AGENT.
 
     oe daily-form144 <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>] [--include-amendments]
         Download Form 144 notices (planned insider sales) filed by any company on one

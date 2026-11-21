@@ -1,6 +1,6 @@
 # How to run the Ownership Engine
 
-Everything below is PowerShell on Windows, run from the repository folder (`C:\Users\mmurp\Ownership`).
+Everything below is PowerShell on Windows, run from the repository folder (the folder that holds `Cargo.toml`).
 
 ## 1. One-time setup
 
@@ -58,7 +58,7 @@ Looking at a single file: `parse-form4`, `parse-form144`, `parse-13`, `parse-408
 
 Downloads go to `data/` (not committed), one folder per company CIK, each filing with a `.meta.txt` note of when the SEC accepted it. Commands never download the same filing twice. Weekends and holidays have no index ("no daily index for ...").
 
-Useful options: `--limit <n>` / `--all`, `--out <folder>`, `--include-amendments`; for rules, `--min-value` (Form 144, dollars), `--min-percent` (13D), `--window` and `--min` (cluster buys).
+Useful options: `--limit <n>` / `--all`, `--to <date>` (every weekday of a range; holidays are skipped), `--out <folder>`, `--include-amendments`; for rules, `--min-value` (Form 144, dollars), `--min-percent` (13D), `--window` and `--min` (cluster buys).
 
 ## 3b. Alerts
 
@@ -113,7 +113,7 @@ The search box matches companies, tickers and people. Run the command again afte
 & $oe db-status                       # counts
 ```
 
-Only Form 3/4/5 filings go into the database so far. After each batch, amendments are linked to the report they amend (ADR 0005); `db-status` shows how many were loaded, held back (not a full restatement), ambiguous, or are still waiting because the report they amend is not loaded yet. A waiting amendment is tried again on every load.
+`db-load` takes any folder `oe` downloads into: Forms 3/4/5, Form 144, Schedule 13D/G, contested-proxy headers and 10-Q/10-K pages (each file is recognised by what it is), so `& $oe db-load data` loads everything; ADR 0009 lists what is stored (no street addresses, no CUSIPs). For Forms 3/4/5, after each batch, amendments are linked to the report they amend (ADR 0005); `db-status` shows how many were loaded, held back (not a full restatement), ambiguous, or are still waiting because the report they amend is not loaded yet. A waiting amendment is tried again on every load.
 
 ### History since 2015
 
@@ -127,6 +127,17 @@ downloads the SEC's quarterly Insider Transactions Data Sets (one zip of about 9
 ```powershell
 & $oe dashboard --db
 ```
+
+### Keeping it current
+
+The quarterly data sets appear some weeks after each quarter ends. Fill the days since the last one from the daily index, then load them:
+
+```powershell
+& $oe daily-form4 2026-10-01 --to 2026-11-20 --all --include-amendments
+& $oe db-load data/form4
+```
+
+(about 1,000 Forms 3/4/5 a day, downloaded 6 at a time within the SEC limit of 8 requests a second). From then on, `& $oe follow --db` loads each new Form 3/4/5 into the database as it arrives; add `--alert` for alerts too. When the next quarterly data set appears, `& $oe bulk-insider` adds it; filings already loaded from their XML are kept as they are.
 
 adds a chart of insider buying and selling over the whole history to the dashboard (about 5 seconds). Rows with impossible amounts as filed (a price over $2 million a share, over $2 billion in one row, over $10 billion for one company in a day) are left out of the dollar totals and counted on the page. `& $oe alerts --db` (and `& $oe follow --alert --db`) lets the cluster-buy rule recognise insiders who trade the same month every year.
 

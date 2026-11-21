@@ -66,7 +66,8 @@ fn migrate_is_idempotent() {
             "0001_init",
             "0002_amendments",
             "0003_bulk",
-            "0004_link_index"
+            "0004_link_index",
+            "0005_other_forms"
         ]
     );
     assert!(
@@ -599,6 +600,159 @@ fn daily_flow_and_trade_history_read_the_ledger() {
     assert!(
         days.windows(2).all(|w| w[0].day < w[1].day),
         "sorted by day"
+    );
+    s.finish();
+}
+
+/// Every real fixture of the four other kinds, prepared as `oe db-load` does.
+fn other_fixtures() -> Vec<oe_store::OtherFiling> {
+    use oe_store::OtherDoc;
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures");
+    let list = |kind: &str, ext: &str| -> Vec<PathBuf> {
+        let mut v: Vec<PathBuf> = std::fs::read_dir(root.join(kind).join("real"))
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.to_string_lossy().ends_with(ext))
+            .collect();
+        v.sort();
+        v
+    };
+    let side = |p: &PathBuf| {
+        let meta = p
+            .to_string_lossy()
+            .replace(".xml", ".meta.txt")
+            .replace(".htm", ".meta.txt");
+        Sidecar::parse(&std::fs::read_to_string(meta).unwrap())
+    };
+    let mut out = Vec::new();
+    let mut add = |doc: OtherDoc, s: &Sidecar, raw: &[u8]| {
+        out.push(
+            oe_store::prepare_other(
+                doc,
+                s.accession.as_deref().unwrap(),
+                s.accepted_at().unwrap(),
+                s.url.clone().unwrap_or_default(),
+                raw,
+            )
+            .unwrap(),
+        );
+    };
+    for p in list("form144", ".xml") {
+        let raw = std::fs::read(&p).unwrap();
+        let f = oe_form144::parse(&String::from_utf8_lossy(&raw)).unwrap();
+        add(OtherDoc::Form144(f), &side(&p), &raw);
+    }
+    for p in list("sched13", ".xml") {
+        let raw = std::fs::read(&p).unwrap();
+        let s = oe_sched13::parse(&String::from_utf8_lossy(&raw)).unwrap();
+        add(OtherDoc::Schedule13(s), &side(&p), &raw);
+    }
+    for p in list("item408", ".htm") {
+        let raw = std::fs::read(&p).unwrap();
+        let s = side(&p);
+        let doc = OtherDoc::Item408 {
+            doc: oe_item408::extract(&String::from_utf8_lossy(&raw)),
+            report_type: s.form.clone(),
+        };
+        add(doc, &s, &raw);
+    }
+    for p in list("proxy", ".hdr.sgml") {
+        let raw = std::fs::read(&p).unwrap();
+        let h = oe_edgar::parse_header_sgml(&String::from_utf8_lossy(&raw)).unwrap();
+        let s = Sidecar {
+            accession: Some(h.accession.clone()),
+            accepted_eastern: Some(h.accepted_eastern.clone()),
+            ..Sidecar::default()
+        };
+        let doc = OtherDoc::Contest(oe_store::ContestHeader {
+            form: h.form,
+            subject: h.subject.unwrap(),
+            filed_by: h.filed_by,
+        });
+        add(doc, &s, &raw);
+    }
+    out
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn other_forms_load_once_and_keep_no_addresses() {
+    let mut s = Scratch::new("other");
+    migrate(&mut s.client).unwrap();
+    let batch = other_fixtures();
+    assert_eq!(batch.len(), 17 + 14 + 10 + 12, "fixtures of the four kinds");
+
+    let first = oe_store::load_other(&mut s.client, &batch).unwrap();
+    assert_eq!((first.filings_new, first.filings_existing), (53, 0));
+    assert!(first.rows_new > 53);
+    assert!(first.changed_source.is_empty());
+
+    let count = |c: &mut Client, sql: &str| -> i64 { c.query_one(sql, &[]).unwrap().get(0) };
+    assert_eq!(
+        count(&mut s.client, "SELECT count(*) FROM form144_notice"),
+        17
+    );
+    assert_eq!(
+        count(&mut s.client, "SELECT count(*) FROM schedule13_filing"),
+        14
+    );
+    assert_eq!(
+        count(&mut s.client, "SELECT count(*) FROM contest_filing"),
+        12
+    );
+    assert!(count(&mut s.client, "SELECT count(*) FROM trading_arrangement") >= 10);
+    // Every 13D/G holder and every security block came along.
+    assert!(count(&mut s.client, "SELECT count(*) FROM schedule13_person") >= 14);
+    assert!(count(&mut s.client, "SELECT count(*) FROM form144_security") >= 17);
+    // Receipts carry the exact acceptance time from the sidecar.
+    assert_eq!(
+        count(
+            &mut s.client,
+            "SELECT count(*) FROM filing f JOIN form144_notice n USING (accession)
+             WHERE f.source = 'xml' AND f.accepted_at IS NOT NULL AND length(f.raw_sha256) = 64"
+        ),
+        17
+    );
+
+    // A repeat writes nothing.
+    let again = oe_store::load_other(&mut s.client, &batch).unwrap();
+    assert_eq!(
+        (again.filings_new, again.filings_existing, again.rows_new),
+        (0, 53, 0)
+    );
+
+    // A changed source is reported and not overwritten.
+    let mut changed = batch[0].clone();
+    changed.filing.raw_sha256 = "0".repeat(64);
+    let r = oe_store::load_other(&mut s.client, std::slice::from_ref(&changed)).unwrap();
+    assert_eq!(r.changed_source, [changed.filing.accession.clone()]);
+
+    // Append-only, like the rest of the ledger.
+    assert!(s
+        .client
+        .batch_execute("UPDATE schedule13_person SET name = 'x'")
+        .is_err());
+
+    // No column for street addresses or CUSIPs in any new table.
+    let bad = count(
+        &mut s.client,
+        "SELECT count(*) FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name IN ('form144_notice', 'form144_security', 'schedule13_filing',
+                              'schedule13_person', 'contest_filing', 'contest_filer',
+                              'trading_arrangement')
+           AND (column_name ILIKE '%street%' OR column_name ILIKE '%address%'
+                OR column_name ILIKE '%zip%' OR column_name ILIKE '%cusip%')",
+    );
+    assert_eq!(bad, 0);
+    let st = status(&mut s.client).unwrap();
+    assert_eq!(
+        (
+            st.form144_notices,
+            st.schedule13_filings,
+            st.contest_filings
+        ),
+        (17, 14, 12)
     );
     s.finish();
 }

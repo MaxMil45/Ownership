@@ -44,8 +44,8 @@ impl Kind {
 
     fn forms(self, include_amendments: bool) -> &'static [&'static str] {
         match (self, include_amendments) {
-            (Kind::Ownership, false) => &["4"],
-            (Kind::Ownership, true) => &["4", "4/A"],
+            (Kind::Ownership, false) => &["3", "4", "5"],
+            (Kind::Ownership, true) => &["3", "3/A", "4", "4/A", "5", "5/A"],
             (Kind::Form144, false) => &["144"],
             (Kind::Form144, true) => &["144", "144/A"],
             (Kind::Schedule13, false) => &["SCHEDULE 13D", "SCHEDULE 13G"],
@@ -60,7 +60,7 @@ impl Kind {
 
     fn label(self) -> &'static str {
         match self {
-            Kind::Ownership => "Form 4",
+            Kind::Ownership => "Form 3/4/5",
             Kind::Form144 => "Form 144",
             Kind::Schedule13 => "Schedule 13D/G",
         }
@@ -73,6 +73,8 @@ impl Kind {
 #[derive(Debug, PartialEq)]
 pub struct DailyArgs {
     pub date: Date,
+    /// Last day of a range (`--to`); `None` for one day.
+    pub to: Option<Date>,
     /// `None` means every filing of the day.
     pub limit: Option<usize>,
     pub out: PathBuf,
@@ -83,6 +85,7 @@ pub fn parse_daily_args(args: &[String], default_root: &str) -> Result<DailyArgs
     let mut date = None;
     let mut parsed = DailyArgs {
         date: Date::from_ymd(1970, 1, 1).expect("valid date"),
+        to: None,
         limit: Some(25),
         out: PathBuf::from(default_root),
         include_amendments: false,
@@ -94,12 +97,60 @@ pub fn parse_daily_args(args: &[String], default_root: &str) -> Result<DailyArgs
             "--all" => parsed.limit = None,
             "--out" => parsed.out = args::folder(&mut it, "--out")?,
             "--include-amendments" => parsed.include_amendments = true,
+            "--to" => {
+                let text = it.next().ok_or("--to needs a date such as 2026-11-20")?;
+                parsed.to = Some(args::date(text, "2026-11-20")?);
+            }
             other if date.is_none() => date = Some(args::date(other, "2026-11-18")?),
             other => return Err(format!("unexpected argument {other:?}")),
         }
     }
     parsed.date = date.ok_or("a date like 2026-11-18 is needed")?;
+    if parsed.to.is_some_and(|t| t < parsed.date) {
+        return Err("--to is before the first date".into());
+    }
     Ok(parsed)
+}
+
+/// The days to fetch: the one date, or every weekday from it to `--to`
+/// (EDGAR publishes no index on weekends).
+pub fn days(args: &DailyArgs) -> Vec<Date> {
+    days_between(args.date, args.to)
+}
+
+/// `from` alone, or every weekday from `from` to `to`.
+pub fn days_between(from: Date, to: Option<Date>) -> Vec<Date> {
+    let Some(to) = to else {
+        return vec![from];
+    };
+    // 1970-01-05 was a Monday.
+    let monday = Date::from_ymd(1970, 1, 5).expect("valid date");
+    let mut out = Vec::new();
+    let mut d = from;
+    while d <= to {
+        if monday.days_until(d).rem_euclid(7) < 5 {
+            out.push(d);
+        }
+        d = d.add_days(1);
+    }
+    out
+}
+
+/// Runs `one` for each day of the range. In a range, a day without an index
+/// (a market holiday) is reported and skipped; a single day keeps the error.
+fn each_day(
+    args: &DailyArgs,
+    mut one: impl FnMut(Date) -> Result<(), String>,
+) -> Result<(), String> {
+    let list = days(args);
+    let range = args.to.is_some();
+    for day in list {
+        match one(day) {
+            Err(e) if range && e.starts_with("no daily index") => println!("{day}: skipped, {e}"),
+            other => other?,
+        }
+    }
+    Ok(())
 }
 
 /// A live feed `oe follow` can poll.
@@ -138,7 +189,7 @@ impl LiveKind {
     /// entries reach back days, where `DEF` would be full of ordinary proxies.
     fn type_prefixes(self) -> &'static [&'static str] {
         match self {
-            LiveKind::Form4 => &["4"],
+            LiveKind::Form4 => &["4", "3", "5"],
             LiveKind::Form144 => &["144"],
             LiveKind::Schedule13 => &["SCHEDULE 13"],
             LiveKind::Proxy => &[
@@ -183,7 +234,8 @@ pub struct FollowArgs {
     pub alert: bool,
     /// Watchlist for those alerts.
     pub watchlist: Option<PathBuf>,
-    /// Give the alerts' routine-trader filter the ledger's history (`--db`).
+    /// `--db`: load each new Form 3/4/5 into the PostgreSQL ledger after the
+    /// poll, and give the alerts' routine-trader filter the ledger's history.
     pub db_history: bool,
 }
 
@@ -273,11 +325,14 @@ fn saved_accessions(root: &Path) -> HashSet<String> {
         };
         for file in files.filter_map(|f| f.ok()) {
             let name = file.file_name().to_string_lossy().into_owned();
-            if let Some(acc) = name
-                .strip_suffix(".xml")
-                .or_else(|| name.strip_suffix(".hdr.sgml"))
-            {
+            if let Some(acc) = name.strip_suffix(".hdr.sgml") {
                 found.insert(acc.to_string());
+            } else if let Some(acc) = name.strip_suffix(".xml") {
+                // The sidecar is written after the XML: an XML without one
+                // was interrupted and is downloaded again.
+                if file.path().with_extension("meta.txt").exists() {
+                    found.insert(acc.to_string());
+                }
             }
         }
     }
@@ -285,8 +340,9 @@ fn saved_accessions(root: &Path) -> HashSet<String> {
 }
 
 enum Saved {
-    /// Saved and parsed; the string is a one-line description.
-    Parsed(String),
+    /// Saved and parsed: a one-line description, and the saved XML file
+    /// (none for proxy headers).
+    Parsed(String, Option<PathBuf>),
     /// Saved, but the parser rejected it. Keep it: it is a new test case.
     ParserFailed(String),
     /// The submission has no ownership XML (not a Form 3/4/5).
@@ -413,7 +469,7 @@ fn save_filing(client: &EdgarClient, url: &str, root: &Path, kind: Kind) -> Resu
         .map_err(|e| format!("{}: {e}", xml_path.display()))?;
 
     Ok(match summary {
-        Ok(line) => Saved::Parsed(line),
+        Ok(line) => Saved::Parsed(line, Some(xml_path)),
         Err(e) => Saved::ParserFailed(format!(
             "{}: saved to {}, but the parser failed: {e}  <- keep this file, it is a new test case",
             sub.accession,
@@ -464,54 +520,85 @@ pub(crate) fn fetch_daily_index(client: &EdgarClient, date: Date) -> Result<Form
 fn daily(args: &[String], kind: Kind) -> Result<(), String> {
     let args = parse_daily_args(args, kind.default_root())?;
     let client = client()?;
+    each_day(&args, |day| daily_one(&client, &args, day, kind))
+}
 
-    let index = fetch_daily_index(&client, args.date)?;
+fn daily_one(client: &EdgarClient, args: &DailyArgs, day: Date, kind: Kind) -> Result<(), String> {
+    let index = fetch_daily_index(client, day)?;
     let forms = kind.forms(args.include_amendments);
     let filings = index.unique_filings(forms);
     println!(
         "{}: {} rows in the index, {} {} filing(s) ({})",
-        args.date,
+        day,
         index.entries.len(),
         filings.len(),
         kind.label(),
         forms.join(", ")
     );
 
-    let mut known = saved_accessions(&args.out);
+    let known = saved_accessions(&args.out);
     let take = args.limit.unwrap_or(usize::MAX);
-    let (mut saved, mut skipped, mut failed) = (0usize, 0usize, 0usize);
+    let mut skipped = 0usize;
+    let mut failed = 0usize;
+    let mut todo = Vec::new();
     for entry in filings.into_iter().take(take) {
-        let Some(accession) = entry.accession() else {
-            failed += 1;
-            continue;
-        };
-        if known.contains(accession) {
-            skipped += 1;
-            continue;
-        }
-        match save_filing(&client, &entry.url(), &args.out, kind) {
-            Ok(Saved::Parsed(line)) => {
-                println!("  {line}");
-                saved += 1;
-                known.insert(accession.to_string());
-            }
-            Ok(Saved::ParserFailed(msg)) => {
-                eprintln!("  {msg}");
-                saved += 1;
-                known.insert(accession.to_string());
-            }
-            Ok(Saved::NoOwnershipXml(msg)) => {
-                eprintln!("  {msg}");
-                failed += 1;
-            }
-            Err(e) => {
-                eprintln!("  {accession}: {e}");
-                failed += 1;
-            }
+        match entry.accession() {
+            None => failed += 1,
+            Some(a) if known.contains(a) => skipped += 1,
+            Some(a) => todo.push((a.to_string(), entry.url())),
         }
     }
+    let (saved, more_failed) = download_all(&todo, |url| save_filing(client, url, &args.out, kind));
+    failed += more_failed;
     println!("done: {saved} saved, {skipped} already present, {failed} failed");
     Ok(())
+}
+
+/// Parallel downloads per day. One request waits mostly on the network
+/// (about 1.3 filings a second measured one at a time), so several run at
+/// once; the client's shared rate limiter still spaces every request to
+/// 8 a second in total (EDGAR fair access).
+const DOWNLOAD_THREADS: usize = 6;
+
+/// Saves every `(accession, url)` with `save`, on [`DOWNLOAD_THREADS`]
+/// threads. Returns (saved, failed). Order of the printed lines may vary.
+fn download_all(
+    todo: &[(String, String)],
+    save: impl Fn(&str) -> Result<Saved, String> + Sync,
+) -> (usize, usize) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let next = AtomicUsize::new(0);
+    let saved = AtomicUsize::new(0);
+    let failed = AtomicUsize::new(0);
+    std::thread::scope(|scope| {
+        for _ in 0..DOWNLOAD_THREADS.min(todo.len()) {
+            scope.spawn(|| loop {
+                let i = next.fetch_add(1, Ordering::Relaxed);
+                let Some((accession, url)) = todo.get(i) else {
+                    break;
+                };
+                match save(url) {
+                    Ok(Saved::Parsed(line, _)) => {
+                        println!("  {line}");
+                        saved.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Ok(Saved::ParserFailed(msg)) => {
+                        eprintln!("  {msg}");
+                        saved.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Ok(Saved::NoOwnershipXml(msg)) => {
+                        eprintln!("  {msg}");
+                        failed.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Err(e) => {
+                        eprintln!("  {accession}: {e}");
+                        failed.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            });
+        }
+    });
+    (saved.into_inner(), failed.into_inner())
 }
 
 // ---------------------------------------------------------------------------
@@ -524,11 +611,15 @@ fn daily(args: &[String], kind: Kind) -> Result<(), String> {
 pub fn daily_proxy(args: &[String]) -> Result<(), String> {
     let args = parse_daily_args(args, DEFAULT_ROOT_PROXY)?;
     let client = client()?;
-    let index = fetch_daily_index(&client, args.date)?;
+    each_day(&args, |day| daily_proxy_one(&client, &args, day))
+}
+
+fn daily_proxy_one(client: &EdgarClient, args: &DailyArgs, day: Date) -> Result<(), String> {
+    let index = fetch_daily_index(client, day)?;
     let filings = index.unique_filings(oe_events::proxy_contest::CONTEST_FORMS);
     println!(
         "{}: {} rows in the index, {} contested-solicitation filing(s)",
-        args.date,
+        day,
         index.entries.len(),
         filings.len()
     );
@@ -544,8 +635,8 @@ pub fn daily_proxy(args: &[String]) -> Result<(), String> {
             skipped += 1;
             continue;
         }
-        match save_proxy_header(&client, entry.cik, accession, &args.out) {
-            Ok(line) => {
+        match save_proxy_header(client, entry.cik, accession, &args.out) {
+            Ok((line, _)) => {
                 println!("  {line}");
                 saved += 1;
                 known.insert(accession.to_string());
@@ -568,7 +659,7 @@ fn save_proxy_header(
     cik: u64,
     accession: &str,
     root: &Path,
-) -> Result<String, String> {
+) -> Result<(String, PathBuf), String> {
     let url = format!(
         "{}{accession}.hdr.sgml",
         filing_folder_url(cik, &accession.replace('-', ""))
@@ -584,12 +675,13 @@ fn save_proxy_header(
     let path = dir.join(format!("{accession}.hdr.sgml"));
     std::fs::write(&path, &text).map_err(|e| format!("{}: {e}", path.display()))?;
     let filers: Vec<&str> = h.filed_by.iter().map(|p| p.name.as_str()).collect();
-    Ok(format!(
+    let line = format!(
         "{accession}  {:<8} {:<34.34} filed by {}",
         h.form,
         subject.name,
         filers.join("; ")
-    ))
+    );
+    Ok((line, path))
 }
 
 // ---------------------------------------------------------------------------
@@ -627,19 +719,24 @@ pub fn follow(args: &[String]) -> Result<(), String> {
         poll += 1;
         let mut summary = Vec::new();
         let mut changed = Vec::new();
+        let mut saved_files = Vec::new();
         for (kind, seen) in args.kinds.iter().zip(known.iter_mut()) {
             match poll_kind(&client, *kind, &args, seen) {
-                Ok(new) => {
+                Ok((new, files)) => {
                     summary.push(format!("{} new {}", new, kind.name()));
                     if new > 0 {
                         changed.push(*kind);
                     }
+                    saved_files.extend(files);
                 }
                 // A failed poll (the feed does time out now and then) is not fatal.
                 Err(e) => summary.push(format!("{} failed ({e})", kind.name())),
             }
         }
         println!("poll {poll}: {}", summary.join(", "));
+        if args.db_history && !saved_files.is_empty() {
+            load_into_ledger(&saved_files);
+        }
         if args.alert && !changed.is_empty() {
             alert_pass(&args, &changed);
         }
@@ -648,6 +745,29 @@ pub fn follow(args: &[String]) -> Result<(), String> {
         }
         std::thread::sleep(Duration::from_secs(args.interval_secs));
     }
+}
+
+/// Loads the filings just saved (every kind) into the PostgreSQL ledger
+/// (`--db`). A failure is reported, never fatal; `oe db-load` can load them
+/// later.
+#[cfg(feature = "db")]
+fn load_into_ledger(files: &[PathBuf]) {
+    match crate::dbcmd::load_paths(files) {
+        Ok(r) => println!(
+            "database: {} new Form 3/4/5 filing(s), {} new row(s), amendments {} loaded, {} waiting; {} new other filing(s)",
+            r.ownership.filings_new,
+            r.ownership.rows_new,
+            r.ownership.links.loaded,
+            r.ownership.links.waiting,
+            r.other.filings_new
+        ),
+        Err(e) => eprintln!("database load failed ({e}); run `oe db-load` later"),
+    }
+}
+
+#[cfg(not(feature = "db"))]
+fn load_into_ledger(_files: &[PathBuf]) {
+    eprintln!("this build has no database support; --db cannot load filings");
 }
 
 /// `oe alerts` over the folders that got new filings in this poll. A failure
@@ -684,16 +804,18 @@ fn alert_pass(args: &FollowArgs, changed: &[LiveKind]) {
     }
 }
 
-/// One poll of one kind's feeds. Returns the number of new filings handled.
+/// One poll of one kind's feeds. Returns the number of new filings handled
+/// and the XML files saved.
 fn poll_kind(
     client: &EdgarClient,
     kind: LiveKind,
     args: &FollowArgs,
     known: &mut HashSet<String>,
-) -> Result<usize, String> {
+) -> Result<(usize, Vec<PathBuf>), String> {
     let forms = kind.forms(args.include_amendments);
     let root = args.folder(kind);
     let mut new = 0usize;
+    let mut saved = Vec::new();
     for prefix in kind.type_prefixes() {
         let url = oe_edgar::latest_filings_url(prefix, kind == LiveKind::Form4);
         let body = client.get_text(&url).map_err(|e| e.to_string())?;
@@ -705,26 +827,28 @@ fn poll_kind(
         new += fresh.len();
         // The feed is newest first; handle the oldest new filing first.
         for entry in fresh.iter().rev() {
-            if save_feed_entry(client, kind, entry, &root) {
+            let (seen, path) = save_feed_entry(client, kind, entry, &root);
+            if seen {
                 known.insert(entry.accession.clone());
             }
+            saved.extend(path);
         }
     }
-    Ok(new)
+    Ok((new, saved))
 }
 
-/// Saves one new feed entry. Returns whether it counts as seen: a download
-/// error does not, so the next poll tries again.
+/// Saves one new feed entry. Returns whether it counts as seen (a download
+/// error does not, so the next poll tries again) and the XML file saved, if
+/// it parsed.
 fn save_feed_entry(
     client: &EdgarClient,
     kind: LiveKind,
     entry: &oe_edgar::FeedEntry,
     root: &Path,
-) -> bool {
+) -> (bool, Option<PathBuf>) {
     let saved = match kind {
-        LiveKind::Proxy => {
-            save_proxy_header(client, entry.cik, &entry.accession, root).map(Saved::Parsed)
-        }
+        LiveKind::Proxy => save_proxy_header(client, entry.cik, &entry.accession, root)
+            .map(|(line, path)| Saved::Parsed(line, Some(path))),
         _ => {
             let url = format!(
                 "https://www.sec.gov/Archives/edgar/data/{}/{}.txt",
@@ -739,17 +863,17 @@ fn save_feed_entry(
         }
     };
     match saved {
-        Ok(Saved::Parsed(line)) => {
+        Ok(Saved::Parsed(line, path)) => {
             println!("  {line}  (feed time {})", entry.updated);
-            true
+            (true, path)
         }
         Ok(Saved::ParserFailed(msg)) | Ok(Saved::NoOwnershipXml(msg)) => {
             eprintln!("  {msg}");
-            true
+            (true, None)
         }
         Err(e) => {
             eprintln!("  {}: {e}", entry.accession);
-            false
+            (false, None)
         }
     }
 }
@@ -794,12 +918,42 @@ mod tests {
                 .out,
             PathBuf::from("data/form144")
         );
-        assert_eq!(Kind::Ownership.forms(true), ["4", "4/A"]);
+        assert_eq!(
+            Kind::Ownership.forms(true),
+            ["3", "3/A", "4", "4/A", "5", "5/A"]
+        );
         assert_eq!(Kind::Form144.forms(false), ["144"]);
         assert!(parse_daily_args(&args(&["yesterday"]), DEFAULT_ROOT).is_err());
         assert!(parse_daily_args(&args(&["2026-13-01"]), DEFAULT_ROOT).is_err());
         assert!(parse_daily_args(&args(&["2026-11-18", "--limit", "0"]), DEFAULT_ROOT).is_err());
         assert!(parse_daily_args(&args(&["2026-11-18", "2026-11-19"]), DEFAULT_ROOT).is_err());
+    }
+
+    #[test]
+    fn a_date_range_is_its_weekdays() {
+        let a =
+            parse_daily_args(&args(&["2026-11-13", "--to", "2026-11-23"]), DEFAULT_ROOT).unwrap();
+        let d: Vec<String> = days(&a).iter().map(|d| d.to_string()).collect();
+        // Friday 13th to Monday 23rd: the weekends of the 14th-15th and 21st-22nd drop out.
+        assert_eq!(
+            d,
+            [
+                "2026-11-13",
+                "2026-11-16",
+                "2026-11-17",
+                "2026-11-18",
+                "2026-11-19",
+                "2026-11-20",
+                "2026-11-23"
+            ]
+        );
+        // One date, even a Saturday, is fetched as asked.
+        let one = parse_daily_args(&args(&["2026-11-21"]), DEFAULT_ROOT).unwrap();
+        assert_eq!(days(&one).len(), 1);
+        assert!(
+            parse_daily_args(&args(&["2026-11-20", "--to", "2026-11-19"]), DEFAULT_ROOT).is_err()
+        );
+        assert!(parse_daily_args(&args(&["2026-11-20", "--to"]), DEFAULT_ROOT).is_err());
     }
 
     #[test]
@@ -845,7 +999,7 @@ mod tests {
 
     #[test]
     fn live_kinds_match_the_daily_commands() {
-        assert_eq!(LiveKind::Form4.forms(false), ["4"]);
+        assert_eq!(LiveKind::Form4.forms(false), ["3", "4", "5"]);
         assert_eq!(
             LiveKind::Schedule13.forms(false),
             ["SCHEDULE 13D", "SCHEDULE 13G"]
@@ -876,13 +1030,43 @@ mod tests {
         std::fs::write(a.join("0000000001-26-000001.xml"), "x").unwrap();
         std::fs::write(a.join("0000000001-26-000001.meta.txt"), "x").unwrap();
         std::fs::write(b.join("0000000002-26-000007.xml"), "x").unwrap();
+        std::fs::write(b.join("0000000002-26-000007.meta.txt"), "x").unwrap();
+        // Interrupted between the XML and its sidecar: not counted as saved.
+        std::fs::write(b.join("0000000002-26-000008.xml"), "x").unwrap();
+        std::fs::write(b.join("0000000002-26-000009.hdr.sgml"), "x").unwrap();
         std::fs::write(root.join("stray.xml"), "x").unwrap();
         let found = saved_accessions(&root);
         std::fs::remove_dir_all(&root).unwrap();
-        assert_eq!(found.len(), 2);
+        assert_eq!(found.len(), 3);
         assert!(found.contains("0000000001-26-000001"));
         assert!(found.contains("0000000002-26-000007"));
+        assert!(found.contains("0000000002-26-000009"));
+        assert!(!found.contains("0000000002-26-000008"));
         assert!(saved_accessions(Path::new("definitely/not/here")).is_empty());
+    }
+
+    #[test]
+    fn download_all_does_each_item_once_and_counts() {
+        use std::sync::Mutex;
+        let todo: Vec<(String, String)> = (0..50)
+            .map(|i| (format!("acc-{i}"), format!("url-{i}")))
+            .collect();
+        let seen = Mutex::new(Vec::new());
+        let (saved, failed) = download_all(&todo, |url| {
+            seen.lock().unwrap().push(url.to_string());
+            if url.ends_with('7') {
+                Err("boom".into())
+            } else {
+                Ok(Saved::Parsed(url.to_string(), None))
+            }
+        });
+        let mut seen = seen.into_inner().unwrap();
+        seen.sort();
+        seen.dedup();
+        assert_eq!(seen.len(), 50, "every item, once");
+        // url-7, url-17, url-27, url-37, url-47 fail.
+        assert_eq!((saved, failed), (45, 5));
+        assert_eq!(download_all(&[], |_| unreachable!()), (0, 0));
     }
 
     #[test]
