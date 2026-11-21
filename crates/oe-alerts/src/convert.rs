@@ -118,6 +118,8 @@ pub fn cluster_buy(e: &ClusterBuyEvent) -> Alert {
     Alert {
         key: format!("{}|{}|{}", e.rule_id, e.issuer, e.window_start),
         rule_id: e.rule_id,
+        amount_usd: Some(e.total_value),
+        percent: None,
         known_on: e.known_on,
         issuer_cik: Some(e.issuer),
         issuer_name: None,
@@ -185,6 +187,8 @@ pub fn activist(e: &ActivistEvent) -> Alert {
             ))
         ),
         rule_id: e.rule_id,
+        amount_usd: None,
+        percent: e.largest_percent,
         known_on: e.known_on,
         issuer_cik: Some(e.issuer),
         issuer_name: Some(e.issuer_name.clone()),
@@ -245,6 +249,8 @@ pub fn planned_sale(e: &PlannedSaleEvent) -> Alert {
                 .unwrap_or_else(|| format!("{}|{}", e.issuer, e.seller))
         ),
         rule_id: e.rule_id,
+        amount_usd: Some(e.aggregate_market_value),
+        percent: e.percent_of_outstanding,
         known_on: e.known_on,
         issuer_cik: Some(e.issuer),
         issuer_name: Some(e.issuer_name.clone()),
@@ -293,6 +299,8 @@ pub fn plan_terminated(e: &PlanTerminatedEvent) -> Alert {
     Alert {
         key: format!("{}|{}|{}", e.rule_id, acc, person),
         rule_id: e.rule_id,
+        amount_usd: None,
+        percent: None,
         known_on: e.known_on,
         issuer_cik: e.issuer,
         issuer_name: e.issuer_name.clone(),
@@ -349,6 +357,8 @@ pub fn proxy_contest(e: &ProxyContestEvent) -> Alert {
     Alert {
         key: format!("{}|{}|{}", e.rule_id, e.issuer, challengers),
         rule_id: e.rule_id,
+        amount_usd: None,
+        percent: None,
         known_on: e.last_known_on,
         issuer_cik: Some(e.issuer),
         issuer_name: Some(e.issuer_name.clone()),

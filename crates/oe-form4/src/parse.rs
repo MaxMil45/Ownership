@@ -279,11 +279,11 @@ fn build(doc: DocBuilder) -> Result<OwnershipDocument, ParseError> {
                     .as_deref()
                     .ok_or(ParseError::Missing("transactionDate"))?,
             )?,
-            code: TransactionCode::parse(
-                t.code
-                    .as_deref()
-                    .ok_or(ParseError::Missing("transactionCode"))?,
-            ),
+            // EDGAR accepts a transaction with no <transactionCoding> at all
+            // (LSI Industries 0000892251-26-000141); the SEC's own bulk data
+            // leaves the code empty. Keep the row with an empty code: no
+            // rule treats it as a purchase or a sale.
+            code: TransactionCode::parse(t.code.as_deref().unwrap_or("")),
             shares: number("transactionShares", t.shares)?,
             price_per_share: number("transactionPricePerShare", t.price)?,
             acquired_disposed,

@@ -41,8 +41,8 @@ pub fn status(_args: &[String]) -> Result<(), String> {
     let s = oe_store::status(&mut client).map_err(|e| e.to_string())?;
     println!("migrations applied: {}", s.migrations.join(", "));
     println!(
-        "filings: {} ({} joint filings with more than one owner)",
-        s.filings, s.joint_filings
+        "filings: {} ({} from the quarterly bulk data sets, {} joint filings with more than one owner)",
+        s.filings, s.bulk_filings, s.joint_filings
     );
     println!(
         "amendments: {} ({} linked and loaded, {} linked but held back, {} ambiguous, {} waiting for the report they amend)",
@@ -243,7 +243,7 @@ mod tests {
     fn real_fixtures_prepare_through_the_cli_path() {
         let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/form4/real");
         let files = find_xml_files(&dir).unwrap();
-        assert_eq!(files.len(), 24);
+        assert_eq!(files.len(), 25);
         for f in &files {
             prepare_file(f).unwrap_or_else(|e| panic!("{}: {e}", f.display()));
         }

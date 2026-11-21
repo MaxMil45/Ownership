@@ -487,10 +487,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "oe-bulk"
+version = "0.1.0-dev"
+dependencies = [
+ "crc32fast",
+ "miniz_oxide",
+ "oe-core",
+]
+
+[[package]]
 name = "oe-cli"
 version = "0.1.0-dev"
 dependencies = [
  "oe-alerts",
+ "oe-bulk",
  "oe-core",
  "oe-edgar",
  "oe-events",
@@ -566,6 +576,7 @@ dependencies = [
 name = "oe-store"
 version = "0.1.0-dev"
 dependencies = [
+ "oe-bulk",
  "oe-core",
  "oe-form4",
  "postgres",

@@ -114,6 +114,8 @@ mod tests {
         Alert {
             key: "k".into(),
             rule_id: "insider.cluster_buy@1",
+            amount_usd: None,
+            percent: None,
             known_on: None,
             issuer_cik: Some(Cik(320193)),
             issuer_name: Some("Apple Inc.".into()),

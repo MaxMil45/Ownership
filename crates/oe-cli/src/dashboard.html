@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ownership Engine dashboard</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --wash: rgba(11,11,11,0.04);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+  --buy: #2a78d6; --sell: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c;
+    --buy: #3987e5; --sell: #e66767;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface-1: #1a1a19;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c;
+  --buy: #3987e5; --sell: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.viz-root {
+  min-height: 100vh; background: var(--page); color: var(--text-primary);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  padding: 24px clamp(12px, 3vw, 40px) 48px;
+}
+header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+h1 { font-size: 20px; font-weight: 600; margin: 0; }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.sub { color: var(--text-secondary); font-size: 13px; }
+.muted { color: var(--text-muted); }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 20px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-1); }
+.seg button { border: 0; background: none; color: var(--text-secondary); padding: 6px 12px; font: inherit; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { color: var(--text-primary); font-weight: 600; background: var(--wash); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 10px; background: var(--surface-1); color: var(--text-secondary); cursor: pointer; font: inherit; font-size: 13px; }
+.chip[aria-pressed="false"] { opacity: .45; }
+.chip[aria-pressed="false"] .sw { background: var(--axis) !important; }
+.sw { width: 10px; height: 10px; border-radius: 2px; flex: none; display: inline-block; }
+.key { width: 12px; height: 2px; border-radius: 1px; flex: none; display: inline-block; }
+input[type="search"] { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-primary); min-width: 240px; }
+.theme { margin-left: auto; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile, .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; }
+.tile { padding: 14px 16px; }
+.tile .label { color: var(--text-secondary); font-size: 13px; }
+.tile .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
+.tile .note { color: var(--text-muted); font-size: 12px; }
+.tile.hero .value { font-size: 48px; line-height: 1.1; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.card { padding: 16px 18px; margin-bottom: 16px; }
+.grid2 .card { margin-bottom: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 4px; color: var(--text-secondary); font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.hit { fill: transparent; cursor: default; outline: none; }
+.hit:hover, .hit:focus { fill: var(--wash); }
+.empty { color: var(--text-muted); padding: 24px 0; text-align: center; }
+details.table-view { margin-top: 8px; }
+details.table-view > summary { color: var(--text-secondary); cursor: pointer; font-size: 13px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--text-secondary); font-weight: 600; }
+td:first-child { white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rank { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; align-items: center; gap: 4px 10px; margin-top: 10px; }
+.rank .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.rank .name button { all: unset; cursor: pointer; }
+.rank .name button:hover, .rank .name button:focus-visible { text-decoration: underline; }
+.rank .bar { height: 14px; border-radius: 0 4px 4px 0; background: var(--s1); min-width: 2px; }
+.rank .val { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rank .track:hover .bar, .rank .track:focus .bar { filter: brightness(1.12); }
+.rank .track { outline: none; }
+.events .ev { border-bottom: 1px solid var(--grid); }
+.events summary { display: grid; grid-template-columns: 92px 170px 1fr; gap: 10px; padding: 8px 4px; cursor: pointer; list-style: none; }
+.events summary::-webkit-details-marker { display: none; }
+.events summary:hover { background: var(--wash); }
+.events .rule { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.events .body { padding: 2px 4px 12px 106px; color: var(--text-secondary); }
+.events .body p { margin: 2px 0; }
+.events a { color: var(--text-primary); }
+.more { margin-top: 10px; font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; min-width: 150px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12); display: none; }
+.tip .t { color: var(--text-secondary); margin-bottom: 4px; }
+.tip .row { display: flex; align-items: center; gap: 8px; }
+.tip .row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip .row span.l { color: var(--text-secondary); }
+@media (max-width: 700px) {
+  .events summary { grid-template-columns: 80px 1fr; }
+  .events summary .hl { grid-column: 1 / -1; }
+  .events .body { padding-left: 4px; }
+}
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <header>
+    <h1>Ownership Engine</h1>
+    <div class="sub" id="generated"></div>
+  </header>
+
+  <div class="filters" role="group" aria-label="Filters">
+    <div class="seg" id="range" role="group" aria-label="Time range"></div>
+    <div class="chips" id="rules" role="group" aria-label="Event types"></div>
+    <input type="search" id="q" placeholder="Search company, ticker or person" aria-label="Search">
+    <div class="seg theme" role="group" aria-label="Theme">
+      <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>Events over time</h2>
+    <div class="sub" id="events-sub">Each event the rules found, by the day the SEC accepted the filing behind it.</div>
+    <div class="legend" id="events-legend"></div>
+    <div class="chart" id="events-chart"></div>
+    <details class="table-view"><summary>Show as table</summary><div id="events-table"></div></details>
+  </section>
+
+  <section class="card">
+    <h2>Insider buying and selling on the open market</h2>
+    <div class="sub">Form 4 purchases (code P) above the line, sales (code S) below, in dollars, by the day the SEC accepted the filing. Only the Form 4s you downloaded.</div>
+    <div class="legend"><span><i class="sw" style="background:var(--buy)"></i>Buys</span><span><i class="sw" style="background:var(--sell)"></i>Sales</span></div>
+    <div class="chart" id="flow-chart"></div>
+    <details class="table-view"><summary>Show as table</summary><div id="flow-table"></div></details>
+  </section>
+
+  <section class="card" id="history-card" hidden>
+    <h2>Insider buying and selling, every Form 4 in the database</h2>
+    <div class="sub" id="history-sub">Open-market purchases above the line, sales below, from the PostgreSQL ledger (the SEC's quarterly data sets plus the filings you downloaded). Follows the time range; the search box does not apply here.</div>
+    <div class="sub muted" id="history-note"></div>
+    <div class="legend"><span><i class="sw" style="background:var(--buy)"></i>Buys</span><span><i class="sw" style="background:var(--sell)"></i>Sales</span></div>
+    <div class="chart" id="history-chart"></div>
+    <details class="table-view"><summary>Show as table</summary><div id="history-table"></div></details>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Companies with the most events</h2>
+      <div class="sub">Click a name to search for it.</div>
+      <div id="top-issuers"></div>
+    </section>
+    <section class="card">
+      <h2>Largest planned sales</h2>
+      <div class="sub">Form 144 notices, by market value of the shares to be sold.</div>
+      <div id="top-sales"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Largest insider trades</h2>
+    <div class="sub">Open-market buys and sales in the selected range, largest first.</div>
+    <div id="top-trades"></div>
+  </section>
+
+  <section class="card">
+    <h2>All events</h2>
+    <div class="sub" id="list-sub"></div>
+    <div class="events" id="events"></div>
+  </section>
+</div>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<script id="oe-data" type="application/json">/*__OE_DATA__*/null</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("oe-data").textContent);
+const RULE_COLOR = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)", "var(--s6)"];
+const RULES = DATA.rules.map((r, i) => ({ id: r.id, label: r.label, color: RULE_COLOR[i] }));
+const RULE_BY_ID = Object.fromEntries(RULES.map(r => [r.id, r]));
+const SVG = "http://www.w3.org/2000/svg";
+const state = { range: 30, rules: new Set(RULES.map(r => r.id)), q: "", shown: 100 };
+
+// ---------- small helpers (all data goes in through textContent) ----------
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.className = v; else if (k === "style") e.style.cssText = v; else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) e.append(k instanceof Node ? k : document.createTextNode(String(k)));
+  return e;
+}
+function svg(tag, attrs) {
+  const e = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  return e;
+}
+const dayNum = s => Math.floor(Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 86400000);
+const dayStr = n => new Date(n * 86400000).toISOString().slice(0, 10);
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const nice = n => { const d = new Date(n * 86400000); return MONTHS[d.getUTCMonth()] + " " + d.getUTCDate(); };
+function money(v) {
+  const a = Math.abs(v), s = v < 0 ? "-" : "";
+  if (a >= 1e12) return s + "$" + (a / 1e12).toFixed(2) + "T";
+  if (a >= 1e9) return s + "$" + (a / 1e9).toFixed(2) + "B";
+  if (a >= 1e6) return s + "$" + (a / 1e6).toFixed(a >= 1e8 ? 0 : 1) + "M";
+  if (a >= 1e3) return s + "$" + (a / 1e3).toFixed(a >= 1e5 ? 0 : 1) + "K";
+  return s + "$" + Math.round(a);
+}
+const int = v => Math.round(v).toLocaleString("en-US");
+function compact(v) {
+  const a = Math.abs(v);
+  if (a >= 1e12) return (v / 1e12).toFixed(a % 1e12 ? 1 : 0) + "T";
+  if (a >= 1e9) return (v / 1e9).toFixed(a % 1e9 ? 1 : 0) + "B";
+  if (a >= 1e6) return (v / 1e6).toFixed(a % 1e6 ? 1 : 0) + "M";
+  if (a >= 1e4) return (v / 1e3).toFixed(0) + "K";
+  return int(v);
+}
+// The smallest of 1, 2, 2.5, 5 x 10^n that is at least `raw`.
+function niceStep(raw) {
+  if (!(raw > 0)) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  return [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw * (1 - 1e-9));
+}
+const issuerOf = a => a.issuer_name || a.ticker || (a.issuer_cik ? "CIK " + a.issuer_cik : "Unknown issuer");
+const safeUrl = u => typeof u === "string" && u.startsWith("https://www.sec.gov/") ? u : null;
+
+// ---------- tooltip ----------
+const tip = document.getElementById("tip");
+function showTip(evt, title, rows, anchor) {
+  tip.replaceChildren(el("div", { class: "t" }, title));
+  for (const r of rows) {
+    tip.append(el("div", { class: "row" }, el("i", { class: "key", style: "background:" + r.color }), el("b", {}, r.value), el("span", { class: "l" }, r.label)));
+  }
+  tip.style.display = "block";
+  let x, y;
+  if (evt && evt.clientX != null && evt.type !== "focus") { x = evt.clientX; y = evt.clientY; }
+  else { const b = anchor.getBoundingClientRect(); x = b.left + b.width / 2; y = b.top; }
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, x + 14)) + "px";
+  tip.style.top = Math.max(8, y - h - 12) + "px";
+}
+const hideTip = () => { tip.style.display = "none"; };
+function hover(node, fn) {
+  node.addEventListener("pointermove", e => fn(e, node));
+  node.addEventListener("focus", e => fn(e, node));
+  node.addEventListener("pointerleave", hideTip);
+  node.addEventListener("blur", hideTip);
+}
+
+// ---------- filtering ----------
+function bounds() {
+  const today = dayNum(DATA.today);
+  if (state.range) return [today - state.range + 1, today];
+  let min = today;
+  for (const a of DATA.alerts) if (a.known_on) min = Math.min(min, dayNum(a.known_on));
+  for (const t of DATA.trades) min = Math.min(min, dayNum(t.d));
+  if (DATA.history && DATA.history.days.length) min = Math.min(min, dayNum(DATA.history.days[0][0]));
+  return [min, today];
+}
+function matchesQ(parts) {
+  if (!state.q) return true;
+  const q = state.q.toLowerCase();
+  return parts.some(p => p && String(p).toLowerCase().includes(q));
+}
+function filtered() {
+  const [from, to] = bounds();
+  const inRange = d => { if (!d) return false; const n = dayNum(d); return n >= from && n <= to; };
+  const alerts = DATA.alerts.filter(a => state.rules.has(a.rule_id) && inRange(a.known_on) &&
+    matchesQ([a.issuer_name, a.ticker, a.headline, ...a.people.map(p => p.name), ...a.details]));
+  const trades = DATA.trades.filter(t => inRange(t.d) && matchesQ([t.k, t.o, String(t.i)]));
+  return { alerts, trades, from, to };
+}
+
+// Buckets: days up to about three months, then weeks, then months.
+function bucketer(from, to) {
+  const span = to - from + 1;
+  if (span <= 92) return { unit: "day", key: n => n, label: n => nice(n), list: range(from, to) };
+  if (span <= 730) {
+    const wk = n => n - ((new Date(n * 86400000).getUTCDay() + 6) % 7); // Monday
+    const list = []; for (let n = wk(from); n <= to; n += 7) list.push(n);
+    return { unit: "week", key: wk, label: n => "week of " + nice(n), list };
+  }
+  const mk = n => { const d = new Date(n * 86400000); return d.getUTCFullYear() * 12 + d.getUTCMonth(); };
+  const list = []; for (let m = mk(from); m <= mk(to); m++) list.push(m);
+  return { unit: "month", key: mk, label: m => MONTHS[m % 12] + " " + Math.floor(m / 12), list };
+}
+function range(a, b) { const r = []; for (let i = a; i <= b; i++) r.push(i); return r; }
+
+// ---------- column chart (stacked or diverging) ----------
+// series: [{label, color, values[] (>= 0), down: bool}] ; down series hang below zero.
+function columns(host, labels, series, fmt, axisFmt, minStep = 0) {
+  host.replaceChildren();
+  const W = Math.max(320, host.clientWidth), H = 240, padL = 48, padR = 8, padT = 10, padB = 26;
+  const up = series.filter(s => !s.down), down = series.filter(s => s.down);
+  const n = labels.length;
+  const sum = (ss, i) => ss.reduce((t, s) => t + s.values[i], 0);
+  const maxUp = Math.max(0, ...labels.map((_, i) => sum(up, i)));
+  const maxDown = Math.max(0, ...labels.map((_, i) => sum(down, i)));
+  if (maxUp === 0 && maxDown === 0) { host.append(el("div", { class: "empty" }, "Nothing in this range.")); return; }
+  // One step size for both sides, so a small side does not crowd its labels.
+  const step = Math.max(minStep, niceStep(Math.max(maxUp, maxDown) / (down.length ? 3 : 4)));
+  const arm = m => { const t = [0]; while (t[t.length - 1] < m - 1e-9) t.push(t[t.length - 1] + step); return t; };
+  const ticksUp = arm(maxUp), ticksDown = arm(maxDown);
+  const top = ticksUp[ticksUp.length - 1], bottom = ticksDown[ticksDown.length - 1];
+  const plotH = H - padT - padB, zeroY = padT + plotH * top / (top + bottom);
+  const y = v => zeroY - (v / (top + bottom)) * plotH;
+  const band = (W - padL - padR) / n, bw = Math.max(1, Math.min(24, band * 0.72));
+  const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": host.dataset.label || "chart" });
+  // grid and y labels
+  const tickVals = [...ticksUp.map(v => v), ...ticksDown.slice(1).map(v => -v)];
+  for (const v of tickVals) {
+    const yy = y(v);
+    s.append(svg("line", { x1: padL, x2: W - padR, y1: yy, y2: yy, stroke: v === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1, "shape-rendering": "crispEdges" }));
+    const t = svg("text", { x: padL - 8, y: yy + 4, "text-anchor": "end" }); t.textContent = axisFmt(Math.abs(v)); s.append(t);
+  }
+  // x labels: about six, evenly spaced
+  const every = Math.max(1, Math.ceil(n / 6));
+  for (let i = 0; i < n; i += every) {
+    const t = svg("text", { x: padL + band * (i + 0.5), y: H - 8, "text-anchor": "middle" });
+    t.textContent = labels[i].short; s.append(t);
+  }
+  const GAP = 2, R = 4;
+  const seg = (x, y0, y1, roundEnd) => { // y0 at the baseline side, y1 at the data end
+    const h = Math.abs(y1 - y0); if (h < 0.5) return null;
+    const dir = y1 < y0 ? -1 : 1, r = roundEnd ? Math.min(R, h, bw / 2) : 0;
+    const yb = y0, ye = y1;
+    let d;
+    if (dir < 0) d = `M${x},${yb} V${ye + r} Q${x},${ye} ${x + r},${ye} H${x + bw - r} Q${x + bw},${ye} ${x + bw},${ye + r} V${yb} Z`;
+    else d = `M${x},${yb} V${ye - r} Q${x},${ye} ${x + r},${ye} H${x + bw - r} Q${x + bw},${ye} ${x + bw},${ye - r} V${yb} Z`;
+    return svg("path", { d });
+  };
+  for (let i = 0; i < n; i++) {
+    const x = padL + band * i + (band - bw) / 2;
+    for (const group of [up, down]) {
+      let acc = 0;
+      const live = group.filter(g => g.values[i] > 0);
+      live.forEach((g, j) => {
+        const v0 = acc, v1 = acc + g.values[i]; acc = v1;
+        const sign = g.down ? -1 : 1;
+        let y0 = y(sign * v0), y1 = y(sign * v1);
+        if (j > 0) y0 += g.down ? GAP : -GAP; // surface gap between stacked segments
+        const p = seg(x, y0, y1, j === live.length - 1);
+        if (p) { p.setAttribute("fill", g.color); s.append(p); }
+      });
+    }
+    // hit target: the whole band
+    const hit = svg("rect", { class: "hit", x: padL + band * i, y: padT, width: band, height: plotH, tabindex: 0 });
+    hit.setAttribute("aria-label", labels[i].long + ": " + series.map(g => g.label + " " + fmt(g.values[i])).join(", "));
+    hover(hit, (e, node) => showTip(e, labels[i].long, series.map(g => ({ color: g.color, label: g.label, value: fmt(g.values[i]) })), node));
+    s.insertBefore(hit, s.firstChild);
+  }
+  host.append(s);
+}
+
+function table(host, head, rows, numCols) {
+  const t = el("table");
+  const tr = el("tr"); head.forEach((h, i) => tr.append(el("th", numCols.includes(i) ? { class: "num" } : {}, h)));
+  t.append(el("thead", {}, tr));
+  const tb = el("tbody");
+  for (const r of rows) { const row = el("tr"); r.forEach((c, i) => row.append(el("td", numCols.includes(i) ? { class: "num" } : {}, c))); tb.append(row); }
+  t.append(tb);
+  host.replaceChildren(rows.length ? t : el("div", { class: "empty" }, "Nothing in this range."));
+}
+
+function ranked(host, items, fmt, onPick) {
+  host.replaceChildren();
+  if (!items.length) { host.append(el("div", { class: "empty" }, "Nothing in this range.")); return; }
+  const max = Math.max(...items.map(i => i.value));
+  const g = el("div", { class: "rank" });
+  for (const it of items) {
+    const name = onPick ? el("button", { type: "button", title: it.name }, it.name) : el("span", { title: it.name }, it.name);
+    if (onPick) name.addEventListener("click", () => onPick(it.name));
+    const bar = el("div", { class: "bar", style: `width:${Math.max(0.5, 100 * it.value / max)}%` });
+    const track = el("div", { class: "track", tabindex: 0, "aria-label": it.name + ": " + fmt(it.value) }, bar);
+    hover(track, (e, node) => showTip(e, it.name, [{ color: "var(--s1)", label: it.note || "", value: fmt(it.value) }], node));
+    g.append(el("div", { class: "name" }, name), track, el("div", { class: "val" }, fmt(it.value)));
+  }
+  host.append(g);
+}
+
+// ---------- the page ----------
+function tiles(f) {
+  const buys = f.trades.filter(t => t.c === "P"), sales = f.trades.filter(t => t.c === "S");
+  const sum = a => a.reduce((s, t) => s + t.v, 0);
+  const planned = f.alerts.filter(a => a.rule_id === "insider.planned_sale@1");
+  const by = id => f.alerts.filter(a => a.rule_id === id).length;
+  const list = [
+    { hero: true, label: "Events", value: int(f.alerts.length), note: rangeName() },
+    { label: "Insider buys", value: money(sum(buys)), note: int(buys.length) + " open-market purchases" },
+    { label: "Insider sales", value: money(sum(sales)), note: int(sales.length) + " open-market sales" },
+    { label: "Planned sales (Form 144)", value: money(planned.reduce((s, a) => s + (a.amount_usd || 0), 0)), note: int(planned.length) + " notices over the threshold" },
+    { label: "New 13Ds", value: int(by("activist.new_13d@1")), note: int(by("activist.passive_to_active@1")) + " passive to active" },
+    { label: "Proxy contests", value: int(by("activist.proxy_contest@1")), note: int(by("insider.cluster_buy@1")) + " cluster buys" },
+  ];
+  const host = document.getElementById("tiles"); host.replaceChildren();
+  for (const t of list) host.append(el("div", { class: "tile" + (t.hero ? " hero" : "") }, el("div", { class: "label" }, t.label), el("div", { class: "value" }, t.value), el("div", { class: "note" }, t.note)));
+}
+function rangeName() { return state.range ? "last " + state.range + " days" : "all downloaded data"; }
+
+function eventsChart(f) {
+  const b = bucketer(f.from, f.to), idx = new Map(b.list.map((k, i) => [k, i]));
+  const active = RULES.filter(r => state.rules.has(r.id));
+  const series = active.map(r => ({ label: r.label, color: r.color, values: b.list.map(() => 0) }));
+  for (const a of f.alerts) {
+    const i = idx.get(b.key(dayNum(a.known_on))); const si = active.findIndex(r => r.id === a.rule_id);
+    if (i != null && si >= 0) series[si].values[i]++;
+  }
+  const labels = b.list.map(k => ({ short: b.unit === "month" ? b.label(k) : nice(k), long: b.label(k) }));
+  const host = document.getElementById("events-chart"); host.dataset.label = "Events per " + b.unit;
+  document.getElementById("events-sub").textContent = "Each event the rules found, per " + b.unit + " the SEC accepted the filing behind it.";
+  const leg = document.getElementById("events-legend"); leg.replaceChildren();
+  for (const r of active) leg.append(el("span", {}, el("i", { class: "sw", style: "background:" + r.color }), r.label));
+  columns(host, labels, series, v => int(v), v => int(v), 1);
+  const rows = b.list.map((k, i) => [b.label(k), ...series.map(s => int(s.values[i]))]).filter(r => r.slice(1).some(v => v !== "0"));
+  table(document.getElementById("events-table"), [b.unit[0].toUpperCase() + b.unit.slice(1), ...series.map(s => s.label)], rows, series.map((_, i) => i + 1));
+}
+
+function flowChart(f) {
+  const b = bucketer(f.from, f.to), idx = new Map(b.list.map((k, i) => [k, i]));
+  const buys = b.list.map(() => 0), sales = b.list.map(() => 0);
+  for (const t of f.trades) { const i = idx.get(b.key(dayNum(t.d))); if (i == null) continue; (t.c === "P" ? buys : sales)[i] += t.v; }
+  const labels = b.list.map(k => ({ short: b.unit === "month" ? b.label(k) : nice(k), long: b.label(k) }));
+  const host = document.getElementById("flow-chart"); host.dataset.label = "Insider buys and sales per " + b.unit;
+  columns(host, labels, [{ label: "Buys", color: "var(--buy)", values: buys }, { label: "Sales", color: "var(--sell)", values: sales, down: true }], money, v => "$" + compact(v));
+  const rows = b.list.map((k, i) => [b.label(k), money(buys[i]), money(sales[i])]).filter((r, i) => buys[i] || sales[i]);
+  table(document.getElementById("flow-table"), [b.unit[0].toUpperCase() + b.unit.slice(1), "Buys", "Sales"], rows, [1, 2]);
+}
+
+function historyChart(f) {
+  if (!DATA.history) return;
+  document.getElementById("history-card").hidden = false;
+  if (DATA.history.left_out) {
+    document.getElementById("history-note").textContent = int(DATA.history.left_out) +
+      " row(s) with implausible amounts as filed (a price over $2 million a share, over $2 billion in one row, or over $10 billion for one company in one day) are left out of the totals. They stay in the database.";
+  }
+  const b = bucketer(f.from, f.to), idx = new Map(b.list.map((k, i) => [k, i]));
+  const buys = b.list.map(() => 0), sales = b.list.map(() => 0), nb = b.list.map(() => 0), ns = b.list.map(() => 0);
+  for (const [d, bv, bn, sv, sn] of DATA.history.days) {
+    const i = idx.get(b.key(dayNum(d))); if (i == null) continue;
+    buys[i] += bv; nb[i] += bn; sales[i] += sv; ns[i] += sn;
+  }
+  const labels = b.list.map(k => ({ short: b.unit === "month" ? b.label(k) : nice(k), long: b.label(k) }));
+  const host = document.getElementById("history-chart"); host.dataset.label = "Insider buys and sales per " + b.unit + ", whole database";
+  columns(host, labels, [{ label: "Buys", color: "var(--buy)", values: buys }, { label: "Sales", color: "var(--sell)", values: sales, down: true }], money, v => "$" + compact(v));
+  const rows = b.list.map((k, i) => [b.label(k), money(buys[i]), int(nb[i]), money(sales[i]), int(ns[i])]).filter((r, i) => nb[i] || ns[i]);
+  table(document.getElementById("history-table"), [b.unit[0].toUpperCase() + b.unit.slice(1), "Buys", "Purchases", "Sales", "Sale rows"], rows, [1, 2, 3, 4]);
+}
+
+function topIssuers(f) {
+  const m = new Map();
+  for (const a of f.alerts) { const k = issuerOf(a); m.set(k, (m.get(k) || 0) + 1); }
+  const items = [...m].map(([name, value]) => ({ name, value, note: value === 1 ? "event" : "events" }))
+    .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, 10);
+  ranked(document.getElementById("top-issuers"), items, v => int(v), name => { const q = document.getElementById("q"); q.value = name; state.q = name; render(); });
+}
+function topSales(f) {
+  const items = f.alerts.filter(a => a.rule_id === "insider.planned_sale@1" && a.amount_usd > 0)
+    .sort((a, b) => b.amount_usd - a.amount_usd).slice(0, 10)
+    .map(a => ({ name: issuerOf(a) + " · " + (a.people[0] ? a.people[0].name : ""), value: a.amount_usd, note: a.known_on }));
+  ranked(document.getElementById("top-sales"), items, money);
+}
+function topTrades(f) {
+  const rows = [...f.trades].sort((a, b) => b.v - a.v).slice(0, 15).map(t => [
+    t.d, t.c === "P" ? "Buy" : "Sale", t.k || "CIK " + t.i, t.o, t.r || "", t.s != null ? int(t.s) : "", t.p != null ? "$" + t.p : "", money(t.v)]);
+  table(document.getElementById("top-trades"), ["Known on", "", "Ticker", "Insider", "Role", "Shares", "Price", "Value"], rows, [5, 6, 7]);
+}
+
+function eventList(f) {
+  const list = [...f.alerts].sort((a, b) => (b.known_on || "").localeCompare(a.known_on || "") || (b.amount_usd || 0) - (a.amount_usd || 0));
+  document.getElementById("list-sub").textContent = int(list.length) + " event(s), newest first. Click one for its details and the SEC filings it rests on.";
+  const host = document.getElementById("events"); host.replaceChildren();
+  for (const a of list.slice(0, state.shown)) {
+    const r = RULE_BY_ID[a.rule_id] || { label: a.rule_id, color: "var(--axis)" };
+    const sum = el("summary", {}, el("span", { class: "muted" }, a.known_on || "?"),
+      el("span", { class: "rule" }, el("i", { class: "sw", style: "background:" + r.color }), r.label),
+      el("span", { class: "hl" }, a.headline));
+    const body = el("div", { class: "body" });
+    for (const d of a.details) body.append(el("p", {}, d));
+    for (const rc of a.receipts) {
+      const url = safeUrl(rc.url);
+      const label = (rc.form ? "Form " + rc.form + " " : "") + rc.accession;
+      body.append(el("p", {}, "Receipt: ", url ? el("a", { href: url, target: "_blank", rel: "noopener noreferrer" }, label) : label));
+    }
+    body.append(el("p", { class: "muted" }, "Rule " + a.rule_id));
+    host.append(el("details", { class: "ev" }, sum, body));
+  }
+  if (list.length > state.shown) {
+    const more = el("button", { class: "more", type: "button" }, "Show " + Math.min(100, list.length - state.shown) + " more");
+    more.addEventListener("click", () => { state.shown += 100; eventList(filtered()); });
+    host.append(more);
+  }
+  if (!list.length) host.append(el("div", { class: "empty" }, "No events match the filters."));
+}
+
+function render() {
+  hideTip();
+  const f = filtered();
+  tiles(f); eventsChart(f); flowChart(f); historyChart(f); topIssuers(f); topSales(f); topTrades(f); eventList(f);
+}
+
+// ---------- controls ----------
+(function init() {
+  const c = DATA.counts;
+  document.getElementById("generated").textContent = "Built " + DATA.generated.replace("T", " ").replace("Z", " UTC") +
+    " from " + int(c.form4) + " Form 4s, " + int(c.form144) + " Form 144s, " + int(c.sched13) + " 13D/Gs, " +
+    int(c.proxy) + " proxy headers and " + int(c.periodic) + " 10-Q/10-K reports. Run oe dashboard again to refresh.";
+  const rangeHost = document.getElementById("range");
+  for (const [label, days] of [["7 days", 7], ["30 days", 30], ["90 days", 90], ["All", 0]]) {
+    const btn = el("button", { type: "button", "aria-pressed": String(state.range === days) }, label);
+    btn.addEventListener("click", () => {
+      state.range = days; state.shown = 100;
+      for (const b of rangeHost.children) b.setAttribute("aria-pressed", String(b === btn));
+      render();
+    });
+    rangeHost.append(btn);
+  }
+  const chips = document.getElementById("rules");
+  for (const r of RULES) {
+    const chip = el("button", { type: "button", class: "chip", "aria-pressed": "true" }, el("i", { class: "sw", style: "background:" + r.color }), r.label);
+    chip.addEventListener("click", () => {
+      if (state.rules.has(r.id)) state.rules.delete(r.id); else state.rules.add(r.id);
+      chip.setAttribute("aria-pressed", String(state.rules.has(r.id)));
+      render();
+    });
+    chips.append(chip);
+  }
+  let timer;
+  document.getElementById("q").addEventListener("input", e => {
+    clearTimeout(timer); timer = setTimeout(() => { state.q = e.target.value.trim(); state.shown = 100; render(); }, 150);
+  });
+  for (const b of document.querySelectorAll("[data-theme-set]")) {
+    b.addEventListener("click", () => {
+      const v = b.dataset.themeSet;
+      if (v === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v;
+      for (const o of document.querySelectorAll("[data-theme-set]")) o.setAttribute("aria-pressed", String(o === b));
+    });
+  }
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 120); });
+  render();
+})();
+</script>
+</body>
+</html>

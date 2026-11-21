@@ -1,0 +1,13 @@
+[package]
+name = "oe-bulk"
+description = "Reads the SEC's quarterly Insider Transactions Data Sets (Forms 3/4/5) into ownership documents."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+oe-core.workspace = true
+# Both are already in the build through ureq (flate2); see ADR 0008.
+miniz_oxide = "0.9"
+crc32fast = "1.4"

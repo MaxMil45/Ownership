@@ -148,6 +148,8 @@ mod tests {
         Alert {
             key: "k".into(),
             rule_id: "activist.new_13d@1",
+            amount_usd: None,
+            percent: None,
             known_on: None,
             issuer_cik: None,
             issuer_name: None,

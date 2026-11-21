@@ -28,6 +28,10 @@ pub const MIGRATIONS: &[(&str, &str)] = &[
         "0002_amendments",
         include_str!("../../../migrations/0002_amendments.sql"),
     ),
+    (
+        "0003_bulk",
+        include_str!("../../../migrations/0003_bulk.sql"),
+    ),
 ];
 
 #[derive(Debug)]
@@ -107,7 +111,7 @@ pub fn migrate(client: &mut Client) -> Result<Vec<&'static str>, StoreError> {
 const STAGING: &str = "
 CREATE TEMP TABLE stage_filing (
     accession text, form_type text, filer_cik bigint,
-    accepted_at text, source_url text, raw_sha256 text
+    accepted_at text, source_url text, raw_sha256 text, source text
 ) ON COMMIT DROP;
 CREATE TEMP TABLE stage_tx (
     accession text, row_in_filing integer, issuer_cik bigint, owner_cik bigint,
@@ -124,8 +128,8 @@ CREATE TEMP TABLE stage_ownership (
 ) ON COMMIT DROP;";
 
 const INSERT_FILING: &str = "
-INSERT INTO filing (accession, form_type, filer_cik, accepted_at, source_url, raw_sha256)
-SELECT accession, form_type, filer_cik, accepted_at::timestamptz, source_url, raw_sha256
+INSERT INTO filing (accession, form_type, filer_cik, accepted_at, source_url, raw_sha256, source)
+SELECT accession, form_type, filer_cik, accepted_at::timestamptz, source_url, raw_sha256, source
 FROM stage_filing
 ON CONFLICT (accession) DO NOTHING";
 
@@ -174,20 +178,26 @@ JOIN filing f ON f.accession = s.accession AND f.raw_sha256 = sf.raw_sha256
 ON CONFLICT DO NOTHING";
 
 /// Amendments without a link yet, oldest first, with the number of reports
-/// that could be the one amended: same first reporting owner, same issuer,
+/// that could be the one amended: a reporting owner in common, same issuer,
 /// the base form (4 for a 4/A), accepted on `dateOfOriginalSubmission`
-/// (US Eastern date) and before the amendment.
+/// (US Eastern date) and not after the amendment. "An owner in common"
+/// rather than "the same first owner": the bulk data sets do not keep the
+/// XML's owner order (3 of 200 sampled filings, all joint). "Not after"
+/// rather than "before": bulk filings of one day share one time (ADR 0008).
 const UNLINKED_AMENDMENTS: &str = "
 SELECT a.accession, a.accepted_at::text, count(o.accession), min(o.accession)
 FROM filing a
 JOIN ownership_filing ao ON ao.accession = a.accession
 LEFT JOIN amendment_link l ON l.amendment_accession = a.accession
 LEFT JOIN (filing o JOIN ownership_filing oo ON oo.accession = o.accession)
-       ON o.filer_cik = a.filer_cik
-      AND oo.issuer_cik = ao.issuer_cik
+       ON oo.issuer_cik = ao.issuer_cik
       AND o.form_type = left(a.form_type, length(a.form_type) - 2)
       AND (o.accepted_at AT TIME ZONE 'America/New_York')::date = ao.date_of_original_submission
-      AND o.accepted_at < a.accepted_at
+      AND o.accepted_at <= a.accepted_at
+      AND o.accession <> a.accession
+      AND EXISTS (SELECT 1 FROM filing_owner fa
+                  JOIN filing_owner fo ON fo.owner_cik = fa.owner_cik
+                  WHERE fa.accession = a.accession AND fo.accession = o.accession)
 WHERE a.form_type LIKE '%/A' AND l.amendment_accession IS NULL
 GROUP BY a.accession, a.accepted_at
 ORDER BY a.accepted_at, a.accession";
@@ -230,13 +240,16 @@ const INSERT_LINK: &str = "
 INSERT INTO amendment_link (amendment_accession, original_accession, replaces_accession, outcome, reason)
 VALUES ($1, $2, $3, $4, $5)";
 
-/// Filings whose stored raw hash differs from the one just computed: the
-/// source changed after it was first loaded. Nothing is overwritten.
+/// Filings whose stored raw hash differs from the one just computed from the
+/// same kind of source: the source changed after it was first loaded.
+/// Nothing is overwritten. (A filing stored from its XML and offered again
+/// from a bulk data set, or the other way round, is not a change: the two
+/// fingerprints are of different texts. The first one loaded is kept.)
 const CHANGED_SOURCE: &str = "
 SELECT s.accession
 FROM stage_filing s
 JOIN filing f ON f.accession = s.accession
-WHERE f.raw_sha256 <> s.raw_sha256
+WHERE f.raw_sha256 <> s.raw_sha256 AND f.source = s.source
 ORDER BY s.accession";
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -293,8 +306,21 @@ impl LoadReport {
     }
 }
 
-/// Loads one batch in a single transaction: either all of it or none.
+/// Loads one batch in a single transaction: either all of it or none. Then
+/// links amendments ([`link_amendments`]) in the same transaction.
 pub fn load_batch(client: &mut Client, batch: &[Prepared]) -> Result<LoadReport, StoreError> {
+    load_batch_with(client, batch, true)
+}
+
+/// [`load_batch`], with the amendment linking pass optional. A bulk load of
+/// a quarter loads its batches without linking, then calls [`link_pass`]
+/// once (ADR 0008): linking after every batch would re-examine every
+/// waiting amendment each time.
+pub fn load_batch_with(
+    client: &mut Client,
+    batch: &[Prepared],
+    link: bool,
+) -> Result<LoadReport, StoreError> {
     let mut tx = client.transaction()?;
     tx.batch_execute(STAGING)?;
 
@@ -347,7 +373,11 @@ pub fn load_batch(client: &mut Client, batch: &[Prepared]) -> Result<LoadReport,
     tx.execute(INSERT_OWNER, &[])?;
     tx.execute(INSERT_OWNERSHIP, &[])?;
     tx.execute(INSERT_AMEND_TX, &[])?;
-    let links = link_amendments(&mut tx)?;
+    let links = if link {
+        link_amendments(&mut tx)?
+    } else {
+        LinkReport::default()
+    };
     let changed_source = tx
         .query(CHANGED_SOURCE, &[])?
         .iter()
@@ -364,6 +394,128 @@ pub fn load_batch(client: &mut Client, batch: &[Prepared]) -> Result<LoadReport,
         links,
         changed_source,
     })
+}
+
+/// Open-market buying and selling per day, as the public could know it now:
+/// non-derivative rows with code P (acquired) and S (disposed), dated by the
+/// US Eastern day their filing became known, from
+/// `insider_transaction_as_of(now())` so amended rows count once.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FlowDay {
+    /// `YYYY-MM-DD`.
+    pub day: String,
+    pub buy_value: f64,
+    pub buys: i64,
+    pub sell_value: f64,
+    pub sells: i64,
+}
+
+use oe_core::{MAX_PLAUSIBLE_PRICE, MAX_PLAUSIBLE_ROW_VALUE};
+
+// Two tests: each row's own amounts, then each issuer's total for the day
+// (Notis Global, Nov 2016: one filer reported over a thousand purchases of
+// $9.86 billion each, every row under the row limit; see
+// oe_core::MAX_PLAUSIBLE_ISSUER_DAY).
+const FLOW_BY_DAY: &str = "
+WITH r AS (
+    SELECT (known_at AT TIME ZONE 'America/New_York')::date AS day, issuer_cik, code,
+           acquired_disposed, shares * price_per_share AS value,
+           coalesce(price_per_share > $1 OR shares * price_per_share > $2, false) AS bad_row
+    FROM insider_transaction_as_of(now())
+    WHERE NOT is_derivative AND code IN ('P', 'S')
+), t AS (
+    SELECT day, code, acquired_disposed, value,
+           bad_row OR coalesce(sum(value) FILTER (WHERE NOT bad_row)
+                               OVER (PARTITION BY issuer_cik, day) > $3, false) AS implausible
+    FROM r
+)
+SELECT day::text,
+       coalesce(sum(value) FILTER (WHERE code = 'P' AND acquired_disposed = 'A' AND implausible IS NOT TRUE), 0)::float8,
+       count(*) FILTER (WHERE code = 'P' AND acquired_disposed = 'A' AND implausible IS NOT TRUE),
+       coalesce(sum(value) FILTER (WHERE code = 'S' AND acquired_disposed = 'D' AND implausible IS NOT TRUE), 0)::float8,
+       count(*) FILTER (WHERE code = 'S' AND acquired_disposed = 'D' AND implausible IS NOT TRUE),
+       count(*) FILTER (WHERE implausible)
+FROM t
+GROUP BY 1
+ORDER BY 1";
+
+/// The daily flow, and the number of rows left out as implausible
+/// ([`MAX_PLAUSIBLE_PRICE`], [`MAX_PLAUSIBLE_ROW_VALUE`]).
+pub fn flow_by_day(client: &mut Client) -> Result<(Vec<FlowDay>, i64), StoreError> {
+    check_schema(client)?;
+    let price = MAX_PLAUSIBLE_PRICE.to_string();
+    let value = MAX_PLAUSIBLE_ROW_VALUE.to_string();
+    let sql = FLOW_BY_DAY
+        .replace("$1", &format!("{price}::numeric"))
+        .replace("$2", &format!("{value}::numeric"))
+        .replace(
+            "$3",
+            &format!("{}::numeric", oe_core::MAX_PLAUSIBLE_ISSUER_DAY),
+        );
+    let mut left_out = 0i64;
+    let days = client
+        .query(sql.as_str(), &[])?
+        .iter()
+        .map(|r| {
+            left_out += r.get::<_, i64>(5);
+            FlowDay {
+                day: r.get(0),
+                buy_value: r.get(1),
+                buys: r.get(2),
+                sell_value: r.get(3),
+                sells: r.get(4),
+            }
+        })
+        .collect();
+    Ok((days, left_out))
+}
+
+/// One earlier open-market trade, for the cluster-buy routine-trader filter.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoryTrade {
+    pub issuer_cik: u64,
+    pub owner_cik: u64,
+    /// `YYYY-MM-DD`, the transaction date.
+    pub date: String,
+    /// `P` or `S`.
+    pub code: String,
+}
+
+const TRADE_HISTORY: &str = "
+SELECT DISTINCT t.issuer_cik, fo.owner_cik, t.transaction_date::text, t.code
+FROM insider_transaction_as_of(now()) t
+JOIN filing_owner fo ON fo.accession = t.accession
+WHERE t.issuer_cik = ANY($1) AND t.transaction_date >= $2::text::date
+  AND NOT t.is_derivative AND t.code IN ('P', 'S')";
+
+/// Every open-market buy (P) and sale (S) in the ledger for these issuers
+/// since `since` (`YYYY-MM-DD`), once per owner of the filing (a joint
+/// filing's co-owners each count as having traded).
+pub fn trade_history(
+    client: &mut Client,
+    issuers: &[u64],
+    since: &str,
+) -> Result<Vec<HistoryTrade>, StoreError> {
+    check_schema(client)?;
+    let ids: Vec<i64> = issuers.iter().map(|&c| c as i64).collect();
+    Ok(client
+        .query(TRADE_HISTORY, &[&ids, &since])?
+        .iter()
+        .map(|r| HistoryTrade {
+            issuer_cik: r.get::<_, i64>(0) as u64,
+            owner_cik: r.get::<_, i64>(1) as u64,
+            date: r.get(2),
+            code: r.get(3),
+        })
+        .collect())
+}
+
+/// One amendment linking pass in its own transaction.
+pub fn link_pass(client: &mut Client) -> Result<LinkReport, StoreError> {
+    let mut tx = client.transaction()?;
+    let report = link_amendments(&mut tx)?;
+    tx.commit()?;
+    Ok(report)
 }
 
 fn shapes(
@@ -477,6 +629,8 @@ pub fn link_amendments(tx: &mut postgres::Transaction<'_>) -> Result<LinkReport,
 pub struct Status {
     pub migrations: Vec<String>,
     pub filings: i64,
+    /// Of those, loaded from the quarterly bulk data sets (ADR 0008).
+    pub bulk_filings: i64,
     pub amendment_filings: i64,
     /// Filings with more than one reporting owner.
     pub joint_filings: i64,
@@ -496,13 +650,21 @@ pub struct Status {
 /// Fails with [`StoreError::NoSchema`] unless every migration's tables exist
 /// (the first and the newest table are checked).
 pub fn check_schema(client: &mut Client) -> Result<(), StoreError> {
-    let ok: bool = client
-        .query_one(
-            "SELECT to_regclass('filing') IS NOT NULL AND to_regclass('amendment_link') IS NOT NULL",
-            &[],
-        )?
+    let has_log: bool = client
+        .query_one("SELECT to_regclass('schema_migration') IS NOT NULL", &[])?
         .get(0);
-    if ok {
+    if !has_log {
+        return Err(StoreError::NoSchema);
+    }
+    let applied: Vec<String> = client
+        .query("SELECT version FROM schema_migration", &[])?
+        .iter()
+        .map(|r| r.get(0))
+        .collect();
+    if MIGRATIONS
+        .iter()
+        .all(|(v, _)| applied.iter().any(|a| a == v))
+    {
         Ok(())
     } else {
         Err(StoreError::NoSchema)
@@ -520,6 +682,7 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
         Ok(client.query_one(sql, &[])?.get(0))
     };
     let filings = one(client, "SELECT count(*) FROM filing")?;
+    let bulk_filings = one(client, "SELECT count(*) FROM filing WHERE source = 'bulk'")?;
     let amendment_filings = one(
         client,
         "SELECT count(*) FROM filing WHERE form_type LIKE '%/A'",
@@ -557,6 +720,7 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
     Ok(Status {
         migrations,
         filings,
+        bulk_filings,
         amendment_filings,
         joint_filings,
         amendments_loaded,

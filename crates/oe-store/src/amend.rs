@@ -4,16 +4,22 @@
 //! A 4/A or 5/A names the *date* of the report it amends, not its accession
 //! number. Real amendments (36 checked on 2026-11-16..19) come in two kinds:
 //!
-//! * **Restatements**: the whole report again, with a date, a share count or
-//!   a holding corrected, sometimes with an omitted row added at the end.
+//! * **Restatements**: the whole report again, with a date, a share count, a
+//!   transaction code or a holding corrected, sometimes with an omitted row
+//!   added at the end.
 //! * **Supplements**: only the corrected or the omitted rows. Replacing the
 //!   report with one of these would hide real trades from the ledger.
 //!
 //! The rows may replace the current version only when the amendment reads as a
 //! restatement: it has at least as many rows, and each existing row is matched
-//! by the amendment row in the same position with the same table (derivative
-//! or not) and code, and the same date **or** the same share count. Anything
-//! else is held back. Missing data is better than wrong data.
+//! by the amendment row in the same position, in the same table (derivative or
+//! not), with **at least two of** its code, date and share count unchanged.
+//! Anything else is held back. Missing data is better than wrong data.
+//!
+//! The rule first required the same code. On 2026 Q3 (727 amendments, bulk
+//! data) that held back 32 amendments whose remarks say they correct a code,
+//! A to P and D to S among them, in all 8 read; holding those back hid real
+//! purchases and sales, so a corrected code alone is now a restatement.
 
 /// The fields of one transaction row that the comparison uses.
 #[derive(Debug, Clone, PartialEq)]
@@ -48,19 +54,30 @@ pub fn compare(current: &[RowShape], amendment: &[RowShape]) -> Verdict {
     }
     for (i, (old, new)) in current.iter().zip(amendment).enumerate() {
         let table = |d: bool| if d { "derivative" } else { "non-derivative" };
-        if old.is_derivative != new.is_derivative || old.code != new.code {
+        if old.is_derivative != new.is_derivative {
             return Verdict::HeldBack(format!(
-                "row {i}: {} code {} became {} code {}",
+                "row {i}: a {} row became a {} row",
                 table(old.is_derivative),
-                old.code,
-                table(new.is_derivative),
-                new.code
+                table(new.is_derivative)
             ));
         }
-        if old.date != new.date && !same_number(old.shares.as_deref(), new.shares.as_deref()) {
+        let same_code = old.code == new.code;
+        let same_date = old.date == new.date;
+        let same_shares = same_number(old.shares.as_deref(), new.shares.as_deref());
+        if u8::from(same_code) + u8::from(same_date) + u8::from(same_shares) < 2 {
+            let mut changed = Vec::new();
+            if !same_code {
+                changed.push(format!("code {} to {}", old.code, new.code));
+            }
+            if !same_date {
+                changed.push(format!("date {} to {}", old.date, new.date));
+            }
+            if !same_shares {
+                changed.push("share count".to_string());
+            }
             return Verdict::HeldBack(format!(
-                "row {i}: both the date ({} to {}) and the share count changed",
-                old.date, new.date
+                "row {i}: {} changed, more than one of code, date and share count",
+                changed.join(", ")
             ));
         }
     }
@@ -193,6 +210,31 @@ mod tests {
             r(true, "M", "2026-11-11", "360"),
         ];
         assert!(matches!(compare(&old, &new), Verdict::HeldBack(_)));
+    }
+
+    #[test]
+    fn a_corrected_code_on_the_same_row_restates() {
+        // 0001193125-26-354277 amends 0001193125-26-350734: "to correct the
+        // transaction code ... from 'A' to 'P' ... an open market purchase".
+        let old = [r(false, "A", "2026-08-12", "5000")];
+        let new = [r(false, "P", "2026-08-12", "5000")];
+        assert!(matches!(compare(&old, &new), Verdict::Restates { .. }));
+        // A code and a date changed together: not the same row corrected.
+        let moved = [r(false, "P", "2026-08-13", "5000")];
+        assert!(matches!(compare(&old, &moved), Verdict::HeldBack(_)));
+    }
+
+    #[test]
+    fn held_back_reasons_say_what_changed() {
+        let old = [r(false, "P", "2026-11-09", "236116")];
+        let new = [r(false, "P", "2026-11-10", "2825")];
+        let Verdict::HeldBack(why) = compare(&old, &new) else {
+            panic!("held back expected")
+        };
+        assert_eq!(
+            why,
+            "row 0: date 2026-11-09 to 2026-11-10, share count changed, more than one of code, date and share count"
+        );
     }
 
     #[test]

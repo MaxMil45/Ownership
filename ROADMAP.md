@@ -16,7 +16,8 @@ The full plan lives in the "Ownership Event Intelligence Engine — Master Plan"
 - [ ] Bulk backfill of Forms 3/4/5 since 2015 into PostgreSQL
   - [x] Loader: `oe db-migrate`, `oe db-load`, `oe db-status` (crate `oe-store`); `--dry-run` checked on 325 real filings
   - [x] Run the loader and the database tests against a real PostgreSQL server (PostgreSQL 16 in Docker, `docker/compose.yaml`; 6 of 6 tests pass; 332 real filings and 871 rows loaded and cross-checked with `psql`)
-  - [ ] Download the history: about 2.2 million filings since 2015 is roughly 75 hours at 8 requests per second through `daily-form4` (an estimate, not measured). The SEC's bulk "insider transactions" data sets may be faster; not evaluated yet.
+  - [x] Download the history: from the SEC's quarterly Insider Transactions Data Sets instead of 2.2 million single downloads (`oe-bulk`, `oe bulk-insider`, migration `0003_bulk`, ADR 0008). Checked on 200 random 2026 Q3 filings against their XML: 197 identical, 3 with joint owners in another order; numbers to two decimals; filing date = Eastern acceptance date in all. Loaded 2015 Q1 to 2026 Q3 into the dev database in 31 minutes: 2.4 million filings, 4.94 million transaction rows.
+  - [x] Use the history: `oe dashboard --db` (insider buying and selling over the whole ledger) and `oe alerts --db` / `oe follow --alert --db` (the cluster-buy routine-trader filter sees earlier years).
   - [x] Link amendments (3/A, 4/A, 5/A) to the report they amend and load the rows of restatements; store co-owners of joint filings (migration `0002_amendments`, ADR 0005; checked on 36 real amendments: 30 loaded, 4 held back as supplements, 2 with no matching report; 11 of 11 database tests pass). Supplements (amendments that report only the omitted rows) stay out of the ledger.
 - [x] Form 144 parser and `insider.planned_sale@1` (`oe-form144`, `oe daily-form144`, `oe planned-sales`; run on 274 real filings; the insider test misses 28% of large notices, see the spec; not in the database yet)
 - [x] Item 408 extraction from 10-Q/10-K Inline XBRL and `insider.plan_terminated@1` (`oe-item408`, `oe daily-periodic`, `oe plan-terminations`; one full day crawled: 647 reports, 25 events; 10 real fixtures; only one day and one 10-K checked; not in the database yet)
@@ -27,6 +28,7 @@ The full plan lives in the "Ownership Event Intelligence Engine — Master Plan"
   - [x] Feed delay measured once (2026-11-20, 10:21–10:28 am Eastern, 4 filings): 34 to 66 s from acceptance, with 30 s polling.
   - [x] Live feeds for Form 144, 13D/G and proxy filings: `oe follow` polls all four kinds by default (`--forms` to pick). Run live for 9 minutes: 50 Form 4s, 50 Form 144s, 26 13D/Gs and 6 proxy headers saved, 31 alerts; a new Form 4 and a new Form 144 arrived 86 s and 62 s after acceptance. 10-Q/10-K plan terminations still come from the next-day index.
   - [ ] Email
+- [x] Dashboard (`oe dashboard`, ADR 0007): one offline HTML page from the downloaded folders, with headline numbers, events over time, insider buying vs selling, top companies, largest planned sales and trades, and a searchable event list with SEC receipt links. Checked in a browser on 143 real events and 500 trades.
 - [x] Clean-up (2026-11-19): shared helpers for flags, numbers, dates, entities, tags, sidecars and CLI arguments (one copy each); `insider.cluster_buy@1` routine filter indexed (96,000 trades: 8.98 s to 17 ms); outputs on all real data unchanged
 - [ ] **Gate 1:** public v0.1 release; alerts within 5 minutes of filing; fixture suite green
 

@@ -115,6 +115,33 @@ pub struct Transaction {
     pub ownership: Option<OwnershipNature>,
 }
 
+/// Dollar amounts above either limit are treated as filing errors as filed,
+/// typically the total typed into the price field (40,000,000 shares "at
+/// $525,600,000") or round placeholder numbers (10,000,000 shares at $1,000).
+/// Berkshire Hathaway class A, the dearest US share, trades under $1,000,000.
+/// Measured on the 2015-2026 Forms 4 (open-market rows): 376 over $10 billion;
+/// between $2 and $10 billion almost all were round numbers or came from two
+/// filer agents (one penny stock got 198 such rows, another agent 191 rows
+/// over 108 issuers); 139 other rows were over $2 billion, most of them
+/// errors too, a few real block trades. Those few are lost from the totals.
+/// Such rows stay in the ledger; they are only left out of dollar totals.
+pub const MAX_PLAUSIBLE_PRICE: f64 = 2_000_000.0;
+pub const MAX_PLAUSIBLE_ROW_VALUE: f64 = 2_000_000_000.0;
+/// One issuer's open-market buying or selling on one day above this is
+/// treated as a filing error even when every row passes: Notis Global, a
+/// penny stock, got $37.5 and $20.2 billion of "purchases" on 17-18 November
+/// 2016 from one filer. Real large days measured 2015-2026: Tesla $6.9 billion
+/// (2022-08-09), a fund's block sales of $6-9 billion; one $12.1 billion day
+/// (likely related funds each reporting the same shares) is lost.
+pub const MAX_PLAUSIBLE_ISSUER_DAY: f64 = 10_000_000_000.0;
+
+/// Whether a row's price and value are believable (see [`MAX_PLAUSIBLE_PRICE`]).
+/// Missing numbers are not implausible.
+pub fn plausible_amounts(price_per_share: Option<f64>, value: Option<f64>) -> bool {
+    price_per_share.map_or(true, |p| p <= MAX_PLAUSIBLE_PRICE)
+        && value.map_or(true, |v| v <= MAX_PLAUSIBLE_ROW_VALUE)
+}
+
 impl Transaction {
     /// Open-market purchase of non-derivative stock: the classic insider "buy".
     pub fn is_open_market_purchase(&self) -> bool {
@@ -167,4 +194,22 @@ pub struct FilingMeta {
     /// Date the SEC accepted the filing: the earliest the public could know.
     pub known_on: Option<Date>,
     pub source: Option<String>,
+}
+
+#[cfg(test)]
+mod plausibility_tests {
+    use super::*;
+
+    #[test]
+    fn typed_totals_are_implausible_and_berkshire_is_not() {
+        // A real filing error: 40,000,000 shares "at $525,600,000" a share.
+        assert!(!plausible_amounts(Some(525_600_000.0), Some(2.1e16)));
+        // Berkshire Hathaway class A at about $750,000 a share.
+        assert!(plausible_amounts(Some(750_000.0), Some(75_000_000.0)));
+        assert!(!plausible_amounts(Some(20.0), Some(2e10)));
+        // 10,000,000 shares at $1,000: a round placeholder, $10 billion.
+        assert!(!plausible_amounts(Some(1_000.0), Some(1e10)));
+        assert!(plausible_amounts(Some(45.0), Some(1.5e9)));
+        assert!(plausible_amounts(None, None));
+    }
 }

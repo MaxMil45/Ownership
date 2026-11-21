@@ -43,6 +43,11 @@ pub struct Alert {
     pub key: String,
     /// `insider.cluster_buy@1`, ...
     pub rule_id: &'static str,
+    /// The event's dollar amount, where it has one: a cluster buy's total, a
+    /// planned sale's market value. For charts and sorting.
+    pub amount_usd: Option<f64>,
+    /// The stake in percent, where the event states one (13D/13G).
+    pub percent: Option<f64>,
     /// US Eastern date the event became knowable.
     pub known_on: Option<Date>,
     pub issuer_cik: Option<Cik>,

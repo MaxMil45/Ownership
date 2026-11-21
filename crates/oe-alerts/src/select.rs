@@ -111,6 +111,8 @@ mod tests {
         Alert {
             key: key.into(),
             rule_id: "insider.cluster_buy@1",
+            amount_usd: None,
+            percent: None,
             known_on: known_on.map(|d| d.parse().unwrap()),
             issuer_cik: None,
             issuer_name: None,

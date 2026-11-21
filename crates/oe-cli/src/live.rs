@@ -183,6 +183,8 @@ pub struct FollowArgs {
     pub alert: bool,
     /// Watchlist for those alerts.
     pub watchlist: Option<PathBuf>,
+    /// Give the alerts' routine-trader filter the ledger's history (`--db`).
+    pub db_history: bool,
 }
 
 impl FollowArgs {
@@ -208,6 +210,7 @@ pub fn parse_follow_args(args: &[String]) -> Result<FollowArgs, String> {
         include_amendments: false,
         alert: false,
         watchlist: None,
+        db_history: false,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -232,6 +235,7 @@ pub fn parse_follow_args(args: &[String]) -> Result<FollowArgs, String> {
             }
             "--root" => parsed.root = args::folder(&mut it, "--root")?,
             "--alert" => parsed.alert = true,
+            "--db" => parsed.db_history = true,
             "--watchlist" => {
                 parsed.watchlist = Some(args::file(&mut it, "--watchlist")?);
                 parsed.alert = true;
@@ -667,6 +671,7 @@ fn alert_pass(args: &FollowArgs, changed: &[LiveKind]) {
         state: PathBuf::from(crate::alerts::DEFAULT_STATE),
         dry_run: false,
         today: None,
+        db_history: args.db_history,
     };
     match crate::alerts::run(&alert_args) {
         Ok(r) => println!(

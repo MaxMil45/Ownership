@@ -2,6 +2,8 @@
 
 mod alerts;
 mod args;
+mod bulkcmd;
+mod dashboard;
 #[cfg(feature = "db")]
 mod dbcmd;
 #[cfg(feature = "net")]
@@ -37,7 +39,7 @@ USAGE:
         data/form4/<issuer CIK>/ like recent-form4. Needs OE_USER_AGENT.
 
     oe follow [--forms 4,144,13,proxy] [--interval <seconds>] [--polls <n>] [--root <folder>]
-              [--out <folder>] [--include-amendments] [--alert] [--watchlist <file>]
+              [--out <folder>] [--include-amendments] [--alert] [--watchlist <file>] [--db]
         Poll the EDGAR latest-filings feeds (default every 30 s, at least 10) and
         download each new Form 4, Form 144, Schedule 13D/13G and contested-proxy header
         as it appears, into <root>/form4, form144, sched13 and proxy (root: data; --out
@@ -72,7 +74,7 @@ USAGE:
         Run activist.proxy_contest@1 over downloaded headers (default folder: data/proxy).
 
     oe alerts [--form4 <dir>] [--form144 <dir>] [--sched13 <dir>] [--proxy <dir>] [--periodic <dir>]
-              [--watchlist <file>] [--max-age <days>] [--today <YYYY-MM-DD>] [--include-undated]
+              [--watchlist <file>] [--max-age <days>] [--today <YYYY-MM-DD>] [--include-undated] [--db]
               [--state <file>] [--dry-run]
         Run every event rule over the downloaded folders (default: the data/ folders that
         exist; naming one means only those) and deliver each fresh event (default: known
@@ -80,7 +82,20 @@ USAGE:
         and OE_ALERT_WEBHOOK_URL (any HTTPS endpoint, JSON POST); with neither set, new
         alerts are printed. Deliveries are logged in data/alerts/sent.tsv. A watchlist
         has lines like `ticker AAPL`, `issuer 320193`, `insider 1494730`, `name Elliott`,
-        `rule activist.new_13d@1`.
+        `rule activist.new_13d@1`. --db lets the cluster-buy rule's routine-trader filter
+        (insiders who trade the same month every year) see the PostgreSQL ledger's history.
+
+    oe bulk-insider [--from 2015q1] [--to <quarter>] [--dir data/bulk] [--dry-run] [--no-load] [--offline]
+        History of Forms 3/4/5 from the SEC's quarterly Insider Transactions Data Sets: downloads
+        each quarter's zip once (about 9 MB) into data/bulk/, then loads it into PostgreSQL
+        (DATABASE_URL). Filing dates only, numbers to two decimals; see ADR 0008. Needs
+        OE_USER_AGENT unless --offline.
+
+    oe dashboard [--db] [--out <file.html>] [--form4 <dir>] [--form144 <dir>] [--sched13 <dir>] [--proxy <dir>] [--periodic <dir>]
+        Write one HTML page (default data/report/dashboard.html) with charts and a searchable
+        list of every event in the downloaded folders, each with links to its SEC filings.
+        Open it in a browser; it works offline and sends nothing anywhere. --db adds a chart of
+        insider buying and selling over the whole PostgreSQL ledger (DATABASE_URL).
 
     oe parse-13 <primary_doc.xml>
         Print the key facts of one Schedule 13D/13G XML file.
@@ -145,6 +160,8 @@ fn main() -> ExitCode {
         Some("planned-sales") => planned_sales(&args[1..]),
         Some("cluster-buys") => cluster_buys(&args[1..]),
         Some("alerts") => alerts::alerts(&args[1..]),
+        Some("dashboard") => dashboard::dashboard(&args[1..]),
+        Some("bulk-insider") => bulkcmd::bulk_insider(&args[1..]),
         Some("fetch") => match (args.get(1), args.get(2)) {
             (Some(url), Some(out)) => fetch(url, Path::new(out)),
             _ => Err("fetch needs a URL and an output file".into()),
@@ -761,12 +778,12 @@ fn cluster_buys(args: &[String]) -> Result<(), String> {
 #[cfg(feature = "net")]
 fn fetch(url: &str, out: &Path) -> Result<(), String> {
     let client = oe_edgar::EdgarClient::from_env().map_err(|e| e.to_string())?;
-    let body = client.get_text(url).map_err(|e| e.to_string())?;
     if let Some(parent) = out.parent().filter(|p| !p.as_os_str().is_empty()) {
         std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
-    std::fs::write(out, &body).map_err(|e| format!("{}: {e}", out.display()))?;
-    println!("saved {} bytes to {}", body.len(), out.display());
+    // Bytes as served: a zip or a PDF must not go through text decoding.
+    let n = client.save_to_file(url, out).map_err(|e| e.to_string())?;
+    println!("saved {n} bytes to {}", out.display());
     Ok(())
 }
 

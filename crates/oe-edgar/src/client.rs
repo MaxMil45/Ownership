@@ -66,6 +66,45 @@ impl EdgarClient {
 
     /// Fetches a URL as text, waiting for a rate-limit slot first.
     pub fn get_text(&self, url: &str) -> Result<String, EdgarError> {
+        Ok(crate::decode_body(self.get_bytes(url)?))
+    }
+
+    /// Fetches a URL as raw bytes (zip files, PDFs), waiting for a
+    /// rate-limit slot first.
+    pub fn get_bytes(&self, url: &str) -> Result<Vec<u8>, EdgarError> {
+        let mut bytes = Vec::new();
+        self.open(url)?
+            .read_to_end(&mut bytes)
+            .map_err(|e| EdgarError::Body {
+                url: url.to_string(),
+                message: e.to_string(),
+            })?;
+        Ok(bytes)
+    }
+
+    /// Streams a URL into `path` without holding it in memory. The body goes
+    /// to `<path>.part` first and is renamed when complete, so an interrupted
+    /// download never leaves a truncated file under the final name. Returns
+    /// the number of bytes written.
+    pub fn save_to_file(&self, url: &str, path: &std::path::Path) -> Result<u64, EdgarError> {
+        let body_err = |message: String| EdgarError::Body {
+            url: url.to_string(),
+            message,
+        };
+        let mut reader = self.open(url)?;
+        let part = path.with_extension(match path.extension() {
+            Some(e) => format!("{}.part", e.to_string_lossy()),
+            None => "part".to_string(),
+        });
+        let mut file = std::fs::File::create(&part)
+            .map_err(|e| body_err(format!("{}: {e}", part.display())))?;
+        let n = std::io::copy(&mut reader, &mut file).map_err(|e| body_err(e.to_string()))?;
+        drop(file);
+        std::fs::rename(&part, path).map_err(|e| body_err(format!("{}: {e}", path.display())))?;
+        Ok(n)
+    }
+
+    fn open(&self, url: &str) -> Result<Box<dyn Read + Send + Sync + 'static>, EdgarError> {
         self.limiter.acquire();
         let response = self.agent.get(url).call().map_err(|e| match e {
             ureq::Error::Status(code, _) => EdgarError::Status {
@@ -77,14 +116,6 @@ impl EdgarClient {
                 message: other.to_string(),
             },
         })?;
-        let mut bytes = Vec::new();
-        response
-            .into_reader()
-            .read_to_end(&mut bytes)
-            .map_err(|e| EdgarError::Body {
-                url: url.to_string(),
-                message: e.to_string(),
-            })?;
-        Ok(crate::decode_body(bytes))
+        Ok(response.into_reader())
     }
 }

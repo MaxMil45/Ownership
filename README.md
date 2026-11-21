@@ -16,6 +16,7 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | Form 3/4/5 XML parser (no dependencies) | `oe-form4` | Done, tested on synthetic fixtures |
 | Point-in-time ledger (in memory) + PostgreSQL schema | `oe-ledger`, `migrations/` | Model done and tested |
 | PostgreSQL loader (`db-migrate`, `db-load`, `db-status`) | `oe-store` | Done; tested against PostgreSQL 16 in Docker; 332 real filings loaded |
+| History since 2015 from the SEC's quarterly bulk data sets (`bulk-insider`) | `oe-bulk`, `oe-store` | Done; checked against 200 filings' XML; loaded 2015 Q1 to 2026 Q3 (ADR 0008) |
 | `insider.cluster_buy@1` rule | `oe-events` | Done, tested |
 | Rate-limited EDGAR client (SEC fair-access rules) | `oe-edgar` | Done; run against the real SEC |
 | SEC submissions API (with older history pages) and ticker list (dependency-free JSON reader) | `oe-edgar` | Done, tested on synthetic JSON and run live |
@@ -28,7 +29,8 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | `activist.new_13d@1` and `activist.passive_to_active@1` rules | `oe-events` | Done, tested on real filings (specs in `events/specs/`) |
 | `activist.proxy_contest@1` (contested proxy filings, from their SGML headers) | `oe-edgar`, `oe-events` | Done; 70 real filings from 21 days, 26 contests; 12 real fixtures |
 | Alerts with receipts: watchlists, delivered once to Discord and JSON webhooks | `oe-alerts` | Done; tested over real HTTP to a local stand-in; not yet tried on a real Discord channel; no email yet (ADR 0006) |
-| `oe` command-line tool | `oe-cli` | `alerts`, `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `daily-13dg`, `parse-13`, `activist-events`, `daily-proxy`, `proxy-contests`, `db-*`, `fetch` |
+| Dashboard: one offline HTML page with charts, filters and a searchable event list | `oe-cli` (`oe dashboard`) | Done; checked in a browser on the real downloads (ADR 0007) |
+| `oe` command-line tool | `oe-cli` | `alerts`, `dashboard`, `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `daily-13dg`, `parse-13`, `activist-events`, `daily-proxy`, `proxy-contests`, `db-*`, `fetch` |
 
 ## How to run it
 
@@ -121,6 +123,7 @@ crates/
   oe-events/    versioned event rules (insider.cluster_buy@1)
   oe-edgar/     polite EDGAR HTTP client with rate limiting
   oe-store/     PostgreSQL loader (the only crate with a database driver)
+  oe-bulk/      the SEC's quarterly Insider Transactions Data Sets (history since 2006)
   oe-alerts/    alerts: receipts, watchlists, sent log, Discord and webhook delivery
   oe-cli/       the `oe` binary
 events/specs/   written spec for every event rule version

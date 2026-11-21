@@ -136,7 +136,7 @@ pub fn json(a: &Alert) -> String {
         })
         .collect();
     format!(
-        "{{\"key\":{},\"rule_id\":{},\"known_on\":{},\"issuer_cik\":{},\"issuer_name\":{},\"ticker\":{},\"headline\":{},\"details\":[{}],\"people\":[{}],\"receipts\":[{}],\"text\":{}}}",
+        "{{\"key\":{},\"rule_id\":{},\"known_on\":{},\"issuer_cik\":{},\"issuer_name\":{},\"ticker\":{},\"headline\":{},\"details\":[{}],\"people\":[{}],\"receipts\":[{}],\"text\":{},\"amount_usd\":{},\"percent\":{}}}",
         json_string(&a.key),
         json_string(a.rule_id),
         opt_string(a.known_on.map(|d| d.to_string())),
@@ -147,8 +147,19 @@ pub fn json(a: &Alert) -> String {
         details.join(","),
         people.join(","),
         receipts.join(","),
-        json_string(&text(a))
+        json_string(&text(a)),
+        json_number(a.amount_usd),
+        json_number(a.percent)
     )
+}
+
+/// A JSON number, or `null` for a missing or non-finite value (JSON has no
+/// NaN). Rust prints an f64 in plain decimal, never with an exponent.
+pub fn json_number(v: Option<f64>) -> String {
+    match v {
+        Some(x) if x.is_finite() => x.to_string(),
+        _ => "null".to_string(),
+    }
 }
 
 /// The body Discord's webhook API expects. Mentions are switched off so an
@@ -170,6 +181,8 @@ mod tests {
         Alert {
             key: "insider.cluster_buy@1|320193|2026-11-02".into(),
             rule_id: "insider.cluster_buy@1",
+            amount_usd: None,
+            percent: None,
             known_on: Some("2026-11-04".parse().unwrap()),
             issuer_cik: Some(Cik(320193)),
             issuer_name: None,
@@ -207,7 +220,11 @@ mod tests {
             "the text field keeps its line breaks escaped"
         );
         assert!(!j.contains('\n'));
+        assert!(j.ends_with(",\"amount_usd\":null,\"percent\":null}"));
         assert_eq!(json_string("a\u{1}b"), "\"a\\u0001b\"");
+        assert_eq!(json_number(Some(1_250_000.5)), "1250000.5");
+        assert_eq!(json_number(Some(f64::NAN)), "null");
+        assert_eq!(json_number(None), "null");
     }
 
     #[test]

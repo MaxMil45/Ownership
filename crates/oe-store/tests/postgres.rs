@@ -62,7 +62,7 @@ fn migrate_is_idempotent() {
     let mut s = Scratch::new("migrate");
     assert_eq!(
         migrate(&mut s.client).unwrap(),
-        ["0001_init", "0002_amendments"]
+        ["0001_init", "0002_amendments", "0003_bulk"]
     );
     assert!(
         migrate(&mut s.client).unwrap().is_empty(),
@@ -78,10 +78,10 @@ fn loads_the_real_fixtures_and_a_repeat_changes_nothing() {
     migrate(&mut s.client).unwrap();
     let batch = real_fixtures();
     let expected_rows: u64 = batch.iter().map(|p| p.ledger_rows().len() as u64).sum();
-    assert_eq!(expected_rows, 67);
+    assert_eq!(expected_rows, 68);
 
     let first = load_batch(&mut s.client, &batch).unwrap();
-    assert_eq!((first.filings_new, first.filings_existing), (24, 0));
+    assert_eq!((first.filings_new, first.filings_existing), (25, 0));
     assert_eq!((first.rows_new, first.rows_existing), (expected_rows, 0));
     assert_eq!(first.amendment_rows, 17);
     assert!(first.changed_source.is_empty());
@@ -99,7 +99,7 @@ fn loads_the_real_fixtures_and_a_repeat_changes_nothing() {
     );
 
     let again = load_batch(&mut s.client, &batch).unwrap();
-    assert_eq!((again.filings_new, again.filings_existing), (0, 24));
+    assert_eq!((again.filings_new, again.filings_existing), (0, 25));
     assert_eq!((again.rows_new, again.rows_existing), (0, expected_rows));
     assert_eq!(
         again.links,
@@ -110,7 +110,7 @@ fn loads_the_real_fixtures_and_a_repeat_changes_nothing() {
     );
 
     let st = status(&mut s.client).unwrap();
-    assert_eq!(st.filings, 24);
+    assert_eq!(st.filings, 25);
     assert_eq!(st.amendment_filings, 5);
     assert_eq!(st.joint_filings, 2);
     assert_eq!(
@@ -466,5 +466,134 @@ fn joint_filings_store_every_owner() {
         [1_067_983, 315_090]
     );
     assert_eq!(owners(&mut s.client, "0001104659-26-047678").len(), 1);
+    s.finish();
+}
+
+/// The NVIDIA Form 5 as the quarterly data set gives it (filing date only).
+fn bulk_form5(accession: &str, filing_date: &str) -> Prepared {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/form4/real/nvda_0001045810-25-000054.xml");
+    let doc = oe_form4::parse(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let f = oe_bulk::BulkFiling {
+        accession: accession.into(),
+        filing_date: filing_date.parse().unwrap(),
+        document: doc,
+    };
+    oe_store::prepare_bulk(&f, "https://www.sec.gov/files/test/2025q1_form345.zip").unwrap()
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn bulk_filings_load_link_and_never_count_as_changed() {
+    let mut s = Scratch::new("bulk");
+    migrate(&mut s.client).unwrap();
+    // A bulk original and the real XML amendment link across sources.
+    let first = load_batch(
+        &mut s.client,
+        &[
+            bulk_form5(FORM5, "2025-03-12"),
+            fixture("nvda_0001045810-25-000070"),
+        ],
+    )
+    .unwrap();
+    assert_eq!((first.links.loaded, first.links.waiting), (1, 0));
+    let (source, accepted): (String, String) = {
+        let r = s
+            .client
+            .query_one(
+                "SELECT source, to_char(accepted_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI:SS')
+                 FROM filing WHERE accession = $1",
+                &[&FORM5],
+            )
+            .unwrap();
+        (r.get(0), r.get(1))
+    };
+    assert_eq!(
+        (source.as_str(), accepted.as_str()),
+        ("bulk", "2025-03-12 23:59:59")
+    );
+    // Bulk rows are not visible before the end of their filing day.
+    assert!(visible(&mut s.client, "2025-03-12 20:00:00+00").is_empty());
+    assert_eq!(
+        visible(&mut s.client, "2025-03-13 12:00:00+00"),
+        rows_of(FORM5)
+    );
+
+    // The same filing offered again from its XML: kept as it is, not a change.
+    let again = load_batch(&mut s.client, &[fixture("nvda_0001045810-25-000054")]).unwrap();
+    assert_eq!(again.filings_new, 0);
+    assert!(again.changed_source.is_empty());
+    s.finish();
+
+    // An original and its amendment filed the same day, both from bulk, share
+    // one time (23:59:59): they still link.
+    let mut s = Scratch::new("bulkday");
+    migrate(&mut s.client).unwrap();
+    let orig = bulk_form5("0001045810-25-000060", "2025-03-21");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/form4/real/nvda_0001045810-25-000070.xml");
+    let mut amend_doc = oe_form4::parse(&std::fs::read_to_string(path).unwrap()).unwrap();
+    amend_doc.date_of_original_submission = Some("2025-03-21".parse().unwrap());
+    let amend = oe_store::prepare_bulk(
+        &oe_bulk::BulkFiling {
+            accession: "0001045810-25-000061".into(),
+            filing_date: "2025-03-21".parse().unwrap(),
+            document: amend_doc,
+        },
+        "https://www.sec.gov/files/test/2025q1_form345.zip",
+    )
+    .unwrap();
+    let r = oe_store::load_batch_with(&mut s.client, &[orig, amend], false).unwrap();
+    assert_eq!(r.links, LinkReport::default(), "no pass when not asked");
+    let links = oe_store::link_pass(&mut s.client).unwrap();
+    assert_eq!((links.loaded, links.waiting), (1, 0));
+    assert_eq!(
+        visible(&mut s.client, "2026-01-01 00:00:00+00"),
+        rows_of("0001045810-25-000061")
+    );
+    let st = status(&mut s.client).unwrap();
+    assert_eq!(st.bulk_filings, 2);
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn daily_flow_and_trade_history_read_the_ledger() {
+    let mut s = Scratch::new("flow");
+    migrate(&mut s.client).unwrap();
+    load_batch(&mut s.client, &real_fixtures()).unwrap();
+
+    // Berkshire's three Sirius XM purchases (joint filing): every owner counts
+    // as having traded, so two owners times three days.
+    let h = oe_store::trade_history(&mut s.client, &[908_937], "2020-01-01").unwrap();
+    let owners: std::collections::BTreeSet<u64> = h.iter().map(|t| t.owner_cik).collect();
+    assert_eq!(owners.into_iter().collect::<Vec<_>>(), [315_090, 1_067_983]);
+    assert!(h.iter().all(|t| t.code == "P" && t.issuer_cik == 908_937));
+    assert!(
+        oe_store::trade_history(&mut s.client, &[908_937], "2030-01-01")
+            .unwrap()
+            .is_empty()
+    );
+
+    let (days, left_out) = oe_store::flow_by_day(&mut s.client).unwrap();
+    assert_eq!(left_out, 0, "no implausible amounts in the fixtures");
+    let buys: i64 = days.iter().map(|d| d.buys).sum();
+    let sells: i64 = days.iter().map(|d| d.sells).sum();
+    // Counted from the manifest's P and S rows (amendment rows count once).
+    let direct: i64 = s
+        .client
+        .query_one(
+            "SELECT count(*) FROM insider_transaction_as_of(now())
+             WHERE NOT is_derivative AND code IN ('P', 'S') AND acquired_disposed IN ('A', 'D')",
+            &[],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(buys + sells, direct);
+    assert!(buys > 0 && sells > 0);
+    assert!(
+        days.windows(2).all(|w| w[0].day < w[1].day),
+        "sorted by day"
+    );
     s.finish();
 }

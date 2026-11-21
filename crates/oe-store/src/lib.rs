@@ -18,10 +18,11 @@ pub mod sha256;
 
 pub use amend::{compare, RowShape, Verdict};
 pub use db::{
-    check_schema, connect, link_amendments, load_batch, migrate, status, LinkReport, LoadReport,
-    Status, StoreError, MIGRATIONS,
+    check_schema, connect, flow_by_day, link_amendments, link_pass, load_batch, load_batch_with,
+    migrate, status, trade_history, FlowDay, HistoryTrade, LinkReport, LoadReport, Status,
+    StoreError, MIGRATIONS,
 };
-pub use rows::{prepare, FilingRow, PrepareError, Prepared, Sidecar, TransactionRow};
+pub use rows::{prepare, prepare_bulk, FilingRow, PrepareError, Prepared, Sidecar, TransactionRow};
 pub use sha256::sha256_hex;
 
 /// The database connection type, re-exported so callers need no driver dependency.

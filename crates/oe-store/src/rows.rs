@@ -83,6 +83,8 @@ pub struct FilingRow {
     pub accepted_at: String,
     pub source_url: String,
     pub raw_sha256: String,
+    /// `xml` (parsed from the filing) or `bulk` (a quarterly data set).
+    pub source: &'static str,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -204,30 +206,64 @@ pub fn prepare(xml: &str, sidecar: &Sidecar) -> Result<Prepared, PrepareError> {
             });
         }
     }
+    let source_url = sidecar.url.clone().unwrap_or_else(|| {
+        format!(
+            "https://www.sec.gov/Archives/edgar/data/{}/{}.txt",
+            doc.issuer.cik.0, accession
+        )
+    });
+    prepare_document(
+        &doc,
+        &accession,
+        accepted_at,
+        source_url,
+        sha256_hex(xml.as_bytes()),
+        "xml",
+    )
+}
+
+/// Builds the rows for one filing from the SEC's quarterly data set
+/// (ADR 0008). `zip_url` is the quarter's archive; the filing's
+/// `source_url` is that URL with `#<accession>`. The data set has only the
+/// filing date, so `accepted_at` is 23:59:59 US Eastern on it: never earlier
+/// than the real acceptance. The fingerprint is of the fields loaded.
+pub fn prepare_bulk(f: &oe_bulk::BulkFiling, zip_url: &str) -> Result<Prepared, PrepareError> {
+    prepare_document(
+        &f.document,
+        &f.accession,
+        format!("{} 23:59:59 America/New_York", f.filing_date),
+        format!("{zip_url}#{}", f.accession),
+        sha256_hex(oe_bulk::canonical_text(f).as_bytes()),
+        "bulk",
+    )
+}
+
+fn prepare_document(
+    doc: &OwnershipDocument,
+    accession: &str,
+    accepted_at: String,
+    source_url: String,
+    raw_sha256: String,
+    source: &'static str,
+) -> Result<Prepared, PrepareError> {
     let Some(owner) = doc.owners.first() else {
         return Err(PrepareError::Parse("no reporting owner".into()));
     };
-
     let filing = FilingRow {
-        accession: accession.clone(),
+        accession: accession.to_string(),
         form_type: doc.document_type.clone(),
         filer_cik: owner.cik.0,
         accepted_at,
-        source_url: sidecar.url.clone().unwrap_or_else(|| {
-            format!(
-                "https://www.sec.gov/Archives/edgar/data/{}/{}.txt",
-                doc.issuer.cik.0, accession
-            )
-        }),
-        raw_sha256: sha256_hex(xml.as_bytes()),
+        source_url,
+        raw_sha256,
+        source,
     };
-
     Ok(Prepared {
         filing,
         issuer_cik: doc.issuer.cik.0,
         owners: doc.owners.iter().map(|o| o.cik.0).collect(),
         date_of_original_submission: doc.date_of_original_submission.map(|d| d.to_string()),
-        transactions: transaction_rows(&doc, &accession),
+        transactions: transaction_rows(doc, accession),
     })
 }
 
@@ -285,13 +321,14 @@ fn opt_field<T: ToString>(v: Option<T>) -> String {
 impl FilingRow {
     pub fn copy_line(&self) -> String {
         format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             copy_field(&self.accession),
             copy_field(&self.form_type),
             self.filer_cik,
             copy_field(&self.accepted_at),
             copy_field(&self.source_url),
-            self.raw_sha256
+            self.raw_sha256,
+            self.source
         )
     }
 }
@@ -455,9 +492,9 @@ mod tests {
                 loaded += rows;
             }
         }
-        // 84 transaction rows in the 24 fixtures (see `oe cluster-buys`), of which
+        // 85 transaction rows in the 25 fixtures (see `oe cluster-buys`), of which
         // the amendments hold 1 + 2 + 3 + 2 + 2 + ... counted from the manifest.
-        assert_eq!(loaded + held, 84);
+        assert_eq!(loaded + held, 85);
         assert!(held > 0 && loaded > held);
     }
 
@@ -517,10 +554,38 @@ mod tests {
     }
 
     #[test]
-    fn filing_copy_line_has_six_tab_separated_fields() {
+    fn filing_copy_line_has_seven_tab_separated_fields() {
         let (xml, side) = real("msft_0000789019-26-000213");
         let line = prepare(&xml, &side).unwrap().filing.copy_line();
-        assert_eq!(line.matches('\t').count(), 5);
-        assert!(line.ends_with('\n'));
+        assert_eq!(line.matches('\t').count(), 6);
+        assert!(line.ends_with("\txml\n"));
+    }
+
+    #[test]
+    fn a_bulk_filing_prepares_like_its_xml() {
+        // The same filing as the msft fixture, as the quarterly data set
+        // would give it: parsed document, filing date only.
+        let (xml, side) = real("msft_0000789019-26-000213");
+        let from_xml = prepare(&xml, &side).unwrap();
+        let bulk = oe_bulk::BulkFiling {
+            accession: from_xml.filing.accession.clone(),
+            filing_date: "2026-10-05".parse().unwrap(),
+            document: oe_form4::parse(&xml).unwrap(),
+        };
+        let p = prepare_bulk(&bulk, "https://www.sec.gov/files/x/2026q4_form345.zip").unwrap();
+        assert_eq!(p.filing.source, "bulk");
+        assert_eq!(p.filing.accepted_at, "2026-10-05 23:59:59 America/New_York");
+        assert_eq!(
+            p.filing.source_url,
+            format!(
+                "https://www.sec.gov/files/x/2026q4_form345.zip#{}",
+                p.filing.accession
+            )
+        );
+        assert_eq!(p.filing.raw_sha256.len(), 64);
+        assert_ne!(p.filing.raw_sha256, from_xml.filing.raw_sha256);
+        assert_eq!(p.transactions, from_xml.transactions);
+        assert_eq!(p.owners, from_xml.owners);
+        assert!(p.filing.copy_line().ends_with("\tbulk\n"));
     }
 }

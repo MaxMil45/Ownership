@@ -88,6 +88,22 @@ and add `--watchlist watchlist.txt`. For alerts within about a minute or two of 
 & $oe follow --alert --watchlist watchlist.txt
 ```
 
+## 3c. The dashboard (charts)
+
+```powershell
+& $oe dashboard
+```
+
+writes `data/report/dashboard.html`. Open it in your browser (double-click it in Explorer, or `Start-Process data\report\dashboard.html`). It shows, for the last 7, 30 or 90 days or everything downloaded:
+
+- headline numbers: events, insider buying and selling, planned sales, new 13Ds, proxy contests;
+- events over time, coloured by type;
+- insider buying above the line and selling below it, in dollars;
+- the companies with the most events (click one to search for it) and the largest planned sales;
+- the largest insider trades, and every event with links to its SEC filings.
+
+The search box matches companies, tickers and people. Run the command again after downloading more to refresh the page. It works offline and sends nothing anywhere.
+
 ## 4. The database
 
 ```powershell
@@ -98,6 +114,21 @@ and add `--watchlist watchlist.txt`. For alerts within about a minute or two of 
 ```
 
 Only Form 3/4/5 filings go into the database so far. After each batch, amendments are linked to the report they amend (ADR 0005); `db-status` shows how many were loaded, held back (not a full restatement), ambiguous, or are still waiting because the report they amend is not loaded yet. A waiting amendment is tried again on every load.
+
+### History since 2015
+
+```powershell
+& $oe db-migrate
+& $oe bulk-insider --from 2015q1
+```
+
+downloads the SEC's quarterly Insider Transactions Data Sets (one zip of about 9 to 15 MB per quarter, kept in `data/bulk/` so each is downloaded once) and loads every Form 3/4/5 into the database: 2015 to 2026 took 31 minutes here (2.4 million filings, about 2.5 GB of database). Run it again after a new quarter appears; it only adds what is new. `--dry-run` reads and counts without a database, `--offline` uses the zips already downloaded. These filings carry their filing date only (no time of day) and numbers to two decimals; ADR 0008 explains. Then
+
+```powershell
+& $oe dashboard --db
+```
+
+adds a chart of insider buying and selling over the whole history to the dashboard (about 5 seconds). Rows with impossible amounts as filed (a price over $2 million a share, over $2 billion in one row, over $10 billion for one company in a day) are left out of the dollar totals and counted on the page. `& $oe alerts --db` (and `& $oe follow --alert --db`) lets the cluster-buy rule recognise insiders who trade the same month every year.
 
 After upgrading to migration `0002_amendments`, load your folders once more (for example `& $oe db-load data/form4`): filings loaded earlier only then get their co-owners and amendment details. Nothing already stored changes. `docker-compose -f docker/compose.yaml down` stops it and keeps the data.
 

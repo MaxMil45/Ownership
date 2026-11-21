@@ -49,6 +49,8 @@ pub struct AlertArgs {
     pub dry_run: bool,
     /// Pretend today is this date (US Eastern), to replay old data.
     pub today: Option<Date>,
+    /// Give the routine-trader filter the ledger's history (`--db`).
+    pub db_history: bool,
 }
 
 pub fn parse_args(args: &[String]) -> Result<AlertArgs, String> {
@@ -59,24 +61,15 @@ pub fn parse_args(args: &[String]) -> Result<AlertArgs, String> {
         state: PathBuf::from(DEFAULT_STATE),
         dry_run: false,
         today: None,
+        db_history: false,
     };
     let mut only: Option<Sources> = None;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
-        let mut set = |f: fn(&mut Sources) -> &mut Option<PathBuf>,
-                       name: &str,
-                       it: &mut std::slice::Iter<String>|
-         -> Result<(), String> {
-            let dir = super::args::folder(it, name)?;
-            *f(only.get_or_insert_with(Sources::default)) = Some(dir);
-            Ok(())
-        };
+        if source_flag(arg, &mut it, &mut only)? {
+            continue;
+        }
         match arg.as_str() {
-            "--form4" => set(|s| &mut s.form4, "--form4", &mut it)?,
-            "--form144" => set(|s| &mut s.form144, "--form144", &mut it)?,
-            "--sched13" => set(|s| &mut s.sched13, "--sched13", &mut it)?,
-            "--proxy" => set(|s| &mut s.proxy, "--proxy", &mut it)?,
-            "--periodic" => set(|s| &mut s.periodic, "--periodic", &mut it)?,
             "--watchlist" => parsed.watchlist = Some(super::args::file(&mut it, "--watchlist")?),
             "--state" => parsed.state = super::args::file(&mut it, "--state")?,
             "--max-age" => {
@@ -85,6 +78,7 @@ pub fn parse_args(args: &[String]) -> Result<AlertArgs, String> {
             }
             "--include-undated" => parsed.selection.include_undated = true,
             "--dry-run" => parsed.dry_run = true,
+            "--db" => parsed.db_history = true,
             "--today" => {
                 let text = it.next().ok_or("--today needs a date such as 2026-11-20")?;
                 parsed.today = Some(super::args::date(text, "2026-11-20")?)
@@ -99,22 +93,58 @@ pub fn parse_args(args: &[String]) -> Result<AlertArgs, String> {
     Ok(parsed)
 }
 
+/// Reads one `--form4 <dir>`-style flag into `only` (the folders named so
+/// far). Returns false if `arg` is not a folder flag. Shared by `oe alerts`
+/// and `oe dashboard`.
+pub fn source_flag(
+    arg: &str,
+    it: &mut super::args::Args,
+    only: &mut Option<Sources>,
+) -> Result<bool, String> {
+    let field: fn(&mut Sources) -> &mut Option<PathBuf> = match arg {
+        "--form4" => |s| &mut s.form4,
+        "--form144" => |s| &mut s.form144,
+        "--sched13" => |s| &mut s.sched13,
+        "--proxy" => |s| &mut s.proxy,
+        "--periodic" => |s| &mut s.periodic,
+        _ => return Ok(false),
+    };
+    let dir = super::args::folder(it, arg)?;
+    *field(only.get_or_insert_with(Sources::default)) = Some(dir);
+    Ok(true)
+}
+
 /// Every alert the rules find in `sources`, with a count per source for the
 /// summary line.
-pub fn build_alerts(sources: &Sources) -> Result<(Vec<Alert>, Vec<String>), String> {
+/// With `db_history`, the cluster-buy routine-trader filter also sees the
+/// ledger's earlier buys and sales of the same issuers (`DATABASE_URL`);
+/// without it, only the downloaded files.
+pub fn build_alerts(
+    sources: &Sources,
+    db_history: bool,
+) -> Result<(Vec<Alert>, Vec<String>), String> {
     let mut alerts = Vec::new();
     let mut summary = Vec::new();
     if let Some(dir) = &sources.form4 {
         let trades = load::insider_trades(dir)?;
-        let events = oe_events::detect_cluster_buys(
-            &trades.items,
-            &trades.items,
-            &oe_events::ClusterBuyParams::default(),
-        );
+        let params = oe_events::ClusterBuyParams::default();
+        let mut history = trades.items.clone();
+        let mut from_db = 0usize;
+        if db_history && !trades.items.is_empty() {
+            let earlier = ledger_history(&trades.items, params.routine_lookback_years)?;
+            from_db = earlier.len();
+            history.extend(earlier);
+        }
+        let events = oe_events::detect_cluster_buys(&trades.items, &history, &params);
         summary.push(format!(
-            "Form 4: {} file(s), {} cluster buy(s)",
+            "Form 4: {} file(s), {} cluster buy(s){}",
             trades.files,
-            events.len()
+            events.len(),
+            if db_history {
+                format!(" (routine-trader filter saw {from_db} earlier trade(s) from the database)")
+            } else {
+                String::new()
+            }
         ));
         alerts.extend(events.iter().map(convert::cluster_buy));
     }
@@ -164,6 +194,58 @@ pub fn build_alerts(sources: &Sources) -> Result<(Vec<Alert>, Vec<String>), Stri
     Ok((alerts, summary))
 }
 
+/// The ledger's open-market trades of the issuers in `trades`, from `years`
+/// + 1 years before the oldest of them, as history-only `InsiderTrade`s.
+#[cfg(feature = "db")]
+fn ledger_history(
+    trades: &[oe_events::InsiderTrade],
+    years: u32,
+) -> Result<Vec<oe_events::InsiderTrade>, String> {
+    let url = std::env::var("DATABASE_URL")
+        .map_err(|_| "--db needs DATABASE_URL (see `oe db-status`)".to_string())?;
+    let mut issuers: Vec<u64> = trades.iter().map(|t| t.issuer.0).collect();
+    issuers.sort_unstable();
+    issuers.dedup();
+    let oldest = trades.iter().map(|t| t.date).min().expect("not empty");
+    let since = oldest.add_days(-366 * (years as i32 + 1));
+    let mut client = oe_store::connect(&url).map_err(|e| e.to_string())?;
+    let rows = oe_store::trade_history(&mut client, &issuers, &since.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(oe_events::InsiderTrade {
+                issuer: oe_core::Cik(r.issuer_cik),
+                ticker: None,
+                owner: oe_core::Cik(r.owner_cik),
+                owner_name: String::new(),
+                co_owners: Vec::new(),
+                is_director: false,
+                is_officer: false,
+                officer_title: None,
+                date: r.date.parse().ok()?,
+                code: oe_core::TransactionCode::parse(&r.code),
+                // History only: never itself counted as a qualifying buy.
+                is_open_market_purchase: false,
+                shares: None,
+                price_per_share: None,
+                plan_10b5_1: None,
+                from_amendment: false,
+                known_on: None,
+                accession: None,
+            })
+        })
+        .collect())
+}
+
+#[cfg(not(feature = "db"))]
+fn ledger_history(
+    _trades: &[oe_events::InsiderTrade],
+    _years: u32,
+) -> Result<Vec<oe_events::InsiderTrade>, String> {
+    Err("this build has no database support; leave out --db".into())
+}
+
 fn read_watchlist(path: &Path) -> Result<Watchlist, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let w = Watchlist::parse(&text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -188,7 +270,7 @@ pub struct RunReport {
 /// printed and recorded as delivered to `console`.
 pub fn run(args: &AlertArgs) -> Result<RunReport, String> {
     let watchlist = args.watchlist.as_deref().map(read_watchlist).transpose()?;
-    let (alerts, summary) = build_alerts(&args.sources)?;
+    let (alerts, summary) = build_alerts(&args.sources, args.db_history)?;
     for line in &summary {
         println!("{line}");
     }
@@ -364,7 +446,7 @@ mod tests {
             periodic: Some(root.join("item408/real")),
             ..Sources::default()
         };
-        let (alerts, summary) = build_alerts(&sources).unwrap();
+        let (alerts, summary) = build_alerts(&sources, false).unwrap();
         assert_eq!(summary.len(), 4);
         for rule in [
             "insider.planned_sale@1",

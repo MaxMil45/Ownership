@@ -9,4 +9,5 @@ rust-version.workspace = true
 [dependencies]
 oe-core.workspace = true
 oe-form4.workspace = true
+oe-bulk.workspace = true
 postgres = "0.19"

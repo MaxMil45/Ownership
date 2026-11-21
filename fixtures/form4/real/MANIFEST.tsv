@@ -23,3 +23,4 @@ rivn_0002156094-26-000002.xml	3	1	0	0	-	-	Form 3 (initial statement of holdings)
 tsla_0000899243-23-008177.xml	5/A	1	7	0	G	-	Form 5/A from 2023: older schema, no 10b5-1 box
 tsla_0001104659-26-001460.xml	4	1	22	0	S	yes	Largest filing: 22 non-derivative sale rows, 23 indirect holdings, 50 KB
 tsla_0001104659-26-047678.xml	4	1	1	0	D	no	Disposition to the issuer (D) of 96,000,000 shares at price 0
+lyts_0000892251-26-000141.xml	4	1	1	0	?	no	Form 4 whose only row has no transactionCoding element at all (EDGAR accepted it; the SEC bulk data leaves the code empty); found by the 2026 Q3 bulk-data check

@@ -74,7 +74,15 @@ fn every_real_fixture_parses_and_matches_the_manifest() {
             row.file
         );
 
-        let codes: BTreeSet<&str> = doc.transactions.iter().map(|t| t.code.as_str()).collect();
+        // A missing code (no <transactionCoding>) is written `?` in the manifest.
+        let codes: BTreeSet<&str> = doc
+            .transactions
+            .iter()
+            .map(|t| match t.code.as_str() {
+                "" => "?",
+                c => c,
+            })
+            .collect();
         let codes: String = if codes.is_empty() {
             "-".to_string()
         } else {
