@@ -26,7 +26,48 @@ jobs:
         run: cargo fmt --all --check
       - name: Lint
         run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Lint without network and database support
+        run: cargo clippy -p oe-cli --no-default-features --all-targets -- -D warnings
       - name: Test
         run: cargo test --workspace
       - name: Build without network support
-        run: cargo build -p oe-cli --no-default-features
+        run: cargo build --workspace --no-default-features
+
+  # The oe-store tests that need a server (`#[ignore]`d in the normal run).
+  postgres:
+    name: PostgreSQL tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: oe
+          POSTGRES_PASSWORD: oe_ci_only
+          POSTGRES_DB: ownership_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oe"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      OE_TEST_DATABASE_URL: postgres://oe:oe_ci_only@localhost:5432/ownership_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Database tests
+        run: cargo test -p oe-store --test postgres -- --ignored --test-threads=1
+
+  # The version declared as `rust-version` in Cargo.toml. `+1.88` overrides
+  # rust-toolchain.toml, which asks for the latest stable.
+  msrv:
+    name: minimum Rust version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88
+      - uses: Swatinem/rust-cache@v2
+      - name: Check with Rust 1.88
+        run: cargo +1.88 check --workspace --all-targets

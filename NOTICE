@@ -1,0 +1,9 @@
+Ownership Engine
+Copyright 2026 The Ownership Engine contributors
+
+This product includes software developed by The Ownership Engine contributors
+(https://github.com/MaxMil45/Ownership).
+
+It reads public filings from the U.S. Securities and Exchange Commission (EDGAR
+and the SEC's Insider Transactions Data Sets). It contains no third-party
+price data, CUSIP lists or donor data.

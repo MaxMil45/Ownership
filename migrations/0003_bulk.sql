@@ -10,5 +10,7 @@
 ALTER TABLE filing
     ADD COLUMN source TEXT NOT NULL DEFAULT 'xml' CHECK (source IN ('xml', 'bulk'));
 
--- Amendment linking looks up reports by owner; bulk loads are large.
+-- Meant for amendment linking, but it cannot serve the query's Eastern-date
+-- expression; 0004_link_index replaces it. Kept here unchanged because this
+-- migration is already applied to existing databases.
 CREATE INDEX filing_form_accepted ON filing (form_type, accepted_at);

@@ -138,8 +138,8 @@ pub const MAX_PLAUSIBLE_ISSUER_DAY: f64 = 10_000_000_000.0;
 /// Whether a row's price and value are believable (see [`MAX_PLAUSIBLE_PRICE`]).
 /// Missing numbers are not implausible.
 pub fn plausible_amounts(price_per_share: Option<f64>, value: Option<f64>) -> bool {
-    price_per_share.map_or(true, |p| p <= MAX_PLAUSIBLE_PRICE)
-        && value.map_or(true, |v| v <= MAX_PLAUSIBLE_ROW_VALUE)
+    price_per_share.is_none_or(|p| p <= MAX_PLAUSIBLE_PRICE)
+        && value.is_none_or(|v| v <= MAX_PLAUSIBLE_ROW_VALUE)
 }
 
 impl Transaction {

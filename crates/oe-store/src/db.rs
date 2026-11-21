@@ -32,6 +32,10 @@ pub const MIGRATIONS: &[(&str, &str)] = &[
         "0003_bulk",
         include_str!("../../../migrations/0003_bulk.sql"),
     ),
+    (
+        "0004_link_index",
+        include_str!("../../../migrations/0004_link_index.sql"),
+    ),
 ];
 
 #[derive(Debug)]

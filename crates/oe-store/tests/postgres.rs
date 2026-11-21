@@ -62,7 +62,12 @@ fn migrate_is_idempotent() {
     let mut s = Scratch::new("migrate");
     assert_eq!(
         migrate(&mut s.client).unwrap(),
-        ["0001_init", "0002_amendments", "0003_bulk"]
+        [
+            "0001_init",
+            "0002_amendments",
+            "0003_bulk",
+            "0004_link_index"
+        ]
     );
     assert!(
         migrate(&mut s.client).unwrap().is_empty(),

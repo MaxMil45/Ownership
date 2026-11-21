@@ -31,6 +31,8 @@ The full plan lives in the "Ownership Event Intelligence Engine — Master Plan"
 - [x] Dashboard (`oe dashboard`, ADR 0007): one offline HTML page from the downloaded folders, with headline numbers, events over time, insider buying vs selling, top companies, largest planned sales and trades, and a searchable event list with SEC receipt links. Checked in a browser on 143 real events and 500 trades.
 - [x] Clean-up (2026-11-19): shared helpers for flags, numbers, dates, entities, tags, sidecars and CLI arguments (one copy each); `insider.cluster_buy@1` routine filter indexed (96,000 trades: 8.98 s to 17 ms); outputs on all real data unchanged
 - [ ] **Gate 1:** public v0.1 release; alerts within 5 minutes of filing; fixture suite green
+  - [x] Release prepared (2026-11-21): official licence, metadata, CI covering every check, changelog, `docs/release-checklist.md`
+  - [ ] A full trading day of alert delays; CI green; tag and publish
 
 ## Phase 2: investor registry (Mar – May 2027)
 ## Phase 3: institutions (Jun – Aug 2027)

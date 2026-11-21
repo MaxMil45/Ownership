@@ -19,8 +19,10 @@ members = [
 version = "0.1.0-dev"
 edition = "2021"
 license = "Apache-2.0"
-rust-version = "1.75"
-repository = "https://github.com/YOUR-USERNAME/ownership-engine"
+# The dependencies need 1.88 (icu_* through ureq's url, sha2 through postgres);
+# CI checks the workspace builds with exactly this version.
+rust-version = "1.88"
+repository = "https://github.com/MaxMil45/Ownership"
 
 [workspace.dependencies]
 oe-core = { path = "crates/oe-core" }
