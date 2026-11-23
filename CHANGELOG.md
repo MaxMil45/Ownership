@@ -14,6 +14,7 @@ The first public version: insider and activist events from SEC filings, each wit
 
 ### Events (versioned rules, specs in `events/specs/`)
 - `insider.cluster_buy@1`, `insider.planned_sale@1`, `insider.plan_terminated@1`, `activist.new_13d@1`, `activist.passive_to_active@1`, `activist.proxy_contest@1`.
+- `activist.passive_to_active@2` (with `--db`): also fires when the ledger holds the holder's earlier 13G for the company, even if the filer left the box unticked; the alert links that 13G as a second receipt.
 
 ### Ledger
 - Point-in-time PostgreSQL ledger: every fact has the date it was true and the time the public could know it; nothing is updated or deleted (ADR 0002, 0004).

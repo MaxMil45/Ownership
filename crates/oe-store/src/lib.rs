@@ -23,7 +23,10 @@ pub use db::{
     migrate, status, trade_history, FlowDay, HistoryTrade, LinkReport, LoadReport, Status,
     StoreError, MIGRATIONS,
 };
-pub use other::{load_other, prepare_other, ContestHeader, OtherDoc, OtherFiling, OtherReport};
+pub use other::{
+    load_other, prepare_other, schedule13g_history, ContestHeader, OtherDoc, OtherFiling,
+    OtherReport, Stored13G,
+};
 pub use rows::{prepare, prepare_bulk, FilingRow, PrepareError, Prepared, Sidecar, TransactionRow};
 pub use sha256::sha256_hex;
 

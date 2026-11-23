@@ -12,7 +12,8 @@ pub mod proxy_contest;
 pub mod trades;
 
 pub use activist::{
-    detect_activist_events, new_13d_event, passive_to_active_event, ActivistEvent, ActivistParams,
+    detect_activist_events, detect_activist_events_with_ledger, find_earlier_13g, new_13d_event,
+    passive_to_active_event, passive_to_active_v2_event, ActivistEvent, ActivistParams, Earlier13G,
 };
 pub use cluster_buy::{detect_cluster_buys, ClusterBuyEvent, ClusterBuyParams};
 pub use plan_terminated::{detect_plan_terminations, PlanTerminatedEvent};

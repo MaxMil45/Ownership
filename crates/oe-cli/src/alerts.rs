@@ -163,10 +163,25 @@ pub fn build_alerts(
     }
     if let Some(dir) = &sources.sched13 {
         let loaded = load::schedule13(dir)?;
-        let events =
-            oe_events::detect_activist_events(&loaded.items, &oe_events::ActivistParams::default());
+        let params = oe_events::ActivistParams::default();
+        let (events, note) = if db_history {
+            let earlier = ledger_13gs(&loaded.items)?;
+            let note = format!(
+                " (passive_to_active@2 saw {} earlier 13G(s) from the database)",
+                earlier.len()
+            );
+            (
+                oe_events::detect_activist_events_with_ledger(&loaded.items, &params, &earlier),
+                note,
+            )
+        } else {
+            (
+                oe_events::detect_activist_events(&loaded.items, &params),
+                String::new(),
+            )
+        };
         summary.push(format!(
-            "13D/G: {} file(s), {} activist event(s)",
+            "13D/G: {} file(s), {} activist event(s){note}",
             loaded.files,
             events.len()
         ));
@@ -236,6 +251,47 @@ fn ledger_history(
             })
         })
         .collect())
+}
+
+/// The ledger's Schedule 13Gs for the issuers of these original 13Ds.
+#[cfg(feature = "db")]
+pub(crate) fn ledger_13gs(
+    filings: &[(oe_sched13::Schedule13, oe_core::FilingMeta)],
+) -> Result<Vec<oe_events::Earlier13G>, String> {
+    let mut issuers: Vec<u64> = filings
+        .iter()
+        .filter(|(s, _)| s.schedule == oe_sched13::Schedule::D && !s.is_amendment())
+        .map(|(s, _)| s.issuer_cik.0)
+        .collect();
+    issuers.sort_unstable();
+    issuers.dedup();
+    if issuers.is_empty() {
+        return Ok(Vec::new());
+    }
+    let url = std::env::var("DATABASE_URL")
+        .map_err(|_| "--db needs DATABASE_URL (see `oe db-status`)".to_string())?;
+    let mut client = oe_store::connect(&url).map_err(|e| e.to_string())?;
+    let rows = oe_store::schedule13g_history(&mut client, &issuers).map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(oe_events::Earlier13G {
+                issuer: oe_core::Cik(r.issuer_cik),
+                accession: r.accession,
+                known_on: r.known_on.parse().ok()?,
+                filer: oe_core::Cik(r.filer_cik),
+                holders: r.holders,
+                largest_percent: r.largest_percent,
+            })
+        })
+        .collect())
+}
+
+#[cfg(not(feature = "db"))]
+pub(crate) fn ledger_13gs(
+    _filings: &[(oe_sched13::Schedule13, oe_core::FilingMeta)],
+) -> Result<Vec<oe_events::Earlier13G>, String> {
+    Err("this build has no database support; leave out --db".into())
 }
 
 #[cfg(not(feature = "db"))]

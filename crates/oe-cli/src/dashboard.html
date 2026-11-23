@@ -412,7 +412,7 @@ function tiles(f) {
     { label: "Insider buys", value: money(sum(buys)), note: int(buys.length) + " open-market purchases" },
     { label: "Insider sales", value: money(sum(sales)), note: int(sales.length) + " open-market sales" },
     { label: "Planned sales (Form 144)", value: money(planned.reduce((s, a) => s + (a.amount_usd || 0), 0)), note: int(planned.length) + " notices over the threshold" },
-    { label: "New 13Ds", value: int(by("activist.new_13d@1")), note: int(by("activist.passive_to_active@1")) + " passive to active" },
+    { label: "New 13Ds", value: int(by("activist.new_13d@1")), note: int(by("activist.passive_to_active@1") + by("activist.passive_to_active@2")) + " passive to active" },
     { label: "Proxy contests", value: int(by("activist.proxy_contest@1")), note: int(by("insider.cluster_buy@1")) + " cluster buys" },
   ];
   const host = document.getElementById("tiles"); host.replaceChildren();

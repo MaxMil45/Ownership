@@ -167,7 +167,13 @@ pub fn data_json(
     };
     let rules: Vec<String> = RULES
         .iter()
-        .map(|(id, label)| {
+        .map(|&(id, label)| {
+            // With the ledger, passive_to_active@2 runs in v1's place (and slot).
+            let id = if db_history && id == oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID {
+                oe_events::activist::PASSIVE_TO_ACTIVE_V2_RULE_ID
+            } else {
+                id
+            };
             format!(
                 "{{\"id\":{},\"label\":{}}}",
                 json_string(id),

@@ -149,7 +149,9 @@ pub fn activist(e: &ActivistEvent) -> Alert {
     let pct = e
         .largest_percent
         .map_or("an unstated stake".to_string(), |p| format!("{p:.1}%"));
-    let headline = if e.rule_id == oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID {
+    let passive_to_active = e.rule_id == oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID
+        || e.rule_id == oe_events::activist::PASSIVE_TO_ACTIVE_V2_RULE_ID;
+    let headline = if passive_to_active {
         format!(
             "Passive holder turns active at {who}: {} ({pct})",
             clip(&holders, 80)
@@ -172,6 +174,12 @@ pub fn activist(e: &ActivistEvent) -> Alert {
     }
     if let Some(b) = e.basis {
         details.push(format!("Basis: {b}"));
+    }
+    if let Some((_, day, pct)) = &e.earlier_13g {
+        details.push(format!(
+            "Earlier passive filing: Schedule 13G accepted {day}{}",
+            pct.map_or(String::new(), |p| format!(", {p:.1}%"))
+        ));
     }
     if let Some(p) = &e.purpose {
         details.push(format!("Purpose (Item 4): {}", clip(p, 300)));
@@ -207,6 +215,11 @@ pub fn activist(e: &ActivistEvent) -> Alert {
             .accession
             .iter()
             .map(|a| receipt(e.issuer, a, None))
+            .chain(
+                e.earlier_13g
+                    .iter()
+                    .map(|(a, _, _)| receipt(e.issuer, a, Some("SCHEDULE 13G"))),
+            )
             .collect(),
     }
 }

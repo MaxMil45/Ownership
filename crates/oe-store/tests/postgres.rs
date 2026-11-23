@@ -714,6 +714,37 @@ fn other_forms_load_once_and_keep_no_addresses() {
         17
     );
 
+    // The 13G history passive_to_active@2 reads: only 13Gs, for the issuers
+    // asked about, each with its holders and its Eastern acceptance date.
+    let g_issuers: Vec<u64> = batch
+        .iter()
+        .filter_map(|f| match &f.doc {
+            oe_store::OtherDoc::Schedule13(s) if s.schedule == oe_sched13::Schedule::G => {
+                Some(s.issuer_cik.0)
+            }
+            _ => None,
+        })
+        .collect();
+    assert!(!g_issuers.is_empty());
+    let history = oe_store::schedule13g_history(&mut s.client, &g_issuers).unwrap();
+    let stored_g = count(
+        &mut s.client,
+        "SELECT count(*) FROM schedule13_filing WHERE schedule = 'G'",
+    );
+    assert_eq!(history.len() as i64, stored_g);
+    for g in &history {
+        assert!(g_issuers.contains(&g.issuer_cik));
+        assert!(!g.holders.is_empty(), "{}", g.accession);
+        assert!(
+            g.known_on.parse::<oe_core::Date>().is_ok(),
+            "{}",
+            g.known_on
+        );
+    }
+    assert!(oe_store::schedule13g_history(&mut s.client, &[1])
+        .unwrap()
+        .is_empty());
+
     // A repeat writes nothing.
     let again = oe_store::load_other(&mut s.client, &batch).unwrap();
     assert_eq!(

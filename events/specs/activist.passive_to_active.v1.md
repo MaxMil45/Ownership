@@ -28,7 +28,7 @@ None.
 
 ## Known limitations
 
-- It relies on the filer's own flag. A holder who switched but left the box unticked is missed, and the box is also ticked by filers who previously reported a 13G for the acquisition but not necessarily as a "passive" holder in the everyday sense. The project does not yet check it against the earlier 13G filings; that needs the 13G history in the database.
+- It relies on the filer's own flag. A holder who switched but left the box unticked is missed, and the box is also ticked by filers who previously reported a 13G for the acquisition but not necessarily as a "passive" holder in the everyday sense. `activist.passive_to_active@2` also checks the ledger's earlier 13Gs (65 more events over the 13D/G history: 302 instead of 237).
 - Only original 13Ds are counted: 6 of 112 sampled 13D/A filings also tick the box, but an amendment continues an earlier 13D.
 - XML filings only (December 2024 onwards).
 

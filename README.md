@@ -27,6 +27,7 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | `insider.plan_terminated@1` rule | `oe-events` | Done, tested on real reports (spec in `events/specs/`) |
 | Schedule 13D/13G parser (large holders) | `oe-sched13` | Done; reads 382 real filings; 14 real fixtures |
 | `activist.new_13d@1` and `activist.passive_to_active@1` rules | `oe-events` | Done, tested on real filings (specs in `events/specs/`) |
+| `activist.passive_to_active@2` (also the holder's earlier 13G in the ledger, `--db`) | `oe-events`, `oe-store` | Done; 302 events instead of 237 over the 13D/G history |
 | `activist.proxy_contest@1` (contested proxy filings, from their SGML headers) | `oe-edgar`, `oe-events` | Done; 70 real filings from 21 days, 26 contests; 12 real fixtures |
 | Alerts with receipts: watchlists, delivered once to Discord and JSON webhooks | `oe-alerts` | Done; tested over real HTTP to a local stand-in; not yet tried on a real Discord channel; no email yet (ADR 0006) |
 | Dashboard: one offline HTML page with charts, filters and a searchable event list | `oe-cli` (`oe dashboard`) | Done; checked in a browser on the real downloads (ADR 0007) |

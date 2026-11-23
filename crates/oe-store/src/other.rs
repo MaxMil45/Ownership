@@ -321,6 +321,51 @@ fn insert_content(tx: &mut Transaction<'_>, acc: &str, doc: &OtherDoc) -> Result
     Ok(n)
 }
 
+/// A Schedule 13G or 13G/A in the ledger, for `activist.passive_to_active@2`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Stored13G {
+    pub issuer_cik: u64,
+    pub accession: String,
+    /// `YYYY-MM-DD`, the US Eastern date of acceptance.
+    pub known_on: String,
+    pub filer_cik: u64,
+    pub holders: Vec<String>,
+    pub largest_percent: Option<f64>,
+}
+
+const SCHEDULE13G_HISTORY: &str = "
+SELECT s.issuer_cik, s.accession,
+       (f.accepted_at AT TIME ZONE 'America/New_York')::date::text,
+       f.filer_cik,
+       coalesce(array_agg(p.name ORDER BY p.position) FILTER (WHERE p.name IS NOT NULL), '{}'),
+       max(p.percent_of_class)::float8
+FROM schedule13_filing s
+JOIN filing f ON f.accession = s.accession
+LEFT JOIN schedule13_person p ON p.accession = s.accession
+WHERE s.schedule = 'G' AND s.issuer_cik = ANY($1)
+GROUP BY s.issuer_cik, s.accession, f.accepted_at, f.filer_cik";
+
+/// Every Schedule 13G and 13G/A the ledger holds for these issuers.
+pub fn schedule13g_history(
+    client: &mut Client,
+    issuers: &[u64],
+) -> Result<Vec<Stored13G>, StoreError> {
+    check_schema(client)?;
+    let ids: Vec<i64> = issuers.iter().map(|&c| c as i64).collect();
+    Ok(client
+        .query(SCHEDULE13G_HISTORY, &[&ids])?
+        .iter()
+        .map(|r| Stored13G {
+            issuer_cik: r.get::<_, i64>(0) as u64,
+            accession: r.get(1),
+            known_on: r.get(2),
+            filer_cik: r.get::<_, i64>(3) as u64,
+            holders: r.get(4),
+            largest_percent: r.get(5),
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

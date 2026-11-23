@@ -63,9 +63,11 @@ USAGE:
         Download Schedule 13D and 13G filings (large holders) filed by anyone on one day,
         saved under data/sched13/<issuer CIK>/. Needs OE_USER_AGENT.
 
-    oe activist-events [<folder>] [--min-percent <n>]
+    oe activist-events [<folder>] [--min-percent <n>] [--db]
         Run activist.new_13d@1 and activist.passive_to_active@1 over downloaded 13D/13G
-        files (default folder: data/sched13) and list the events, newest first.
+        files (default folder: data/sched13) and list the events, newest first. --db runs
+        activist.passive_to_active@2 instead, which also finds the holder's earlier 13Gs in
+        the PostgreSQL ledger when the filer did not flag them (DATABASE_URL).
 
     oe daily-proxy <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>]
         Download the SGML header of every contested-solicitation filing (PREC14A, DEFC14A,
@@ -85,7 +87,8 @@ USAGE:
         alerts are printed. Deliveries are logged in data/alerts/sent.tsv. A watchlist
         has lines like `ticker AAPL`, `issuer 320193`, `insider 1494730`, `name Elliott`,
         `rule activist.new_13d@1`. --db lets the cluster-buy rule's routine-trader filter
-        (insiders who trade the same month every year) see the PostgreSQL ledger's history.
+        (insiders who trade the same month every year) see the PostgreSQL ledger's history,
+        and runs activist.passive_to_active@2 (earlier 13Gs from the ledger) in place of @1.
 
     oe bulk-insider [--from 2015q1] [--to <quarter>] [--dir data/bulk] [--dry-run] [--no-load] [--offline]
         History of Forms 3/4/5 from the SEC's quarterly Insider Transactions Data Sets: downloads
@@ -509,6 +512,7 @@ fn parse_form144_file(path: &Path) -> Result<(), String> {
 fn activist_events(args: &[String]) -> Result<(), String> {
     let mut folder: Option<PathBuf> = None;
     let mut params = oe_events::ActivistParams::default();
+    let mut with_db = false;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -516,6 +520,7 @@ fn activist_events(args: &[String]) -> Result<(), String> {
                 params.min_percent =
                     args::non_negative(&mut it, "--min-percent", "a number such as 5")?
             }
+            "--db" => with_db = true,
             other if folder.is_none() => folder = Some(PathBuf::from(other)),
             other => return Err(format!("unexpected argument {other:?}")),
         }
@@ -524,7 +529,19 @@ fn activist_events(args: &[String]) -> Result<(), String> {
 
     let loaded = load::schedule13(&folder)?;
     let (files, failed) = (loaded.files, loaded.failed);
-    let mut events = oe_events::detect_activist_events(&loaded.items, &params);
+    let (mut events, pta_id) = if with_db {
+        let earlier = alerts::ledger_13gs(&loaded.items)?;
+        println!("{} earlier 13G(s) from the database", earlier.len());
+        (
+            oe_events::detect_activist_events_with_ledger(&loaded.items, &params, &earlier),
+            oe_events::activist::PASSIVE_TO_ACTIVE_V2_RULE_ID,
+        )
+    } else {
+        (
+            oe_events::detect_activist_events(&loaded.items, &params),
+            oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID,
+        )
+    };
     // Newest first; within a day, the larger holding first.
     events.sort_by(|a, b| {
         b.known_on.cmp(&a.known_on).then(
@@ -535,16 +552,16 @@ fn activist_events(args: &[String]) -> Result<(), String> {
     });
     let count = |id: &str| events.iter().filter(|e| e.rule_id == id).count();
     println!(
-        "{files} file(s), {failed} unreadable: {} event(s) from activist.new_13d@1 (at least {}%), {} from activist.passive_to_active@1",
+        "{files} file(s), {failed} unreadable: {} event(s) from activist.new_13d@1 (at least {}%), {} from {pta_id}",
         count(oe_events::activist::NEW_13D_RULE_ID),
         params.min_percent,
-        count(oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID)
+        count(pta_id)
     );
-    println!("known_on\trule\tissuer\tholders\tpercent\tshares\tgroup\tevent_date");
+    println!("known_on\trule\tissuer\tholders\tpercent\tshares\tgroup\tevent_date\tearlier_13g");
     for e in &events {
         let holders = e.holders.join("; ");
         println!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
             e.known_on.map_or("?".to_string(), |d| d.to_string()),
             e.rule_id.trim_start_matches("activist."),
             e.issuer_name,
@@ -553,7 +570,10 @@ fn activist_events(args: &[String]) -> Result<(), String> {
                 .map_or("-".to_string(), |p| format!("{p:.1}")),
             opt(e.largest_shares),
             if e.is_group { "group" } else { "-" },
-            e.event_date.map_or("-".to_string(), |d| d.to_string())
+            e.event_date.map_or("-".to_string(), |d| d.to_string()),
+            e.earlier_13g
+                .as_ref()
+                .map_or("-".to_string(), |(a, d, _)| format!("{a} ({d})"))
         );
     }
     Ok(())

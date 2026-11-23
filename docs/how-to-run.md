@@ -128,7 +128,7 @@ downloads the SEC's quarterly Insider Transactions Data Sets (one zip of about 9
 & $oe dashboard --db
 ```
 
-adds a chart of insider buying and selling over the whole history to the dashboard (about 5 seconds). Rows with impossible amounts as filed (a price over $2 million a share, over $2 billion in one row, over $10 billion for one company in a day) are left out of the dollar totals and counted on the page. `& $oe alerts --db` (and `& $oe follow --alert --db`) lets the cluster-buy rule recognise insiders who trade the same month every year.
+adds a chart of insider buying and selling over the whole history to the dashboard (about 5 seconds). Rows with impossible amounts as filed (a price over $2 million a share, over $2 billion in one row, over $10 billion for one company in a day) are left out of the dollar totals and counted on the page. `& $oe alerts --db` (and `& $oe follow --alert --db`) lets the cluster-buy rule recognise insiders who trade the same month every year, and runs `activist.passive_to_active@2`, which also finds a holder's earlier 13G in the ledger when the new 13D does not mention it (`& $oe activist-events --db` lists them, with the earlier 13G).
 
 ### History of the other forms
 
