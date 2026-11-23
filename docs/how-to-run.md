@@ -128,6 +128,22 @@ downloads the SEC's quarterly Insider Transactions Data Sets (one zip of about 9
 & $oe dashboard --db
 ```
 
+adds a chart of insider buying and selling over the whole history to the dashboard (about 5 seconds). Rows with impossible amounts as filed (a price over $2 million a share, over $2 billion in one row, over $10 billion for one company in a day) are left out of the dollar totals and counted on the page. `& $oe alerts --db` (and `& $oe follow --alert --db`) lets the cluster-buy rule recognise insiders who trade the same month every year.
+
+### History of the other forms
+
+Form 144, Schedule 13D/G, proxy contests and 10-Q/10-K plan terminations have no quarterly data sets; their history comes from the daily index, one day at a time:
+
+```powershell
+& $oe daily-proxy 2015-01-02 --to 2026-11-20 --all
+& $oe daily-form144 2023-01-03 --to 2026-11-20 --all --include-amendments
+& $oe daily-13dg 2024-12-23 --to 2026-11-20 --all --include-amendments
+& $oe daily-periodic 2023-10-02 --to 2026-11-20 --all
+& $oe db-load data
+```
+
+Run them one after another, never two at once: each `oe` keeps its own count of SEC requests. Measured here: about 3 h 40 min, 7 h, 2 h 30 min and 9 h 30 min, then 21 minutes to load about 205,000 filings (ADR 0009 has the details; structured data starts at these dates). If one stops (the laptop sleeps, the network drops), run it again from the last day it finished: saved filings are skipped. A day that keeps failing is listed at the end; run that day alone later.
+
 ### Keeping it current
 
 The quarterly data sets appear some weeks after each quarter ends. Fill the days since the last one from the daily index, then load them:
@@ -138,8 +154,6 @@ The quarterly data sets appear some weeks after each quarter ends. Fill the days
 ```
 
 (about 1,000 Forms 3/4/5 a day, downloaded 6 at a time within the SEC limit of 8 requests a second). From then on, `& $oe follow --db` loads each new Form 3/4/5 into the database as it arrives; add `--alert` for alerts too. When the next quarterly data set appears, `& $oe bulk-insider` adds it; filings already loaded from their XML are kept as they are.
-
-adds a chart of insider buying and selling over the whole history to the dashboard (about 5 seconds). Rows with impossible amounts as filed (a price over $2 million a share, over $2 billion in one row, over $10 billion for one company in a day) are left out of the dollar totals and counted on the page. `& $oe alerts --db` (and `& $oe follow --alert --db`) lets the cluster-buy rule recognise insiders who trade the same month every year.
 
 After upgrading to migration `0002_amendments`, load your folders once more (for example `& $oe db-load data/form4`): filings loaded earlier only then get their co-owners and amendment details. Nothing already stored changes. `docker-compose -f docker/compose.yaml down` stops it and keeps the data.
 

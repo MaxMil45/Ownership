@@ -126,20 +126,17 @@ pub fn daily_periodic(args: &[String]) -> Result<(), String> {
     let client = EdgarClient::from_env().map_err(|e| e.to_string())?;
     let range = args.to.is_some();
     let mut total = Tally::default();
-    for day in super::live::days_between(args.date, args.to) {
-        match periodic_day(&client, &args, day) {
-            Ok(t) => total.add(&t),
-            Err(e) if range && e.starts_with("no daily index") => println!("{day}: skipped, {e}"),
-            Err(e) => return Err(e),
-        }
-    }
+    let result = super::live::each_day_between(args.date, args.to, |day| {
+        total.add(&periodic_day(&client, &args, day)?);
+        Ok(())
+    });
     if range {
         println!(
             "all days: {} looked at ({} already logged); {} with a termination saved, {} with the page but no termination, {} without the page, {} without XBRL, {} errors",
             total.looked_at, total.already, total.saved, total.none, total.no_report, total.no_xbrl, total.errors
         );
     }
-    Ok(())
+    result
 }
 
 fn periodic_day(client: &EdgarClient, args: &PeriodicArgs, day: Date) -> Result<Tally, String> {

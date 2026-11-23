@@ -698,7 +698,7 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
     let bulk_filings = one(client, "SELECT count(*) FROM filing WHERE source = 'bulk'")?;
     let amendment_filings = one(
         client,
-        "SELECT count(*) FROM filing WHERE form_type LIKE '%/A'",
+        "SELECT count(*) FROM filing WHERE form_type IN ('3/A', '4/A', '5/A')",
     )?;
     let joint_filings = one(
         client,
@@ -718,7 +718,7 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
     let amendments_waiting = one(
         client,
         "SELECT count(*) FROM filing f
-         WHERE f.form_type LIKE '%/A'
+         WHERE f.form_type IN ('3/A', '4/A', '5/A')
            AND NOT EXISTS (SELECT 1 FROM amendment_link l WHERE l.amendment_accession = f.accession)",
     )?;
     let transactions = one(client, "SELECT count(*) FROM insider_transaction")?;

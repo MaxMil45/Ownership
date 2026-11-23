@@ -114,7 +114,8 @@ pub fn parse_daily_args(args: &[String], default_root: &str) -> Result<DailyArgs
 
 /// The days to fetch: the one date, or every weekday from it to `--to`
 /// (EDGAR publishes no index on weekends).
-pub fn days(args: &DailyArgs) -> Vec<Date> {
+#[cfg(test)]
+fn days(args: &DailyArgs) -> Vec<Date> {
     days_between(args.date, args.to)
 }
 
@@ -136,21 +137,55 @@ pub fn days_between(from: Date, to: Option<Date>) -> Vec<Date> {
     out
 }
 
+/// Seconds to wait before each new try of a daily index the SEC failed to
+/// serve (a 5xx, a 429 or a dropped connection). Waiting only slows us down.
+const INDEX_RETRY_WAITS: [u64; 3] = [5, 30, 120];
+
+/// An error worth trying again later: the server was busy or the network
+/// dropped, not a missing or refused file.
+fn is_transient(e: &EdgarError) -> bool {
+    match e {
+        EdgarError::Status { code, .. } => *code == 429 || *code >= 500,
+        EdgarError::Transport { .. } => true,
+        _ => false,
+    }
+}
+
 /// Runs `one` for each day of the range. In a range, a day without an index
-/// (a market holiday) is reported and skipped; a single day keeps the error.
-fn each_day(
-    args: &DailyArgs,
+/// (a market holiday) is reported and skipped, and a day that fails is
+/// reported and the range goes on; the failed days are listed at the end as
+/// an error. A single day keeps its error.
+pub(crate) fn each_day_between(
+    from: Date,
+    to: Option<Date>,
     mut one: impl FnMut(Date) -> Result<(), String>,
 ) -> Result<(), String> {
-    let list = days(args);
-    let range = args.to.is_some();
-    for day in list {
+    let range = to.is_some();
+    let mut failed: Vec<Date> = Vec::new();
+    for day in days_between(from, to) {
         match one(day) {
+            Ok(()) => {}
             Err(e) if range && e.starts_with("no daily index") => println!("{day}: skipped, {e}"),
-            other => other?,
+            Err(e) if range => {
+                println!("{day}: FAILED, {e}");
+                failed.push(day);
+            }
+            Err(e) => return Err(e),
         }
     }
-    Ok(())
+    if failed.is_empty() {
+        return Ok(());
+    }
+    let list: Vec<String> = failed.iter().map(Date::to_string).collect();
+    Err(format!(
+        "{} day(s) failed; run them again (saved filings are skipped): {}",
+        failed.len(),
+        list.join(" ")
+    ))
+}
+
+fn each_day(args: &DailyArgs, one: impl FnMut(Date) -> Result<(), String>) -> Result<(), String> {
+    each_day_between(args.date, args.to, one)
 }
 
 /// A live feed `oe follow` can poll.
@@ -501,12 +536,27 @@ pub fn daily_schedule13(args: &[String]) -> Result<(), String> {
 /// it could not read.
 pub(crate) fn fetch_daily_index(client: &EdgarClient, date: Date) -> Result<FormIndex, String> {
     let url = daily_index_url(date);
-    let body = client.get_text(&url).map_err(|e| match e {
-        EdgarError::Status {
-            code: 403 | 404, ..
-        } => format!("no daily index for {date} (weekend, holiday, or not published yet): {url}"),
-        other => other.to_string(),
-    })?;
+    let mut waits = INDEX_RETRY_WAITS.iter();
+    let body = loop {
+        match client.get_text(&url) {
+            Ok(body) => break body,
+            Err(e) if is_transient(&e) => match waits.next() {
+                Some(&secs) => {
+                    eprintln!("{date}: {e}; trying again in {secs} s");
+                    std::thread::sleep(std::time::Duration::from_secs(secs));
+                }
+                None => return Err(e.to_string()),
+            },
+            Err(EdgarError::Status {
+                code: 403 | 404, ..
+            }) => {
+                return Err(format!(
+                    "no daily index for {date} (weekend, holiday, or not published yet): {url}"
+                ))
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+    };
     let index = parse_form_index(&body);
     if index.skipped > 0 {
         eprintln!(
@@ -881,6 +931,44 @@ fn save_feed_entry(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_failed_day_does_not_stop_the_range() {
+        let d = |s: &str| s.parse::<Date>().unwrap();
+        let mut seen = Vec::new();
+        // 2023-11-06 (Mon) .. 2023-11-10 (Fri): a holiday and a server error.
+        let r = each_day_between(d("2023-11-06"), Some(d("2023-11-10")), |day| {
+            seen.push(day);
+            match day.to_string().as_str() {
+                "2023-11-07" => Err("HTTP 503 from https://www.sec.gov/x".into()),
+                "2023-11-10" => Err("no daily index for 2023-11-10".into()),
+                _ => Ok(()),
+            }
+        });
+        assert_eq!(seen.len(), 5);
+        let e = r.unwrap_err();
+        assert!(e.starts_with("1 day(s) failed"), "{e}");
+        assert!(e.ends_with("2023-11-07"), "{e}");
+        // A single day keeps its own error.
+        let one = each_day_between(d("2023-11-07"), None, |_| Err("HTTP 503".into()));
+        assert_eq!(one.unwrap_err(), "HTTP 503");
+    }
+
+    #[test]
+    fn busy_and_dropped_are_transient_missing_is_not() {
+        let status = |code| EdgarError::Status {
+            url: "u".into(),
+            code,
+        };
+        assert!(is_transient(&status(503)));
+        assert!(is_transient(&status(429)));
+        assert!(!is_transient(&status(404)));
+        assert!(!is_transient(&status(403)));
+        assert!(is_transient(&EdgarError::Transport {
+            url: "u".into(),
+            message: "reset".into()
+        }));
+    }
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| s.to_string()).collect()

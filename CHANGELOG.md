@@ -18,7 +18,8 @@ The first public version: insider and activist events from SEC filings, each wit
 ### Ledger
 - Point-in-time PostgreSQL ledger: every fact has the date it was true and the time the public could know it; nothing is updated or deleted (ADR 0002, 0004).
 - Amendments are linked to the report they amend by evidence, and only restatements replace rows (ADR 0005, revised in ADR 0008). Joint filings keep every owner.
-- Form 144, Schedule 13D/G, contested-proxy and 10-Q/10-K insider-plan filings are stored too, without street addresses or CUSIPs (ADR 0009).
+- Form 144, Schedule 13D/G, contested-proxy and 10-Q/10-K insider-plan filings are stored too, without street addresses or CUSIPs (ADR 0009), with their history: Form 144 since 2023, 13D/G since December 2024, contests since 2015, insider plans since late 2023.
+- Day ranges (`--to`) retry the SEC's temporary errors and carry on past a failed day, listing it at the end.
 - History since 2015 from the quarterly data sets: 2.4 million filings in 31 minutes, checked against the filings' own XML (ADR 0008).
 
 ### Alerts and dashboard

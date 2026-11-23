@@ -31,4 +31,22 @@ Sampled on real days, 2026-11-21:
 ## Consequences
 
 - Rules still read the folders; moving them onto these tables is the next step, and makes history usable (for example, looking up earlier 13Gs for `activist.passive_to_active`).
-- History for these forms is a download job, not a parsing one: roughly 150,000 Form 144s since 2023 (about 5 to 6 hours at 8 requests a second), roughly 45,000 13D/Gs since December 2024 (about 2 hours), and a few hundred thousand small requests for the 10-Q/10-K checks (several hours). Older 13D/Gs would need a reader for the text format.
+- Older 13D/Gs would need a reader for the `SC 13D`/`SC 13G` text format.
+
+## History download, 2026-11-21 to 2026-11-23
+
+Run one command at a time (each `oe` process has its own rate limiter), with the daily index for every weekday:
+
+| Step | Range | Time | Result |
+| --- | --- | --- | --- |
+| `daily-proxy --all` | 2015-01-02 to 2026-11-20 | 3 h 40 min | 10,108 contest headers |
+| `daily-form144 --all --include-amendments` | 2023-01-03 to 2026-11-20 | about 7 h (25 to 35 s a day) | 130,904 notices |
+| `daily-13dg --all --include-amendments` | 2024-12-23 to 2026-11-20 | about 2 h 30 min | 63,714 filings |
+| `daily-periodic --all` | 2023-10-02 to 2026-11-20 | 9 h 26 min | 75,516 reports checked (about 135 a minute); 1,498 with a termination saved; 1,530 reports and 4,409 arrangements stored |
+| retries of failed days | | about 1 h | all recovered except 3 contest headers, 6 Form 144s and about 43 13D/Gs that the SEC answers 404 at the path the index gives |
+| `db-load data` | 226,541 files | 21 min | 205,511 new filings, 508,306 content rows; a repeat writes nothing |
+
+Learned on the way:
+- The SEC sometimes answers 503 for a daily index. A range used to stop at the first such error; the index download now waits 5 s, 30 s and 2 min before giving up, and a range reports a failed day and goes on, listing the failed days at the end.
+- The 10-Q/10-K check made 6 reports at a time under the shared limiter (it was one at a time, which would have taken about two days).
+- Downloaded files take about 1 GB for these forms (Form 144 2.6 KB and 13D/G 5.6 KB per file); the saved 10-Q/10-K reports with a termination are the largest part (about 2 MB each).
