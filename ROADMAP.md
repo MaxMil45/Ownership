@@ -26,7 +26,11 @@ The full plan lives in the "Ownership Event Intelligence Engine — Master Plan"
 - [x] Proxy contest filings; `activist.proxy_contest@1` (`oe daily-proxy`, `oe proxy-contests`; reads the SGML header, not the documents; 70 real filings, 26 contests; one event per company per batch, so it repeats across days until the history is in the database)
 - [x] Form 144, Schedule 13D/G, contested-proxy and Item 408 filings in the ledger (migration `0005_other_forms`, ADR 0009); `db-load` and `follow --db` take every kind. History downloaded and loaded (2026-11-23): 130,904 Form 144s since 2023, 63,714 13D/Gs since 2024-12-23, 10,108 contest filings since 2015, 4,409 trading arrangements from 75,516 10-Qs/10-Ks checked since 2023-10; about 20 hours of downloading at 8 requests a second.
 - [x] `activist.passive_to_active@2`: also an earlier 13G from the same holder in the ledger (`--db`); 302 events instead of 237 over the 13D/G history, every `@1` event kept
-- [ ] The other rules read these tables too (proxy contests once per contest rather than per batch, Form 144 history)
+- [x] `activist.proxy_contest@2`: one event per contest (a company's run of contest filings with no gap over 90 days), with its start, from the ledger (`--db`); replayed daily since 2015, `@1` gave 1,398 alerts for 1,135 contests and missed 131
+- [x] `insider.planned_sale@2`: each sale says whether it is the seller's first Form 144 for the company in a year or routine (6+ months of notices), from the ledger (`--db`); notices with impossible amounts (12 typos) are left out
+- [x] `insider.plan_terminated@2`: the plan's adoption (tagged in the report, or an earlier report in the ledger) and length; flags plans ended within the 90-day cooling-off (102 of 1,886 terminations since late 2023)
+- [x] Keep 10-Q/10-Ks that disclose only adoptions too, as small excerpts (ADR 0009): saved reports 3.4 GB to 17 MB; on 2026-11-05, 104 adoption-only reports against 18 with terminations
+- [ ] Recheck the 10-Q/10-K history for adoption-only reports (`--recheck-none`, about 57,000 reports, 7 to 8 hours), locally or with the GitHub workflow `recheck-periodic.yml` (ready; checked end to end on this machine for one day: 406 reports, 73 kept, 167 s, imported with `scripts/import-periodic-recheck.ps1`)
 - [ ] Alerts: email, webhook, Discord; watchlists by ticker and insider
   - [x] `oe alerts` and `oe follow --alert` (crate `oe-alerts`, ADR 0006): every rule's events become alerts with receipts, filtered by watchlist (ticker, issuer, insider, name, rule) and age, delivered once per destination to Discord and JSON webhooks, logged in `data/alerts/sent.tsv`. Checked on real data: 51 alerts delivered to a local stand-in for Discord and a webhook, a second run sent none; one live cluster buy alerted from the feed (alert pass 44 ms). Not yet tried against a real Discord channel.
   - [x] Feed delay measured once (2026-11-20, 10:21–10:28 am Eastern, 4 filings): 34 to 66 s from acceptance, with 30 s polling.
@@ -36,6 +40,7 @@ The full plan lives in the "Ownership Event Intelligence Engine — Master Plan"
 - [x] Clean-up (2026-11-19): shared helpers for flags, numbers, dates, entities, tags, sidecars and CLI arguments (one copy each); `insider.cluster_buy@1` routine filter indexed (96,000 trades: 8.98 s to 17 ms); outputs on all real data unchanged
 - [ ] **Gate 1:** public v0.1 release; alerts within 5 minutes of filing; fixture suite green
   - [x] Release prepared (2026-11-21): official licence, metadata, CI covering every check, changelog, `docs/release-checklist.md`
+  - [x] Delay measurement ready (2026-11-23): `oe alert-delays`, `scripts/measure-trading-day.ps1`; the live follower reads only the last 14 days of filings (an alert pass over the full history took 15 to 90 s per form)
   - [ ] A full trading day of alert delays; CI green; tag and publish
 
 ## Phase 2: investor registry (Mar – May 2027)

@@ -745,6 +745,76 @@ fn other_forms_load_once_and_keep_no_addresses() {
         .unwrap()
         .is_empty());
 
+    // The Form 144 history planned_sale@2 reads: originals only, from `since`.
+    let issuers144: Vec<u64> = batch
+        .iter()
+        .filter_map(|f| match &f.doc {
+            oe_store::OtherDoc::Form144(n) => Some(n.issuer_cik.0),
+            _ => None,
+        })
+        .collect();
+    let all = oe_store::form144_history(&mut s.client, &issuers144, "2000-01-01").unwrap();
+    let originals = count(
+        &mut s.client,
+        "SELECT count(*) FROM form144_notice JOIN filing USING (accession) WHERE form_type = '144'",
+    );
+    assert_eq!(all.len() as i64, originals);
+    assert!(originals < 17, "the fixtures include amendments, left out");
+    let latest = all.iter().map(|n| n.known_on.clone()).max().unwrap();
+    let from_latest = oe_store::form144_history(&mut s.client, &issuers144, &latest).unwrap();
+    assert!(!from_latest.is_empty() && from_latest.iter().all(|n| n.known_on >= latest));
+    assert!(from_latest.len() < all.len());
+
+    // The adoptions plan_terminated@2 reads: adopted arrangements with a person.
+    let registrants: Vec<u64> = batch
+        .iter()
+        .filter_map(|f| match &f.doc {
+            oe_store::OtherDoc::Item408 { doc, .. } => doc.cik.map(|c| c.0),
+            _ => None,
+        })
+        .collect();
+    let adoptions = oe_store::adoption_history(&mut s.client, &registrants).unwrap();
+    assert_eq!(
+        adoptions.len() as i64,
+        count(
+            &mut s.client,
+            "SELECT count(*) FROM trading_arrangement WHERE rule_10b5_1_adopted AND person IS NOT NULL"
+        )
+    );
+    assert!(!adoptions.is_empty(), "the fixtures include adoptions");
+    for a in &adoptions {
+        assert!(registrants.contains(&a.registrant_cik));
+        assert!(a.known_on.parse::<oe_core::Date>().is_ok());
+        if let Some(d) = &a.adoption_date {
+            assert!(d.parse::<oe_core::Date>().is_ok(), "{d}");
+        }
+    }
+
+    // The contest history proxy_contest@2 reads, with every filer in order.
+    let subjects: Vec<u64> = batch
+        .iter()
+        .filter_map(|f| match &f.doc {
+            oe_store::OtherDoc::Contest(c) => Some(c.subject.cik.0),
+            _ => None,
+        })
+        .collect();
+    let contests = oe_store::contest_history(&mut s.client, &subjects).unwrap();
+    assert_eq!(contests.len(), 12);
+    for c in &contests {
+        let original = batch
+            .iter()
+            .find(|f| f.filing.accession == c.accession)
+            .unwrap();
+        let oe_store::OtherDoc::Contest(h) = &original.doc else {
+            panic!("{} is not a contest filing", c.accession)
+        };
+        assert_eq!(
+            (&c.form, &c.subject, &c.filed_by),
+            (&h.form, &h.subject, &h.filed_by)
+        );
+        assert!(c.known_on.parse::<oe_core::Date>().is_ok());
+    }
+
     // A repeat writes nothing.
     let again = oe_store::load_other(&mut s.client, &batch).unwrap();
     assert_eq!(

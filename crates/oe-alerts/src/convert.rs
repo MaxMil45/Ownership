@@ -1,7 +1,7 @@
 //! One [`Alert`] per event. Each converter says what the alert's key is made
 //! of: the facts that make two detections the same event.
 
-use crate::{receipt, Alert, Person};
+use crate::{receipt, Alert, Person, Receipt};
 use oe_core::Cik;
 use oe_events::{
     ActivistEvent, ClusterBuyEvent, PlanTerminatedEvent, PlannedSaleEvent, ProxyContestEvent,
@@ -253,6 +253,36 @@ pub fn planned_sale(e: &PlannedSaleEvent) -> Alert {
             shares(e.sold_past_3_months)
         ));
     }
+    let mut receipts: Vec<Receipt> = e
+        .accession
+        .iter()
+        .map(|a| receipt(e.issuer, a, Some("144")))
+        .collect();
+    let tag = match &e.history {
+        None => "",
+        Some(h) if h.notices_past_year == 0 => {
+            details.push("The seller's first Form 144 for this company in a year.".into());
+            " (first in a year)"
+        }
+        Some(h) => {
+            details.push(format!(
+                "Seller's earlier Form 144s for this company in the past year: {} in {} month(s){}",
+                h.notices_past_year,
+                h.months_past_year,
+                h.previous_notice
+                    .as_ref()
+                    .map_or(String::new(), |(_, d)| format!(", the latest on {d}"))
+            ));
+            if let Some((a, _)) = &h.previous_notice {
+                receipts.push(receipt(e.issuer, a, Some("144, previous notice")));
+            }
+            if h.routine {
+                " (routine seller)"
+            } else {
+                ""
+            }
+        }
+    };
     Alert {
         key: format!(
             "{}|{}",
@@ -269,7 +299,7 @@ pub fn planned_sale(e: &PlannedSaleEvent) -> Alert {
         issuer_name: Some(e.issuer_name.clone()),
         ticker: None,
         headline: format!(
-            "Planned insider sale at {who}: {}, {}",
+            "Planned insider sale at {who}: {}, {}{tag}",
             e.seller,
             money(e.aggregate_market_value)
         ),
@@ -278,11 +308,7 @@ pub fn planned_sale(e: &PlannedSaleEvent) -> Alert {
             cik: None,
             name: e.seller.clone(),
         }],
-        receipts: e
-            .accession
-            .iter()
-            .map(|a| receipt(e.issuer, a, Some("144")))
-            .collect(),
+        receipts,
     }
 }
 
@@ -305,10 +331,45 @@ pub fn plan_terminated(e: &PlanTerminatedEvent) -> Alert {
     } else {
         "No new plan adopted in the same report.".into()
     });
+    let mut tag = "";
+    let mut earlier_report = None;
+    if let Some(l) = &e.plan_life {
+        let from = match &l.adoption_report {
+            None => "tagged in this report".to_string(),
+            Some(_) => "disclosed in an earlier report".to_string(),
+        };
+        details.push(match l.days {
+            Some(days) => format!(
+                "The plan was adopted {} ({from}): it lasted {}{days} days{}",
+                l.adopted_on,
+                if l.days_at_most { "at most " } else { "" },
+                if l.within_cooling_off {
+                    ", within the 90-day cooling-off, so no sale under it was possible"
+                } else {
+                    ""
+                }
+            ),
+            None => format!(
+                "The plan's tagged adoption date, {}, is after its end ({from}); left as tagged",
+                l.adopted_on
+            ),
+        });
+        if l.within_cooling_off {
+            tag = " (ended before it could be used)";
+        }
+        earlier_report = l.adoption_report.clone();
+    }
     if let Some(t) = &e.terms_text {
         details.push(format!("Terms: {}", clip(t, 300)));
     }
     let acc = e.accession.clone().unwrap_or_else(|| "?".into());
+    let mut receipts = match (e.issuer, &e.accession) {
+        (Some(cik), Some(a)) => vec![receipt(cik, a, e.form.as_deref())],
+        _ => Vec::new(),
+    };
+    if let (Some(cik), Some(a)) = (e.issuer, &earlier_report) {
+        receipts.push(receipt(cik, a, Some("report disclosing the adoption")));
+    }
     Alert {
         key: format!("{}|{}|{}", e.rule_id, acc, person),
         rule_id: e.rule_id,
@@ -318,16 +379,13 @@ pub fn plan_terminated(e: &PlanTerminatedEvent) -> Alert {
         issuer_cik: e.issuer,
         issuer_name: e.issuer_name.clone(),
         ticker: None,
-        headline: format!("10b5-1 plan terminated at {who}: {person}"),
+        headline: format!("10b5-1 plan terminated at {who}: {person}{tag}"),
         details,
         people: vec![Person {
             cik: None,
             name: person.clone(),
         }],
-        receipts: match (e.issuer, &e.accession) {
-            (Some(cik), Some(a)) => vec![receipt(cik, a, e.form.as_deref())],
-            _ => Vec::new(),
-        },
+        receipts,
     }
 }
 
@@ -346,13 +404,33 @@ pub fn proxy_contest(e: &ProxyContestEvent) -> Alert {
         format!("Proxy contest at {who}: {}", clip(&names.join(", "), 100))
     };
     let forms: Vec<&str> = e.filings.iter().map(|f| f.form.as_str()).collect();
+    // The dates of the filings this alert carries (for v2, e.first_known_on is
+    // the contest's start, which may be in the ledger).
+    let first = e.filings.iter().filter_map(|f| f.known_on).min();
+    let last = e.filings.iter().filter_map(|f| f.known_on).max();
+    let span = match (first, last) {
+        (Some(a), Some(b)) if a == b => format!("on {a}"),
+        (Some(a), Some(b)) => format!("from {a} to {b}"),
+        _ => "on an unknown date".into(),
+    };
     let mut details = vec![format!(
-        "{} contest filing(s) from {} to {}: {}",
+        "{} contest filing(s) {span}: {}",
         e.filings.len(),
-        e.first_known_on.map_or("?".into(), |d| d.to_string()),
-        e.last_known_on.map_or("?".into(), |d| d.to_string()),
         forms.join(", ")
     )];
+    if e.rule_id == oe_events::proxy_contest::RULE_ID_V2 {
+        if e.earlier_filings == 0 {
+            details.push(
+                "A new contest: no contest filing about this company in the 90 days before.".into(),
+            );
+        } else {
+            details.push(format!(
+                "The contest started {} ({} earlier filing(s) in the ledger).",
+                e.contest_start.map_or("?".into(), |d| d.to_string()),
+                e.earlier_filings
+            ));
+        }
+    }
     if e.challenger_proxy_statement {
         details.push("A challenger filed its own proxy statement.".into());
     }
@@ -367,8 +445,17 @@ pub fn proxy_contest(e: &ProxyContestEvent) -> Alert {
             .collect::<Vec<_>>()
             .join(",")
     };
+    // v1: one alert per company and set of challengers. v2: one per contest,
+    // whoever joins it later.
+    let key = match (
+        e.rule_id == oe_events::proxy_contest::RULE_ID_V2,
+        e.contest_start,
+    ) {
+        (true, Some(start)) => format!("{}|{}|{}", e.rule_id, e.issuer, start),
+        _ => format!("{}|{}|{}", e.rule_id, e.issuer, challengers),
+    };
     Alert {
-        key: format!("{}|{}|{}", e.rule_id, e.issuer, challengers),
+        key,
         rule_id: e.rule_id,
         amount_usd: None,
         percent: None,
@@ -397,6 +484,153 @@ pub fn proxy_contest(e: &ProxyContestEvent) -> Alert {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use oe_core::{Date, Party};
+    use oe_events::ContestFiling;
+
+    #[test]
+    fn a_contest_alerts_once_however_its_cast_changes_and_a_new_one_alerts_again() {
+        let co = Party {
+            cik: Cik(1),
+            name: "EXAMPLE CORP".into(),
+        };
+        let fund = |cik: u64| Party {
+            cik: Cik(cik),
+            name: format!("Fund {cik}"),
+        };
+        let filing = |day: u32, by: Party| ContestFiling {
+            form: "DFAN14A".into(),
+            accession: format!("0000000000-26-{day:06}"),
+            known_on: Date::from_ymd(2026, 4, day),
+            subject: co.clone(),
+            filed_by: vec![by],
+        };
+        let ledger = [filing(1, fund(2))];
+        let day = |d: u32, by: Party| {
+            let e = oe_events::detect_proxy_contests_with_ledger(&[filing(d, by)], &ledger);
+            proxy_contest(&e[0])
+        };
+        // Same contest, a new fund joining: the same key, so no second alert.
+        let (a, b) = (day(3, fund(2)), day(9, fund(5)));
+        assert_eq!(a.key, "activist.proxy_contest@2|0000000001|2026-04-01");
+        assert_eq!(a.key, b.key);
+        assert!(b.details[0].starts_with("1 contest filing(s) on 2026-04-09"));
+        assert!(b.details[1].contains("started 2026-04-01 (1 earlier filing"));
+        // v1 keys on the challengers, so the same two days were two alerts.
+        let v1 = |d: u32, by: Party| {
+            proxy_contest(&oe_events::detect_proxy_contests(&[filing(d, by)])[0]).key
+        };
+        assert_ne!(v1(3, fund(2)), v1(9, fund(5)));
+        // A new contest a season later is a new key.
+        let later = oe_events::detect_proxy_contests_with_ledger(
+            &[ContestFiling {
+                known_on: Date::from_ymd(2026, 9, 1),
+                ..filing(1, fund(2))
+            }],
+            &[],
+        );
+        assert_ne!(proxy_contest(&later[0]).key, a.key);
+        assert!(proxy_contest(&later[0]).details[1].starts_with("A new contest"));
+    }
+
+    #[test]
+    fn a_planned_sale_says_first_or_routine_and_links_the_previous_notice() {
+        let form = oe_form144::parse(
+            &std::fs::read_to_string(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../fixtures/form144/synthetic/01_officer_plan_sale.xml"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let meta = oe_core::FilingMeta {
+            accession: "0009999911-26-000003".parse().ok(),
+            known_on: Date::from_ymd(2026, 3, 11),
+            source: None,
+        };
+        let earlier = |months: u32| -> Vec<oe_events::EarlierNotice> {
+            (1..=months)
+                .map(|m| oe_events::EarlierNotice {
+                    issuer: form.issuer_cik,
+                    seller: form.seller_name.clone(),
+                    accession: format!("0009999911-25-{m:06}"),
+                    known_on: Date::from_ymd(2025, m + 3, 2).unwrap(),
+                })
+                .collect()
+        };
+        let alert = |ledger: &[oe_events::EarlierNotice]| {
+            let e = oe_events::detect_planned_sales_with_ledger(
+                &[(form.clone(), meta.clone())],
+                &Default::default(),
+                ledger,
+            );
+            planned_sale(&e[0])
+        };
+        let first = alert(&[]);
+        assert!(
+            first.headline.ends_with("(first in a year)"),
+            "{}",
+            first.headline
+        );
+        assert_eq!(first.receipts.len(), 1);
+
+        let routine = alert(&earlier(6));
+        assert!(routine.headline.ends_with("(routine seller)"));
+        assert!(routine
+            .details
+            .iter()
+            .any(|d| d.contains("6 in 6 month(s), the latest on 2025-09-02")));
+        assert_eq!(routine.receipts.len(), 2);
+        assert_eq!(routine.receipts[1].accession, "0009999911-25-000006");
+        assert_eq!(routine.key, "insider.planned_sale@2|0009999911-26-000003");
+
+        let some = alert(&earlier(2));
+        assert!(some.headline.ends_with(&money(2_824_614.0)), "neither tag");
+    }
+
+    #[test]
+    fn a_plan_ended_in_its_cooling_off_says_so_and_links_the_adoption_report() {
+        let e = PlanTerminatedEvent {
+            rule_id: oe_events::plan_terminated::RULE_ID_V2,
+            issuer: Some(Cik(1)),
+            issuer_name: Some("EXAMPLE CORP".into()),
+            person: Some("Sam Shaw".into()),
+            title: Some("CFO".into()),
+            termination_date: Date::from_ymd(2026, 8, 26),
+            rejected_termination_date: None,
+            period_end: Date::from_ymd(2026, 9, 30),
+            replaced_in_filing: false,
+            terms_text: None,
+            form: Some("10-Q".into()),
+            accession: Some("0000000001-26-000002".into()),
+            known_on: Date::from_ymd(2026, 11, 2),
+            plan_life: Some(oe_events::PlanLife {
+                adopted_on: Date::from_ymd(2026, 6, 11).unwrap(),
+                adoption_report: Some("0000000001-26-000001".into()),
+                days: Some(76),
+                days_at_most: false,
+                within_cooling_off: true,
+            }),
+        };
+        let a = plan_terminated(&e);
+        assert!(a.headline.ends_with("(ended before it could be used)"));
+        assert!(a.details.iter().any(|d| d
+            == "The plan was adopted 2026-06-11 (disclosed in an earlier report): it lasted 76 days, within the 90-day cooling-off, so no sale under it was possible"));
+        assert_eq!(a.receipts.len(), 2);
+        assert_eq!(a.receipts[1].accession, "0000000001-26-000001");
+
+        // A long plan: no tag, one receipt if tagged in the same report.
+        let mut long = e.clone();
+        long.plan_life = Some(oe_events::PlanLife {
+            adoption_report: None,
+            days: Some(213),
+            within_cooling_off: false,
+            ..e.plan_life.clone().unwrap()
+        });
+        let a = plan_terminated(&long);
+        assert!(a.headline.ends_with("Sam Shaw"));
+        assert_eq!(a.receipts.len(), 1);
+        assert!(a.details.iter().any(|d| d.ends_with("lasted 213 days")));
+    }
 
     #[test]
     fn money_and_shares_read_like_a_person_wrote_them() {

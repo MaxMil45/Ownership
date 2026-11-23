@@ -132,6 +132,39 @@ pub fn us_eastern_date(utc: &str) -> Option<Date> {
     })
 }
 
+/// Seconds since 1970 (UTC) for a UTC timestamp `YYYY-MM-DDTHH:MM:SS`, with
+/// or without a trailing `Z` or fraction.
+pub fn utc_to_unix(text: &str) -> Option<i64> {
+    let t = text.trim();
+    let date: Date = t.get(..10)?.parse().ok()?;
+    if t.as_bytes().get(10) != Some(&b'T') {
+        return None;
+    }
+    let clock = |a: usize, b: usize, max: i64| -> Option<i64> {
+        let v: i64 = t.get(a..b)?.parse().ok()?;
+        (0..max).contains(&v).then_some(v)
+    };
+    let (h, m, s) = (clock(11, 13, 24)?, clock(14, 16, 60)?, clock(17, 19, 61)?);
+    Some(date.days as i64 * 86_400 + h * 3600 + m * 60 + s)
+}
+
+/// Seconds since 1970 (UTC) for a US Eastern wall-clock time
+/// `YYYY-MM-DDTHH:MM:SS` (EDGAR's acceptance times), daylight saving included.
+pub fn eastern_to_unix(text: &str) -> Option<i64> {
+    let local = utc_to_unix(text)?;
+    // Try daylight time (UTC-4) first; keep it if DST is in force at that instant.
+    let edt = local + 4 * 3600;
+    let day = Date {
+        days: edt.div_euclid(86_400) as i32,
+    };
+    let hour = (edt.rem_euclid(86_400) / 3600) as u32;
+    Some(if is_us_dst(day, hour) {
+        edt
+    } else {
+        local + 5 * 3600
+    })
+}
+
 /// Whether US daylight saving time is in force at `hour` UTC on `date`.
 /// Both transitions happen at 2:00 local time: 07:00 UTC when clocks go
 /// forward (still EST) and 06:00 UTC when they go back (still EDT).
@@ -248,6 +281,39 @@ mod tests {
             ("2026-11-04T02:30:04.000Z", "2026-11-03"),
         ] {
             assert_eq!(eastern(accepted), filed, "{accepted}");
+        }
+    }
+
+    #[test]
+    fn eastern_and_utc_times_become_seconds_since_1970() {
+        assert_eq!(utc_to_unix("1970-01-01T00:00:00Z"), Some(0));
+        assert_eq!(utc_to_unix("2026-11-20T15:21:44Z"), Some(1_795_188_104));
+        assert_eq!(utc_to_unix("2026-11-20T15:21:44.000Z"), Some(1_795_188_104));
+        // Summer: EDT, UTC-4. Winter: EST, UTC-5.
+        assert_eq!(
+            eastern_to_unix("2026-10-22T14:29:31"),
+            utc_to_unix("2026-10-22T18:29:31Z")
+        );
+        assert_eq!(
+            eastern_to_unix("2026-11-20T10:21:44"),
+            utc_to_unix("2026-11-20T15:21:44Z")
+        );
+        // Around the change on 2026-03-08 (2:00 EST becomes 3:00 EDT).
+        assert_eq!(
+            eastern_to_unix("2026-03-08T01:30:00"),
+            utc_to_unix("2026-03-08T06:30:00Z")
+        );
+        assert_eq!(
+            eastern_to_unix("2026-03-08T03:30:00"),
+            utc_to_unix("2026-03-08T07:30:00Z")
+        );
+        for bad in [
+            "",
+            "2026-11-20",
+            "2026-11-20 10:00:00",
+            "2026-11-20T25:00:00",
+        ] {
+            assert_eq!(utc_to_unix(bad), None, "{bad}");
         }
     }
 

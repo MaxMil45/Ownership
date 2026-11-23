@@ -43,7 +43,7 @@ None.
 
 ## Known limitations
 
-- **It is per batch, not per contest.** Run daily, the same contest fires again each day it has filings; telling a new contest from a continuing one needs the filing history in the database. `first_known_on` is the first filing *in the batch*.
+- **It is per batch, not per contest.** Run daily, the same contest fires again each day it has filings; telling a new contest from a continuing one needs the filing history in the database. `first_known_on` is the first filing *in the batch*. `activist.proxy_contest@2` (with `--db`) fixes this: one event per contest, with its start.
 - It does not read the documents, so it cannot say what the challenger wants (board seats, a sale, against a merger) or how many seats.
 - Exempt solicitations (`PX14A6G`, "vote no" campaigns) and ordinary proxy materials (`DEFA14A`) are not counted.
 - A rival bidder fighting a merger is a challenger here, as is an activist fund: both solicit against the board.

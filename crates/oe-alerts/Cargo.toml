@@ -16,3 +16,6 @@ oe-core.workspace = true
 oe-events.workspace = true
 oe-edgar.workspace = true
 ureq = { version = "2.10", optional = true }
+
+[dev-dependencies]
+oe-form144.workspace = true

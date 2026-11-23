@@ -33,6 +33,14 @@ Sampled on real days, 2026-11-21:
 - Rules still read the folders; moving them onto these tables is the next step, and makes history usable (for example, looking up earlier 13Gs for `activist.passive_to_active`).
 - Older 13D/Gs would need a reader for the `SC 13D`/`SC 13G` text format.
 
+## 10-Q/10-K reports: adoptions too, and excerpts (2026-11-23)
+
+The first version kept a 10-Q/10-K only when its insider-trading page showed a **termination**. `insider.plan_terminated@2` needs the earlier **adoptions** too, and those were thrown away: measured on 2026-11-05, 104 of 604 reports disclosed adoptions only (174 adoptions), against 18 reports with a termination. Decided:
+
+- `daily-periodic` keeps every report whose page shows an adoption or a termination (`oe_item408::report_page_flags`). Reports logged `none` were checked for terminations only; `--recheck-none` looks at them again; the new log status for "neither" is `no_change`.
+- It keeps an **excerpt**, not the 2 MB report: every `dei` and `ecd` fact as written and the contexts they use (`oe_item408::excerpt`). Checked on all 1,530 saved reports: each reads exactly as the full report (`extract` equal), 3,430 MB became 17 MB (`oe periodic-excerpt`, which verifies each before replacing it). `--full` keeps the whole report.
+- The sidecar holds the full report's SHA-256 as `original_sha256`, and the loader stores that as the receipt's fingerprint, so `filing.raw_sha256` still names the SEC's file. Reloading the shrunk folder reported no changed source. SHA-256 moved to `oe-core` so the download can compute it without the database feature.
+
 ## History download, 2026-11-21 to 2026-11-23
 
 Run one command at a time (each `oe` process has its own rate limiter), with the daily index for every weekday:

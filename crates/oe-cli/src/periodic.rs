@@ -1,12 +1,16 @@
 //! `oe daily-periodic`: find 10-Q and 10-K reports filed on one day by any
 //! company, and keep the ones whose Item 408 disclosure says a director or
-//! officer terminated a Rule 10b5-1 plan.
+//! officer adopted or terminated a Rule 10b5-1 plan.
 //!
 //! Per report it first fetches three small files (the header, `FilingSummary.xml`
 //! and the rendered "Insider Trading Arrangements" page, together about 100 KB)
-//! and only downloads the 2 MB report when that page shows a termination. The
-//! other reports are logged in `checked.tsv` so a rerun does not look at them
-//! again.
+//! and only downloads the 2 MB report when that page shows an adoption or a
+//! termination. It keeps an excerpt of the report (its `dei` and `ecd` facts,
+//! a few KB, `oe_item408::excerpt`) with the full report's SHA-256 in the
+//! sidecar; `--full` keeps the whole report. The other reports are logged in
+//! `checked.tsv` so a rerun does not look at them again. Reports logged `none`
+//! were checked for terminations only (before adoptions were kept);
+//! `--recheck-none` looks at them again.
 
 use super::{args, meta_path, render_meta};
 use oe_core::Date;
@@ -18,6 +22,10 @@ use std::path::{Path, PathBuf};
 
 const DEFAULT_ROOT: &str = "data/periodic";
 const CHECKED_FILE: &str = "checked.tsv";
+/// Logged for a report whose page showed no adoption and no termination.
+const STATUS_NO_CHANGE: &str = "no_change";
+/// Logged before adoptions were kept: the page showed no termination.
+const STATUS_TERMINATIONS_ONLY: &str = "none";
 
 #[derive(Debug, PartialEq)]
 pub struct PeriodicArgs {
@@ -32,6 +40,10 @@ pub struct PeriodicArgs {
     pub save_all: bool,
     /// Also download this many of the reports the cheap check skipped, to measure its error rate.
     pub audit: usize,
+    /// Keep the whole report, not the excerpt.
+    pub full: bool,
+    /// Check again the reports logged `none` (checked for terminations only).
+    pub recheck_none: bool,
 }
 
 pub fn parse_periodic_args(args: &[String]) -> Result<PeriodicArgs, String> {
@@ -44,6 +56,8 @@ pub fn parse_periodic_args(args: &[String]) -> Result<PeriodicArgs, String> {
         forms: vec!["10-Q".into(), "10-K".into()],
         save_all: false,
         audit: 0,
+        full: false,
+        recheck_none: false,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -64,6 +78,8 @@ pub fn parse_periodic_args(args: &[String]) -> Result<PeriodicArgs, String> {
                 }
             }
             "--save-all" => parsed.save_all = true,
+            "--full" => parsed.full = true,
+            "--recheck-none" => parsed.recheck_none = true,
             "--to" => {
                 let text = it.next().ok_or("--to needs a date such as 2026-11-20")?;
                 parsed.to = Some(args::date(text, "2026-11-20")?);
@@ -132,7 +148,7 @@ pub fn daily_periodic(args: &[String]) -> Result<(), String> {
     });
     if range {
         println!(
-            "all days: {} looked at ({} already logged); {} with a termination saved, {} with the page but no termination, {} without the page, {} without XBRL, {} errors",
+            "all days: {} looked at ({} already logged); {} with an adoption or termination saved, {} with the page but neither, {} without the page, {} without XBRL, {} errors",
             total.looked_at, total.already, total.saved, total.none, total.no_report, total.no_xbrl, total.errors
         );
     }
@@ -162,7 +178,9 @@ fn periodic_day(client: &EdgarClient, args: &PeriodicArgs, day: Date) -> Result<
             tally.errors += 1;
             continue;
         };
-        if checked.contains_key(accession) {
+        // `none`: checked for terminations only, before adoptions were kept.
+        let recheck = |status: &String| args.recheck_none && status == STATUS_TERMINATIONS_ONLY;
+        if checked.get(accession).is_some_and(|s| !recheck(s)) {
             tally.already += 1;
             continue;
         }
@@ -197,7 +215,7 @@ fn periodic_day(client: &EdgarClient, args: &PeriodicArgs, day: Date) -> Result<
                         match status.as_str() {
                             "no_xbrl" => t.no_xbrl += 1,
                             "no_report" => t.no_report += 1,
-                            "none" => t.none += 1,
+                            STATUS_NO_CHANGE => t.none += 1,
                             "saved" => t.saved += 1,
                             _ => {}
                         }
@@ -223,12 +241,12 @@ fn periodic_day(client: &EdgarClient, args: &PeriodicArgs, day: Date) -> Result<
     }
 
     println!(
-        "done: {} looked at ({} already logged); {} with a termination saved, {} reports with the page but no termination, {} without the page, {} without XBRL, {} errors",
+        "done: {} looked at ({} already logged); {} with an adoption or termination saved, {} reports with the page but neither, {} without the page, {} without XBRL, {} errors",
         tally.looked_at, tally.already, tally.saved, tally.none, tally.no_report, tally.no_xbrl, tally.errors
     );
     if args.audit > 0 {
         println!(
-            "audit: downloaded {} report(s) the cheap check skipped; the full extractor found a termination in {} of them",
+            "audit: downloaded {} report(s) the cheap check skipped; the full extractor found an adoption or termination in {} of them",
             tally.audited, tally.audit_missed
         );
     }
@@ -271,11 +289,12 @@ fn check_one(
     let page = client
         .get_text(&format!("{folder}{}", report.html_file))
         .map_err(|e| e.to_string())?;
-    let shows_termination = oe_item408::report_page_shows_termination(&page);
+    let (shows_termination, shows_adoption) = oe_item408::report_page_flags(&page);
+    let shows_change = shows_termination || shows_adoption;
 
-    let audit_this = !shows_termination && tally.audited < args.audit;
-    if !(shows_termination || args.save_all || audit_this) {
-        return Ok(("none".into(), None));
+    let audit_this = !shows_change && tally.audited < args.audit;
+    if !(shows_change || args.save_all || audit_this) {
+        return Ok((STATUS_NO_CHANGE.into(), None));
     }
     let main = summary
         .main_document
@@ -290,15 +309,20 @@ fn check_one(
         .iter()
         .filter(|a| a.rule_10b5_1_terminated)
         .count();
+    let adopted = doc
+        .arrangements
+        .iter()
+        .filter(|a| a.rule_10b5_1_adopted)
+        .count();
 
     if audit_this {
         tally.audited += 1;
-        if terminated > 0 {
+        if terminated + adopted > 0 {
             tally.audit_missed += 1;
-            eprintln!("  AUDIT: {accession} was skipped by the page check but the extractor found {terminated} termination(s)");
+            eprintln!("  AUDIT: {accession} was skipped by the page check but the extractor found {adopted} adoption(s) and {terminated} termination(s)");
         }
         if !args.save_all {
-            return Ok(("none".into(), None));
+            return Ok((STATUS_NO_CHANGE.into(), None));
         }
     }
 
@@ -310,7 +334,13 @@ fn check_one(
     let dir = args.out.join(&company);
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let path = dir.join(format!("{accession}.htm"));
-    std::fs::write(&path, &html).map_err(|e| format!("{}: {e}", path.display()))?;
+    let original_sha256 = oe_core::sha256_hex(html.as_bytes());
+    let kept = if args.full {
+        html.clone()
+    } else {
+        oe_item408::excerpt(&html)
+    };
+    std::fs::write(&path, &kept).map_err(|e| format!("{}: {e}", path.display()))?;
     let known_on = header.known_on().map(|d| d.to_string()).unwrap_or_default();
     let period = header.period.map(|d| d.to_string()).unwrap_or_default();
     let filing_date = header
@@ -328,11 +358,13 @@ fn check_one(
         ("period", &period),
         ("company_cik", &company),
         ("url", &url),
+        // The ledger's fingerprint: the full report's, also for an excerpt.
+        ("original_sha256", &original_sha256),
     ]);
     std::fs::write(meta_path(&path), meta).map_err(|e| format!("{}: {e}", path.display()))?;
 
     let line = format!(
-        "{accession}  {:<5} {:<30.30} accepted {}  {} arrangement(s), {terminated} terminated",
+        "{accession}  {:<5} {:<30.30} accepted {}  {} arrangement(s), {adopted} adopted, {terminated} terminated",
         header.form,
         doc.registrant.as_deref().unwrap_or("?"),
         header.accepted_eastern,
@@ -369,6 +401,12 @@ mod tests {
         .unwrap();
         assert_eq!((b.limit, b.save_all, b.audit), (None, true, 5));
         assert_eq!(b.forms, ["10-Q"]);
+        assert!(
+            !b.full && !b.recheck_none,
+            "excerpts and no recheck by default"
+        );
+        let c = parse_periodic_args(&args(&["2026-11-09", "--full", "--recheck-none"])).unwrap();
+        assert!(c.full && c.recheck_none);
 
         assert!(parse_periodic_args(&[]).is_err());
         assert!(parse_periodic_args(&args(&["tomorrow"])).is_err());

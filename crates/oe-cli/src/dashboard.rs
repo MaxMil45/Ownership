@@ -92,7 +92,7 @@ fn history_json() -> Result<(String, usize), String> {
 /// `o` owner, `r` role, `c` code (P or S), `v` value, `s` shares, `p` price,
 /// `a` accession.
 fn trade_rows(folder: &Path) -> Result<Vec<String>, String> {
-    let trades = load::insider_trades(folder)?;
+    let trades = load::insider_trades(folder, None)?;
     let mut rows = Vec::new();
     for t in &trades.items {
         // Amendment rows repeat their original's trades; leave them out so a
@@ -169,10 +169,20 @@ pub fn data_json(
         .iter()
         .map(|&(id, label)| {
             // With the ledger, passive_to_active@2 runs in v1's place (and slot).
-            let id = if db_history && id == oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID {
-                oe_events::activist::PASSIVE_TO_ACTIVE_V2_RULE_ID
-            } else {
-                id
+            let id = match id {
+                oe_events::activist::PASSIVE_TO_ACTIVE_RULE_ID if db_history => {
+                    oe_events::activist::PASSIVE_TO_ACTIVE_V2_RULE_ID
+                }
+                oe_events::proxy_contest::RULE_ID if db_history => {
+                    oe_events::proxy_contest::RULE_ID_V2
+                }
+                oe_events::planned_sale::RULE_ID if db_history => {
+                    oe_events::planned_sale::RULE_ID_V2
+                }
+                oe_events::plan_terminated::RULE_ID if db_history => {
+                    oe_events::plan_terminated::RULE_ID_V2
+                }
+                other => other,
             };
             format!(
                 "{{\"id\":{},\"label\":{}}}",
@@ -262,6 +272,7 @@ mod tests {
             sched13: Some(root.join("sched13/real")),
             proxy: Some(root.join("proxy/real")),
             periodic: Some(root.join("item408/real")),
+            only: None,
         };
         let (data, alerts, trades) = data_json(&sources, 1_795_188_104, None, false).unwrap();
         assert!(data.ends_with(",\"history\":null}"));

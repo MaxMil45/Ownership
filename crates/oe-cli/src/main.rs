@@ -6,6 +6,8 @@ mod bulkcmd;
 mod dashboard;
 #[cfg(feature = "db")]
 mod dbcmd;
+mod delays;
+mod excerpt;
 #[cfg(feature = "net")]
 mod live;
 mod load;
@@ -39,25 +41,41 @@ USAGE:
         day has about 800 Form 4s). Saved under data/form4/<issuer CIK>/ like
         recent-form4. Needs OE_USER_AGENT. The other daily-* commands take --to too.
 
-    oe follow [--forms 4,144,13,proxy] [--interval <seconds>] [--polls <n>] [--root <folder>]
-              [--out <folder>] [--include-amendments] [--alert] [--watchlist <file>] [--db]
+    oe follow [--forms 4,144,13,proxy] [--interval <seconds>] [--polls <n>] [--until <UTC time>]
+              [--root <folder>] [--out <folder>] [--include-amendments] [--alert] [--watchlist <file>] [--db]
         Poll the EDGAR latest-filings feeds (default every 30 s, at least 10) and
         download each new Form 4, Form 144, Schedule 13D/13G and contested-proxy header
         as it appears, into <root>/form4, form144, sched13 and proxy (root: data; --out
-        sets the Form 4 folder alone). --forms picks feeds. Runs until Ctrl-C, or for
-        --polls polls. With --alert (implied by --watchlist), runs `oe alerts` on the
-        folders that got new filings after every poll. --db loads each new Form 3/4/5 into PostgreSQL
-        (DATABASE_URL) after each poll, keeping the ledger current. Needs OE_USER_AGENT.
+        sets the Form 4 folder alone). --forms picks feeds. Runs until Ctrl-C, for
+        --polls polls, or until the --until time. With --alert (implied by --watchlist),
+        runs `oe alerts` after every poll on the filings of the last 14 days of the
+        folders that got new filings (indexed once at start). --db loads each new filing
+        into PostgreSQL (DATABASE_URL) after each poll, keeping the ledger current, and
+        gives the rules its history. Needs OE_USER_AGENT.
+
+    oe alert-delays [<YYYY-MM-DD>] [--since <UTC time>] [--data <folder>] [--state <sent.tsv>]
+        How long after SEC acceptance filings were saved and alerts delivered on one US
+        Eastern day (default today), from data/alerts/delivered.tsv and each filing's
+        acceptance time. --since counts only filings accepted from then on (the follower's
+        start; its first poll catches up on older filings).
 
     oe daily-form144 <YYYY-MM-DD> [--limit <n> | --all] [--out <folder>] [--include-amendments]
         Download Form 144 notices (planned insider sales) filed by any company on one
         day. Saved under data/form144/<issuer CIK>/. Needs OE_USER_AGENT.
 
-    oe daily-periodic <YYYY-MM-DD> [--limit <n> | --all] [--forms 10-Q,10-K] [--save-all] [--audit <n>] [--out <folder>]
+    oe daily-periodic <YYYY-MM-DD> [--to <YYYY-MM-DD>] [--limit <n> | --all] [--forms 10-Q,10-K]
+                      [--save-all] [--audit <n>] [--full] [--recheck-none] [--out <folder>]
         Find the 10-Q/10-K reports of one day (any company) whose Item 408 page says a director
-        or officer terminated a Rule 10b5-1 plan, and save them under data/periodic/<CIK>/.
+        or officer adopted or terminated a Rule 10b5-1 plan, and save an excerpt of each (its
+        insider-plan facts, a few KB; --full keeps the 2 MB report) under data/periodic/<CIK>/.
         Checks three small files per report and downloads the large one only when needed.
         --audit downloads <n> skipped reports too, to measure how often the cheap check is wrong.
+        --recheck-none looks again at reports logged `none` (checked for terminations only).
+
+    oe periodic-excerpt [<folder>] [--dry-run]
+        Replace each saved full 10-Q/10-K report (default folder: data/periodic) with its
+        excerpt, offline. Each excerpt is checked to read exactly as the report before the
+        report is replaced; the report's SHA-256 is kept in its .meta.txt.
 
     oe daily-13dg <YYYY-MM-DD> [--limit <n> | --all] [--include-amendments] [--out <folder>]
         Download Schedule 13D and 13G filings (large holders) filed by anyone on one day,
@@ -74,8 +92,10 @@ USAGE:
         PREN14A, PRRN14A, DEFN14A, DFAN14A, ...) of one day, saved under data/proxy/<CIK>/.
         Needs OE_USER_AGENT.
 
-    oe proxy-contests [<folder>]
+    oe proxy-contests [<folder>] [--db]
         Run activist.proxy_contest@1 over downloaded headers (default folder: data/proxy).
+        --db runs activist.proxy_contest@2 instead: one event per contest, using the
+        PostgreSQL ledger's earlier filings to tell a new contest from a continuing one.
 
     oe alerts [--form4 <dir>] [--form144 <dir>] [--sched13 <dir>] [--proxy <dir>] [--periodic <dir>]
               [--watchlist <file>] [--max-age <days>] [--today <YYYY-MM-DD>] [--include-undated] [--db]
@@ -88,7 +108,10 @@ USAGE:
         has lines like `ticker AAPL`, `issuer 320193`, `insider 1494730`, `name Elliott`,
         `rule activist.new_13d@1`. --db lets the cluster-buy rule's routine-trader filter
         (insiders who trade the same month every year) see the PostgreSQL ledger's history,
-        and runs activist.passive_to_active@2 (earlier 13Gs from the ledger) in place of @1.
+        and runs activist.passive_to_active@2 (earlier 13Gs from the ledger) and
+        activist.proxy_contest@2 (one alert per contest), insider.planned_sale@2 (the
+        seller's earlier Form 144s) and insider.plan_terminated@2 (how long the plan
+        lasted) in place of their @1.
 
     oe bulk-insider [--from 2015q1] [--to <quarter>] [--dir data/bulk] [--dry-run] [--no-load] [--offline]
         History of Forms 3/4/5 from the SEC's quarterly Insider Transactions Data Sets: downloads
@@ -108,15 +131,19 @@ USAGE:
     oe parse-408 <report.htm>
         Print the insider trading arrangements (Item 408) tagged in one 10-Q or 10-K.
 
-    oe plan-terminations <folder>
+    oe plan-terminations <folder> [--db]
         Run insider.plan_terminated@1 over downloaded reports (default folder: data/periodic).
+        --db runs insider.plan_terminated@2 instead: each termination also says when the plan
+        was adopted (tagged, or from an earlier report in the ledger) and how long it lasted.
 
     oe parse-form144 <file.xml>
         Print the key facts of one Form 144 XML file.
 
-    oe planned-sales <folder> [--min-value <dollars>]
+    oe planned-sales <folder> [--min-value <dollars>] [--db]
         Run insider.planned_sale@1 over downloaded Form 144 files (default folder:
         data/form144) and list the events, newest first. Default minimum 1,000,000.
+        --db runs insider.planned_sale@2 instead: each sale also says how many Form 144s
+        the seller filed for the company in the year before (first, or routine).
 
     oe db-migrate
         Create or update the PostgreSQL ledger tables (migrations/). Needs DATABASE_URL.
@@ -162,6 +189,8 @@ fn main() -> ExitCode {
         Some("activist-events") => activist_events(&args[1..]),
         Some("proxy-contests") => proxy_contests(&args[1..]),
         Some("plan-terminations") => plan_terminations(&args[1..]),
+        Some("periodic-excerpt") => excerpt::periodic_excerpt(&args[1..]),
+        Some("alert-delays") => delays::alert_delays(&args[1..]),
         Some("planned-sales") => planned_sales(&args[1..]),
         Some("cluster-buys") => cluster_buys(&args[1..]),
         Some("alerts") => alerts::alerts(&args[1..]),
@@ -527,7 +556,7 @@ fn activist_events(args: &[String]) -> Result<(), String> {
     }
     let folder = folder.unwrap_or_else(|| PathBuf::from("data/sched13"));
 
-    let loaded = load::schedule13(&folder)?;
+    let loaded = load::schedule13(&folder, None)?;
     let (files, failed) = (loaded.files, loaded.failed);
     let (mut events, pta_id) = if with_db {
         let earlier = alerts::ledger_13gs(&loaded.items)?;
@@ -579,28 +608,42 @@ fn activist_events(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 fn proxy_contests(args: &[String]) -> Result<(), String> {
-    let folder = match args {
+    let with_db = args.iter().any(|a| a == "--db");
+    let rest: Vec<&String> = args.iter().filter(|a| *a != "--db").collect();
+    let folder = match rest.as_slice() {
         [] => PathBuf::from("data/proxy"),
         [one] => PathBuf::from(one),
         _ => return Err("proxy-contests takes one folder, for example data/proxy".into()),
     };
-    let loaded = load::contest_filings(&folder)?;
-    let mut events = oe_events::detect_proxy_contests(&loaded.items);
+    let loaded = load::contest_filings(&folder, None)?;
+    let (mut events, rule) = if with_db {
+        let earlier = alerts::ledger_contests(&loaded.items)?;
+        println!("{} contest filing(s) from the database", earlier.len());
+        (
+            oe_events::detect_proxy_contests_with_ledger(&loaded.items, &earlier),
+            oe_events::proxy_contest::RULE_ID_V2,
+        )
+    } else {
+        (
+            oe_events::detect_proxy_contests(&loaded.items),
+            oe_events::proxy_contest::RULE_ID,
+        )
+    };
     events.sort_by_key(|e| std::cmp::Reverse(e.last_known_on));
     println!(
-        "{} header(s), {} unreadable or without a subject: {} event(s) from activist.proxy_contest@1",
+        "{} header(s), {} unreadable or without a subject: {} event(s) from {rule}",
         loaded.files,
         loaded.failed,
         events.len()
     );
     println!(
-        "last_known_on\tissuer\tchallengers\tfilings\tchallenger_proxy\tcompany_contested_proxy"
+        "last_known_on\tissuer\tchallengers\tfilings\tchallenger_proxy\tcompany_contested_proxy\tcontest_start"
     );
     for e in &events {
         let challengers: Vec<&str> = e.challengers.iter().map(|p| p.name.as_str()).collect();
         let forms: Vec<&str> = e.filings.iter().map(|f| f.form.as_str()).collect();
         println!(
-            "{}\t{}\t{}\t{}\t{}\t{}",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
             e.last_known_on.map_or("?".to_string(), |d| d.to_string()),
             e.issuer_name,
             if challengers.is_empty() {
@@ -618,33 +661,67 @@ fn proxy_contests(args: &[String]) -> Result<(), String> {
                 "yes"
             } else {
                 "-"
-            }
+            },
+            e.contest_start.map_or("-".to_string(), |d| d.to_string())
         );
     }
     Ok(())
 }
 fn plan_terminations(args: &[String]) -> Result<(), String> {
-    let folder = match args {
+    let with_db = args.iter().any(|a| a == "--db");
+    let rest: Vec<&String> = args.iter().filter(|a| *a != "--db").collect();
+    let folder = match rest.as_slice() {
         [] => PathBuf::from("data/periodic"),
         [one] => PathBuf::from(one),
         _ => return Err("plan-terminations takes one folder, for example data/periodic".into()),
     };
-    let (loaded, with_tags) = load::plan_termination_events(&folder)?;
+    let (loaded, with_tags) = load::plan_termination_events(&folder, with_db)?;
     let mut events = loaded.items;
+    let rule = if with_db {
+        oe_events::plan_terminated::RULE_ID_V2
+    } else {
+        oe_events::plan_terminated::RULE_ID
+    };
 
     // Newest first.
     events.sort_by_key(|e| std::cmp::Reverse(e.known_on));
     println!(
-        "{} report(s), {} with insider-trading tags, {} unreadable, {} event(s) from insider.plan_terminated@1",
+        "{} report(s), {} with insider-trading tags, {} unreadable, {} event(s) from {rule}",
         loaded.files,
         with_tags,
         loaded.failed,
         events.len()
     );
-    println!("known_on\tissuer\tperson\ttitle\tterminated\tperiod_end\treplaced\tform");
+    println!(
+        "known_on\tissuer\tperson\ttitle\tterminated\tperiod_end\treplaced\tform\tadopted\tdays"
+    );
     for e in &events {
+        let (adopted, days) = match &e.plan_life {
+            None => ("-".to_string(), "-".to_string()),
+            Some(l) => (
+                format!(
+                    "{}{}",
+                    l.adopted_on,
+                    l.adoption_report
+                        .as_ref()
+                        .map_or(String::new(), |a| format!(" (report {a})"))
+                ),
+                match l.days {
+                    None => "adopted after the end?".to_string(),
+                    Some(d) => format!(
+                        "{}{d}{}",
+                        if l.days_at_most { "at most " } else { "" },
+                        if l.within_cooling_off {
+                            ", within cooling-off"
+                        } else {
+                            ""
+                        }
+                    ),
+                },
+            ),
+        };
         println!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{adopted}\t{days}",
             e.known_on.map_or("?".to_string(), |d| d.to_string()),
             e.issuer_name.as_deref().unwrap_or("?"),
             e.person.as_deref().unwrap_or("?"),
@@ -668,6 +745,7 @@ fn plan_terminations(args: &[String]) -> Result<(), String> {
 fn planned_sales(args: &[String]) -> Result<(), String> {
     let mut folder: Option<PathBuf> = None;
     let mut params = PlannedSaleParams::default();
+    let mut with_db = false;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -675,15 +753,28 @@ fn planned_sales(args: &[String]) -> Result<(), String> {
                 params.min_value =
                     args::non_negative(&mut it, "--min-value", "a number of dollars")?
             }
+            "--db" => with_db = true,
             other if folder.is_none() => folder = Some(PathBuf::from(other)),
             other => return Err(format!("unexpected argument {other:?}")),
         }
     }
     let folder = folder.ok_or("planned-sales needs a folder, for example data/form144")?;
 
-    let loaded = load::form144(&folder)?;
+    let loaded = load::form144(&folder, None)?;
     let (files, failed) = (loaded.files, loaded.failed);
-    let mut events = detect_planned_sales(&loaded.items, &params);
+    let (mut events, rule) = if with_db {
+        let earlier = alerts::ledger_notices(&loaded.items)?;
+        println!("{} earlier notice(s) from the database", earlier.len());
+        (
+            oe_events::detect_planned_sales_with_ledger(&loaded.items, &params, &earlier),
+            oe_events::planned_sale::RULE_ID_V2,
+        )
+    } else {
+        (
+            detect_planned_sales(&loaded.items, &params),
+            oe_events::planned_sale::RULE_ID,
+        )
+    };
     // Newest first; within a day, the largest sale first.
     events.sort_by(|a, b| {
         b.known_on.cmp(&a.known_on).then(
@@ -693,14 +784,24 @@ fn planned_sales(args: &[String]) -> Result<(), String> {
         )
     });
     println!(
-        "{files} file(s), {failed} not Form 144 XML, {} event(s) from insider.planned_sale@1 (at least ${:.0})",
+        "{files} file(s), {failed} not Form 144 XML, {} event(s) from {rule} (at least ${:.0})",
         events.len(),
         params.min_value
     );
-    println!("known_on	issuer	seller	units	value	%outstanding	planned_for	plan");
+    println!("known_on	issuer	seller	units	value	%outstanding	planned_for	plan	past_year");
     for e in &events {
+        let past = match &e.history {
+            None => "-".to_string(),
+            Some(h) if h.notices_past_year == 0 => "first".to_string(),
+            Some(h) => format!(
+                "{} in {} month(s){}",
+                h.notices_past_year,
+                h.months_past_year,
+                if h.routine { ", routine" } else { "" }
+            ),
+        };
         println!(
-            "{}	{}	{}	{}	{:.0}	{}	{}	{}",
+            "{}	{}	{}	{}	{:.0}	{}	{}	{}	{past}",
             e.known_on.map_or("?".to_string(), |d| d.to_string()),
             e.issuer_name,
             e.seller,

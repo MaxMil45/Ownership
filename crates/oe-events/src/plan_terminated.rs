@@ -33,6 +33,119 @@ pub struct PlanTerminatedEvent {
     pub accession: Option<String>,
     /// US Eastern date the SEC accepted the report, when known.
     pub known_on: Option<Date>,
+    /// For `insider.plan_terminated@2`: when the plan was adopted and how long
+    /// it lasted.
+    pub plan_life: Option<PlanLife>,
+}
+
+/// Spec: `events/specs/insider.plan_terminated.v2.md`. Uses the ledger.
+pub const RULE_ID_V2: &str = "insider.plan_terminated@2";
+
+/// The shortest cooling-off period for a director's or officer's Rule 10b5-1
+/// plan (Rule 10b5-1(c)(1)(ii)(B)(1)): no trade under the plan before 90 days
+/// after adoption. A plan ended within it can never have been used.
+pub const COOLING_OFF_DAYS: i32 = 90;
+
+/// Where a terminated plan's adoption date came from, and what it gives.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PlanLife {
+    pub adopted_on: Date,
+    /// `None`: tagged in this report; `Some(accession)`: an earlier report
+    /// in the ledger disclosed the adoption.
+    pub adoption_report: Option<String>,
+    /// Days from adoption to the termination date, or to the period end when
+    /// no termination date is tagged (then an upper bound). `None` when the
+    /// tagged adoption is after the end: a tagging error.
+    pub days: Option<i32>,
+    /// `days` runs to the period end, not a tagged termination date.
+    pub days_at_most: bool,
+    /// The plan ended within [`COOLING_OFF_DAYS`] of adoption.
+    pub within_cooling_off: bool,
+}
+
+/// An arrangement adopted in an earlier report, from the ledger.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EarlierAdoption {
+    pub issuer: Cik,
+    pub person: String,
+    pub adoption_date: Option<Date>,
+    pub accession: String,
+    /// US Eastern date the report was accepted.
+    pub known_on: Date,
+}
+
+/// A person's name with only its letters, upper case.
+pub fn person_key(name: &str) -> String {
+    name.chars()
+        .filter(char::is_ascii_alphabetic)
+        .map(|c| c.to_ascii_uppercase())
+        .collect()
+}
+
+fn plan_life(
+    adopted_on: Date,
+    adoption_report: Option<String>,
+    e: &PlanTerminatedEvent,
+) -> PlanLife {
+    let end = e.termination_date.or(e.period_end);
+    let days = end
+        .map(|end| adopted_on.days_until(end))
+        .filter(|d| *d >= 0);
+    PlanLife {
+        adopted_on,
+        adoption_report,
+        days,
+        days_at_most: e.termination_date.is_none(),
+        within_cooling_off: days.is_some_and(|d| d <= COOLING_OFF_DAYS),
+    }
+}
+
+/// `insider.plan_terminated@2`: the events of `@1`, each with the plan's
+/// adoption and length when known: the adoption date tagged on the same
+/// arrangement in this report, or else the latest adoption by the same person
+/// at the same company that an earlier report in the ledger disclosed.
+pub fn detect_plan_terminations_with_ledger(
+    doc: &Item408Doc,
+    meta: &FilingMeta,
+    earlier: &[EarlierAdoption],
+) -> Vec<PlanTerminatedEvent> {
+    let terminated: Vec<&TradingArrangement> = doc
+        .arrangements
+        .iter()
+        .filter(|a| a.rule_10b5_1_terminated)
+        .collect();
+    let mut events = detect_plan_terminations(doc, meta);
+    for (e, a) in events.iter_mut().zip(terminated) {
+        e.rule_id = RULE_ID_V2;
+        // A person-level arrangement that is also adopted merges the old and
+        // the new plan's facts, so its adoption date may be the new plan's. A
+        // plan-level one (its own member) that is both was adopted and ended
+        // in the same period: its date is its own.
+        // A rejected termination date (after the period) means the dates are
+        // shifted: Cryoport tagged its termination day as the adoption date
+        // and the scheduled end as the termination date.
+        let own_date = (!a.rule_10b5_1_adopted || a.arrangement.is_some())
+            && e.rejected_termination_date.is_none();
+        if let Some(adopted) = a.adoption_date.filter(|_| own_date) {
+            e.plan_life = Some(plan_life(adopted, None, e));
+            continue;
+        }
+        let (Some(issuer), Some(person), Some(known_on)) = (e.issuer, &e.person, e.known_on) else {
+            continue;
+        };
+        let key = person_key(person);
+        let found = earlier
+            .iter()
+            .filter(|x| x.issuer == issuer && x.known_on < known_on && !key.is_empty())
+            .filter(|x| person_key(&x.person) == key)
+            .filter(|x| x.adoption_date.is_some())
+            .max_by(|x, y| (x.known_on, &x.accession).cmp(&(y.known_on, &y.accession)));
+        if let Some(x) = found {
+            let adopted = x.adoption_date.expect("filtered");
+            e.plan_life = Some(plan_life(adopted, Some(x.accession.clone()), e));
+        }
+    }
+    events
 }
 
 /// One event per arrangement the report tags as terminated (flag `fixed-true`).
@@ -58,6 +171,7 @@ pub fn detect_plan_terminations(doc: &Item408Doc, meta: &FilingMeta) -> Vec<Plan
                 form: doc.document_type.clone(),
                 accession: meta.accession.as_ref().map(|x| x.to_string()),
                 known_on: meta.known_on,
+                plan_life: None,
             }
         })
         .collect()
@@ -215,6 +329,125 @@ mod tests {
         let doc = oe_item408::extract(html);
         assert!(detect_plan_terminations(&doc, &meta()).is_empty());
         assert!(detect_plan_terminations(&oe_item408::extract(""), &meta()).is_empty());
+    }
+
+    /// One person-level arrangement, terminated, with optional tags.
+    fn one(extra: &str) -> Item408Doc {
+        oe_item408::extract(&format!(
+            r#"<ix:nonNumeric contextRef="c-0" name="dei:EntityCentralIndexKey">0009999901</ix:nonNumeric>
+            <xbrli:context id="c"><xbrli:entity><xbrli:segment><xbrldi:explicitMember dimension="ecd:IndividualAxis">ex:SMember</xbrldi:explicitMember></xbrli:segment></xbrli:entity><xbrli:period><xbrli:instant>2026-09-30</xbrli:instant></xbrli:period></xbrli:context>
+            <ix:nonNumeric contextRef="c" name="ecd:TrdArrIndName">Sam Shaw</ix:nonNumeric>
+            <ix:nonNumeric contextRef="c" name="ecd:Rule10b51ArrTrmntdFlag" format="ixt:fixed-true">terminated</ix:nonNumeric>
+            {extra}"#
+        ))
+    }
+
+    fn adoption(person: &str, date: Option<Date>, acc: &str, known_on: Date) -> EarlierAdoption {
+        EarlierAdoption {
+            issuer: Cik(9_999_901),
+            person: person.into(),
+            adoption_date: date,
+            accession: acc.into(),
+            known_on,
+        }
+    }
+
+    #[test]
+    fn v2_a_tagged_adoption_date_gives_the_plans_life() {
+        let doc = one(
+            r#"<ix:nonNumeric contextRef="c" name="ecd:TrdArrAdoptionDate">June 1, 2026</ix:nonNumeric>
+            <ix:nonNumeric contextRef="c" name="ecd:TrdArrTerminationDate">August 15, 2026</ix:nonNumeric>"#,
+        );
+        let e = &detect_plan_terminations_with_ledger(&doc, &meta(), &[])[0];
+        assert_eq!(e.rule_id, "insider.plan_terminated@2");
+        let life = e.plan_life.as_ref().unwrap();
+        assert_eq!(life.adopted_on, d(2026, 6, 1));
+        assert_eq!(life.adoption_report, None);
+        assert_eq!(life.days, Some(75));
+        assert!(!life.days_at_most);
+        assert!(life.within_cooling_off, "75 days: never usable");
+
+        // No termination date: the period end bounds it.
+        let doc = one(
+            r#"<ix:nonNumeric contextRef="c" name="ecd:TrdArrAdoptionDate">March 1, 2026</ix:nonNumeric>"#,
+        );
+        let life = detect_plan_terminations_with_ledger(&doc, &meta(), &[])[0]
+            .plan_life
+            .clone()
+            .unwrap();
+        assert_eq!((life.days, life.days_at_most), (Some(213), true));
+        assert!(!life.within_cooling_off);
+
+        // An adoption after the termination is a tagging error: no length.
+        let doc = one(
+            r#"<ix:nonNumeric contextRef="c" name="ecd:TrdArrAdoptionDate">September 1, 2026</ix:nonNumeric>
+            <ix:nonNumeric contextRef="c" name="ecd:TrdArrTerminationDate">August 15, 2026</ix:nonNumeric>"#,
+        );
+        let life = detect_plan_terminations_with_ledger(&doc, &meta(), &[])[0]
+            .plan_life
+            .clone()
+            .unwrap();
+        assert_eq!((life.days, life.within_cooling_off), (None, false));
+
+        // Shaped like Cryoport, November 2026: the termination day tagged as
+        // the adoption date, the scheduled end as the termination date (after
+        // the period, so rejected). The tags are shifted: not used.
+        let doc = one(
+            r#"<ix:nonNumeric contextRef="c" name="ecd:TrdArrAdoptionDate">August 11, 2026</ix:nonNumeric>
+            <ix:nonNumeric contextRef="c" name="ecd:TrdArrTerminationDate">March 12, 2027</ix:nonNumeric>"#,
+        );
+        let e = &detect_plan_terminations_with_ledger(&doc, &meta(), &[])[0];
+        assert_eq!(e.rejected_termination_date, Some(d(2027, 3, 12)));
+        assert_eq!(e.plan_life, None);
+    }
+
+    #[test]
+    fn v2_otherwise_the_latest_earlier_adoption_in_the_ledger() {
+        let doc = one(
+            r#"<ix:nonNumeric contextRef="c" name="ecd:TrdArrTerminationDate">August 15, 2026</ix:nonNumeric>"#,
+        );
+        let ledger = [
+            adoption("Sam Shaw", Some(d(2024, 5, 1)), "r-1", d(2024, 8, 1)),
+            adoption("SAM SHAW", Some(d(2025, 12, 1)), "r-2", d(2026, 2, 1)),
+            // Undated adoption, other person, or same day as this report: skipped.
+            adoption("Sam Shaw", None, "r-3", d(2026, 5, 1)),
+            adoption("Pat Poe", Some(d(2026, 3, 1)), "r-4", d(2026, 5, 1)),
+            adoption("Sam Shaw", Some(d(2026, 7, 1)), "r-5", d(2026, 11, 2)),
+        ];
+        let e = &detect_plan_terminations_with_ledger(&doc, &meta(), &ledger)[0];
+        let life = e.plan_life.as_ref().unwrap();
+        assert_eq!(life.adopted_on, d(2025, 12, 1));
+        assert_eq!(life.adoption_report.as_deref(), Some("r-2"));
+        assert_eq!(life.days, Some(257));
+        // Nothing known: no plan life, still an event.
+        let e = &detect_plan_terminations_with_ledger(&doc, &meta(), &ledger[3..4])[0];
+        assert_eq!(e.plan_life, None);
+    }
+
+    #[test]
+    fn v2_a_replaced_plans_tagged_date_is_the_new_plans_so_it_is_not_used() {
+        // Adopted and terminated on one person-level arrangement: the tagged
+        // adoption date belongs to the new plan.
+        let doc = one(
+            r#"<ix:nonNumeric contextRef="c" name="ecd:Rule10b51ArrAdoptedFlag" format="ixt:fixed-true">adopted</ix:nonNumeric>
+            <ix:nonNumeric contextRef="c" name="ecd:TrdArrAdoptionDate">August 20, 2026</ix:nonNumeric>"#,
+        );
+        let e = &detect_plan_terminations_with_ledger(&doc, &meta(), &[])[0];
+        assert!(e.replaced_in_filing);
+        assert_eq!(e.plan_life, None);
+
+        // A plan tagged as its own member, adopted and ended in one quarter:
+        // its adoption date is its own.
+        let html = r#"<xbrli:context id="p"><xbrli:entity><xbrli:segment><xbrldi:explicitMember dimension="ecd:TradingArrAxis">ex:ShortPlanMember</xbrldi:explicitMember><xbrldi:explicitMember dimension="ecd:IndividualAxis">ex:SMember</xbrldi:explicitMember></xbrli:segment></xbrli:entity><xbrli:period><xbrli:instant>2026-09-30</xbrli:instant></xbrli:period></xbrli:context>
+            <ix:nonNumeric contextRef="p" name="ecd:TrdArrIndName">Sam Shaw</ix:nonNumeric>
+            <ix:nonNumeric contextRef="p" name="ecd:Rule10b51ArrAdoptedFlag" format="ixt:fixed-true">adopted</ix:nonNumeric>
+            <ix:nonNumeric contextRef="p" name="ecd:Rule10b51ArrTrmntdFlag" format="ixt:fixed-true">terminated</ix:nonNumeric>
+            <ix:nonNumeric contextRef="p" name="ecd:TrdArrAdoptionDate">July 7, 2026</ix:nonNumeric>
+            <ix:nonNumeric contextRef="p" name="ecd:TrdArrTerminationDate">September 1, 2026</ix:nonNumeric>"#;
+        let e = &detect_plan_terminations_with_ledger(&oe_item408::extract(html), &meta(), &[])[0];
+        let life = e.plan_life.as_ref().unwrap();
+        assert_eq!((life.adopted_on, life.days), (d(2026, 7, 7), Some(56)));
+        assert!(life.within_cooling_off);
     }
 
     #[test]

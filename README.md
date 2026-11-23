@@ -23,12 +23,15 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 | Daily form index, latest-filings feed, complete submission files | `oe-edgar` | Done, tested on synthetic samples and run live |
 | Form 144 (planned insider sale) parser | `oe-form144` | Done; reads 274 real filings; 17 real fixtures |
 | `insider.planned_sale@1` rule | `oe-events` | Done, tested on real filings (spec in `events/specs/`) |
+| `insider.planned_sale@2` (the seller's earlier notices: first in a year or routine; impossible amounts left out; `--db`) | `oe-events`, `oe-store` | Done; 25% of large sales are firsts, 14% routine |
 | Item 408 reader (insider trading plans in 10-Q/10-K Inline XBRL) | `oe-item408` | Done; run on 647 real reports; 10 real fixtures |
 | `insider.plan_terminated@1` rule | `oe-events` | Done, tested on real reports (spec in `events/specs/`) |
+| `insider.plan_terminated@2` (when the plan was adopted, how long it lasted, ended within the 90-day cooling-off; `--db`) | `oe-events`, `oe-store` | Done; adoption known for 522 of 1,886 terminations, 102 ended within 90 days |
 | Schedule 13D/13G parser (large holders) | `oe-sched13` | Done; reads 382 real filings; 14 real fixtures |
 | `activist.new_13d@1` and `activist.passive_to_active@1` rules | `oe-events` | Done, tested on real filings (specs in `events/specs/`) |
 | `activist.passive_to_active@2` (also the holder's earlier 13G in the ledger, `--db`) | `oe-events`, `oe-store` | Done; 302 events instead of 237 over the 13D/G history |
 | `activist.proxy_contest@1` (contested proxy filings, from their SGML headers) | `oe-edgar`, `oe-events` | Done; 70 real filings from 21 days, 26 contests; 12 real fixtures |
+| `activist.proxy_contest@2` (one alert per contest, new or continuing, from the ledger, `--db`) | `oe-events`, `oe-store` | Done; 1,135 contests since 2015 |
 | Alerts with receipts: watchlists, delivered once to Discord and JSON webhooks | `oe-alerts` | Done; tested over real HTTP to a local stand-in; not yet tried on a real Discord channel; no email yet (ADR 0006) |
 | Dashboard: one offline HTML page with charts, filters and a searchable event list | `oe-cli` (`oe dashboard`) | Done; checked in a browser on the real downloads (ADR 0007) |
 | `oe` command-line tool | `oe-cli` | `alerts`, `dashboard`, `parse-form4`, `cluster-buys`, `recent-form4`, `daily-form4`, `follow`, `daily-form144`, `parse-form144`, `planned-sales`, `daily-periodic`, `parse-408`, `plan-terminations`, `daily-13dg`, `parse-13`, `activist-events`, `daily-proxy`, `proxy-contests`, `db-*`, `fetch` |

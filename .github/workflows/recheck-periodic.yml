@@ -1,0 +1,128 @@
+# Rechecks the 10-Q/10-K history on GitHub's machines, so no laptop has to stay
+# on: every report since October 2023 whose insider-trading page shows a Rule
+# 10b5-1 plan adopted or terminated is kept as a small excerpt (ADR 0009).
+#
+# Start it from the Actions tab (Run workflow). It needs the repository secret
+# OE_USER_AGENT: your name and email, as the SEC requires (Settings > Secrets
+# and variables > Actions). The result is one artifact, `periodic-recheck`, a few
+# MB; download it and load it with scripts/import-periodic-recheck.ps1.
+#
+# SEC fair access: the parts run one after another (each `oe` keeps the limit
+# of 8 requests a second itself; two at once would not), and the concurrency
+# group stops a second run from starting while one is going.
+name: Recheck 10-Q/10-K history
+
+on:
+  workflow_dispatch:
+    inputs:
+      range:
+        description: "test = one day (about 5 minutes), full = Oct 2023 to Nov 2026 (about 10 hours)"
+        type: choice
+        options: [test, full]
+        default: test
+
+concurrency:
+  group: sec-downloads
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  part-1:
+    name: "Part 1 (test day, or Oct 2023 – Sep 2024)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build oe (network only, no database)
+        run: cargo build --release -p oe-cli --no-default-features --features net
+      - name: Check the reports
+        env:
+          OE_USER_AGENT: ${{ secrets.OE_USER_AGENT }}
+        run: |
+          if [ "${{ inputs.range }}" = "test" ]; then FROM=2026-11-04; TO=2026-11-04; else FROM=2023-10-02; TO=2024-09-30; fi
+          bash scripts/github/recheck-part.sh 1 "$FROM" "$TO"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: periodic-part-1
+          path: out/
+          retention-days: 7
+
+  part-2:
+    name: "Part 2 (Oct 2024 – Sep 2025)"
+    needs: part-1
+    if: ${{ inputs.range == 'full' && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build oe (network only, no database)
+        run: cargo build --release -p oe-cli --no-default-features --features net
+      - name: Check the reports
+        env:
+          OE_USER_AGENT: ${{ secrets.OE_USER_AGENT }}
+        run: bash scripts/github/recheck-part.sh 2 2024-10-01 2025-09-30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: periodic-part-2
+          path: out/
+          retention-days: 7
+
+  part-3:
+    name: "Part 3 (Oct 2025 – Nov 2026)"
+    needs: part-2
+    if: ${{ inputs.range == 'full' && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build oe (network only, no database)
+        run: cargo build --release -p oe-cli --no-default-features --features net
+      - name: Check the reports
+        env:
+          OE_USER_AGENT: ${{ secrets.OE_USER_AGENT }}
+        run: bash scripts/github/recheck-part.sh 3 2025-10-01 2026-11-20
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: periodic-part-3
+          path: out/
+          retention-days: 7
+
+  bundle:
+    name: One download
+    needs: [part-1, part-2, part-3]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: periodic-part-*
+          path: parts
+      - name: Put the parts together
+        run: |
+          mkdir -p periodic
+          for part in parts/periodic-part-*; do
+            # Excerpts and sidecars; each report appears in one part only.
+            (cd "$part/periodic" && find . -type f ! -name 'checked*.tsv' -exec cp --parents -n {} ../../../periodic/ \;)
+            cat "$part"/periodic/checked-part-*.tsv >> periodic/checked-github.tsv
+            cat "$part"/summary-*.txt >> summary.txt
+          done
+          cp summary.txt periodic/
+          echo "### Recheck result" >> "$GITHUB_STEP_SUMMARY"
+          cat summary.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "$(find periodic -name '*.htm' | wc -l) report excerpt(s), $(du -sh periodic | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: periodic-recheck
+          path: periodic/
+          retention-days: 7

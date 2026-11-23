@@ -88,6 +88,14 @@ and add `--watchlist watchlist.txt`. For alerts within about a minute or two of 
 & $oe follow --alert --watchlist watchlist.txt
 ```
 
+At start it indexes every saved filing's acceptance date (about 80 seconds with the full history), and each alert pass then reads only the filings of the last 14 days; with `--db` the rules take older history from the database. `--until 2026-11-23T23:00:00Z` stops it at a time.
+
+**How fast are the alerts?** Every delivery is logged in `data/alerts/delivered.tsv`. `& $oe alert-delays` reports, for one day, how long after SEC acceptance the filings were saved and the alerts went out (median, 90%, slowest, share within 5 minutes); `--since <UTC time>` leaves out the filings the first poll caught up on. To measure a whole trading day, start this on a weekday morning; it follows every feed until 18:00 New York time and writes the report to `data/alerts/trading_day_<date>.txt`:
+
+```powershell
+.\scripts\measure-trading-day.ps1
+```
+
 ## 3c. The dashboard (charts)
 
 ```powershell
@@ -128,7 +136,7 @@ downloads the SEC's quarterly Insider Transactions Data Sets (one zip of about 9
 & $oe dashboard --db
 ```
 
-adds a chart of insider buying and selling over the whole history to the dashboard (about 5 seconds). Rows with impossible amounts as filed (a price over $2 million a share, over $2 billion in one row, over $10 billion for one company in a day) are left out of the dollar totals and counted on the page. `& $oe alerts --db` (and `& $oe follow --alert --db`) lets the cluster-buy rule recognise insiders who trade the same month every year, and runs `activist.passive_to_active@2`, which also finds a holder's earlier 13G in the ledger when the new 13D does not mention it (`& $oe activist-events --db` lists them, with the earlier 13G).
+adds a chart of insider buying and selling over the whole history to the dashboard (about 5 seconds). Rows with impossible amounts as filed (a price over $2 million a share, over $2 billion in one row, over $10 billion for one company in a day) are left out of the dollar totals and counted on the page. `& $oe alerts --db` (and `& $oe follow --alert --db`) lets the cluster-buy rule recognise insiders who trade the same month every year, and runs `activist.passive_to_active@2`, which also finds a holder's earlier 13G in the ledger when the new 13D does not mention it (`& $oe activist-events --db` lists them, with the earlier 13G), and `activist.proxy_contest@2`, which alerts once per proxy contest and says when it started (`& $oe proxy-contests --db` lists every contest), and `insider.planned_sale@2`, which marks each planned sale as the seller's first in a year or routine (`& $oe planned-sales data/form144 --db`), and `insider.plan_terminated@2`, which says when an ended 10b5-1 plan was adopted and flags plans ended within the 90-day cooling-off (`& $oe plan-terminations data/periodic --db`).
 
 ### History of the other forms
 
@@ -141,6 +149,16 @@ Form 144, Schedule 13D/G, proxy contests and 10-Q/10-K plan terminations have no
 & $oe daily-periodic 2023-10-02 --to 2026-11-20 --all
 & $oe db-load data
 ```
+
+`daily-periodic` keeps each 10-Q/10-K that discloses a plan adoption or termination as a small excerpt (its insider-plan facts; `--full` keeps the 2 MB report). Folders downloaded before 2026-11-23 hold full reports with terminations only: `& $oe periodic-excerpt data/periodic` shrinks them offline (3.4 GB to 17 MB here), and `& $oe daily-periodic 2023-10-02 --to 2026-11-20 --all --recheck-none` looks again at the reports that were checked for terminations only (about 57,000, roughly 7 to 8 hours; `data/history-job/recheck_periodic.ps1` runs it resumably and loads the result).
+
+**Without keeping a computer on:** the GitHub workflow *Recheck 10-Q/10-K history* (`.github/workflows/recheck-periodic.yml`) does the recheck on GitHub's machines, in three parts run one after another (about 10 hours in all). Once: add your SEC contact line as the repository secret `OE_USER_AGENT` (Settings, Secrets and variables, Actions). Then Actions, *Recheck 10-Q/10-K history*, Run workflow: `test` checks one day in about five minutes, `full` the whole history. When it has finished, download the `periodic-recheck` artifact from the run's page (it is kept 7 days) and load it:
+
+```powershell
+.\scripts\import-periodic-recheck.ps1 -From "$HOME\Downloads\periodic-recheck.zip"
+```
+
+It copies the excerpts into `data\periodic`, adds the run's check log, loads the database and reruns `plan-terminations --db`; running it twice adds nothing. Free for a public repository; a private one uses about 600 of its 2,000 free minutes a month. GitHub's machines share internet addresses with others, so run `test` first to see that the SEC answers them.
 
 Run them one after another, never two at once: each `oe` keeps its own count of SEC requests. Measured here: about 3 h 40 min, 7 h, 2 h 30 min and 9 h 30 min, then 21 minutes to load about 205,000 filings (ADR 0009 has the details; structured data starts at these dates). If one stops (the laptop sleeps, the network drops), run it again from the last day it finished: saved filings are skipped. A day that keeps failing is listed at the end; run that day alone later.
 

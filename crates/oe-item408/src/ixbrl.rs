@@ -158,6 +158,78 @@ pub fn facts(html: &str, wanted: impl Fn(&str) -> bool) -> Vec<Fact> {
     out
 }
 
+/// The byte ranges of every fact whose name satisfies `wanted` and that is not
+/// inside another such fact, each from its start tag to the end of its close
+/// tag, with its `contextRef`, in document order. For [`crate::excerpt`].
+pub fn fact_spans(html: &str, wanted: impl Fn(&str) -> bool) -> Vec<(usize, usize, String)> {
+    let mut out: Vec<(usize, usize, String)> = Vec::new();
+    let mut from = 0;
+    while let Some(rel) = html[from..].find("<ix:non") {
+        let start = from + rel;
+        from = start + 1;
+        let element = if html[start..].starts_with("<ix:nonNumeric") {
+            "ix:nonNumeric"
+        } else if html[start..].starts_with("<ix:nonFraction") {
+            "ix:nonFraction"
+        } else {
+            continue;
+        };
+        match html[start + 1 + element.len()..].chars().next() {
+            Some(c) if c.is_whitespace() || c == '>' || c == '/' => {}
+            _ => continue,
+        }
+        let Some(tag_len) = tag_end(&html[start..]).map(|i| i + 1) else {
+            continue;
+        };
+        let tag = &html[start..start + tag_len];
+        let Some(name) = attr(tag, "name") else {
+            continue;
+        };
+        if !wanted(&name) || out.last().is_some_and(|(_, end, _)| start < *end) {
+            continue;
+        }
+        let end = if tag.ends_with("/>") {
+            start + tag_len
+        } else {
+            match matching_close(&html[start + tag_len..], element) {
+                Some(len) => start + tag_len + len + element.len() + 3,
+                None => continue,
+            }
+        };
+        out.push((start, end, attr(tag, "contextRef").unwrap_or_default()));
+    }
+    out
+}
+
+/// The byte range of each `<xbrli:context>` (or `<context>`) element, by id.
+pub fn context_spans(html: &str) -> HashMap<String, (usize, usize)> {
+    let mut out = HashMap::new();
+    let mut from = 0;
+    while let Some(rel) = html[from..].find("context id=\"") {
+        let at = from + rel;
+        from = at + 1;
+        let before = &html[..at];
+        let (open_at, close) = if before.ends_with("<xbrli:") {
+            (at - 7, "</xbrli:context>")
+        } else if before.ends_with('<') {
+            (at - 1, "</context>")
+        } else {
+            continue;
+        };
+        let id_start = at + "context id=\"".len();
+        let Some(id_len) = html[id_start..].find('"') else {
+            continue;
+        };
+        let Some(end_rel) = html[id_start..].find(close) else {
+            continue;
+        };
+        let id = html[id_start..id_start + id_len].to_string();
+        // The last one wins, as in [`contexts`].
+        out.insert(id, (open_at, id_start + end_rel + close.len()));
+    }
+    out
+}
+
 /// The value of ` name="..."` in a tag.
 fn attr(tag: &str, name: &str) -> Option<String> {
     let needle = format!(" {name}=\"");

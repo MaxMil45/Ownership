@@ -405,7 +405,7 @@ function ranked(host, items, fmt, onPick) {
 function tiles(f) {
   const buys = f.trades.filter(t => t.c === "P"), sales = f.trades.filter(t => t.c === "S");
   const sum = a => a.reduce((s, t) => s + t.v, 0);
-  const planned = f.alerts.filter(a => a.rule_id === "insider.planned_sale@1");
+  const planned = f.alerts.filter(a => a.rule_id.startsWith("insider.planned_sale@"));
   const by = id => f.alerts.filter(a => a.rule_id === id).length;
   const list = [
     { hero: true, label: "Events", value: int(f.alerts.length), note: rangeName() },
@@ -413,7 +413,7 @@ function tiles(f) {
     { label: "Insider sales", value: money(sum(sales)), note: int(sales.length) + " open-market sales" },
     { label: "Planned sales (Form 144)", value: money(planned.reduce((s, a) => s + (a.amount_usd || 0), 0)), note: int(planned.length) + " notices over the threshold" },
     { label: "New 13Ds", value: int(by("activist.new_13d@1")), note: int(by("activist.passive_to_active@1") + by("activist.passive_to_active@2")) + " passive to active" },
-    { label: "Proxy contests", value: int(by("activist.proxy_contest@1")), note: int(by("insider.cluster_buy@1")) + " cluster buys" },
+    { label: "Proxy contests", value: int(by("activist.proxy_contest@1") + by("activist.proxy_contest@2")), note: int(by("insider.cluster_buy@1")) + " cluster buys" },
   ];
   const host = document.getElementById("tiles"); host.replaceChildren();
   for (const t of list) host.append(el("div", { class: "tile" + (t.hero ? " hero" : "") }, el("div", { class: "label" }, t.label), el("div", { class: "value" }, t.value), el("div", { class: "note" }, t.note)));
@@ -477,7 +477,7 @@ function topIssuers(f) {
   ranked(document.getElementById("top-issuers"), items, v => int(v), name => { const q = document.getElementById("q"); q.value = name; state.q = name; render(); });
 }
 function topSales(f) {
-  const items = f.alerts.filter(a => a.rule_id === "insider.planned_sale@1" && a.amount_usd > 0)
+  const items = f.alerts.filter(a => a.rule_id.startsWith("insider.planned_sale@") && a.amount_usd > 0)
     .sort((a, b) => b.amount_usd - a.amount_usd).slice(0, 10)
     .map(a => ({ name: issuerOf(a) + " · " + (a.people[0] ? a.people[0].name : ""), value: a.amount_usd, note: a.known_on }));
   ranked(document.getElementById("top-sales"), items, money);

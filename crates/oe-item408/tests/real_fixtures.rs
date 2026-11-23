@@ -138,3 +138,49 @@ fn sidecars_carry_the_acceptance_date_not_the_filing_date() {
     let meta = std::fs::read_to_string(dir().join("acadia_0001193125-26-447794.meta.txt")).unwrap();
     assert!(meta.contains("known_on=2026-11-04") && meta.contains("filing_date=2026-11-05"));
 }
+
+#[test]
+fn an_excerpt_of_an_excerpt_reads_the_same_and_is_no_larger() {
+    for row in manifest() {
+        let html = std::fs::read_to_string(dir().join(&row.file)).unwrap();
+        let ex = oe_item408::excerpt(&html);
+        assert_eq!(extract(&ex), extract(&html), "{}", row.file);
+        assert!(ex.len() <= html.len() + 400, "{}", row.file);
+        // Stable: excerpting again changes nothing.
+        assert_eq!(oe_item408::excerpt(&ex), ex, "{}", row.file);
+    }
+}
+
+/// Every saved full report under `data/periodic` (if any): its excerpt must
+/// read exactly as the report. Run by hand:
+/// `cargo test -p oe-item408 --release --test real_fixtures -- --ignored --nocapture`
+#[test]
+#[ignore = "reads data/periodic, run by hand"]
+fn every_saved_report_reads_the_same_from_its_excerpt() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/periodic");
+    let mut stack = vec![root];
+    let (mut n, mut full, mut small) = (0usize, 0usize, 0usize);
+    while let Some(d) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.extension().is_some_and(|x| x == "htm") {
+                let html = std::fs::read_to_string(&p).unwrap();
+                let ex = oe_item408::excerpt(&html);
+                assert_eq!(extract(&ex), extract(&html), "{}", p.display());
+                n += 1;
+                full += html.len();
+                small += ex.len();
+            }
+        }
+    }
+    println!(
+        "{n} reports: {} MB as saved, {} MB as excerpts",
+        full >> 20,
+        small >> 20
+    );
+}

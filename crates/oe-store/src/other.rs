@@ -8,7 +8,7 @@
 
 use crate::db::{check_schema, StoreError};
 use crate::rows::{FilingRow, PrepareError};
-use crate::sha256::sha256_hex;
+use oe_core::sha256_hex;
 use oe_core::{Cik, Date, Party};
 use postgres::{Client, Transaction};
 
@@ -344,6 +344,142 @@ JOIN filing f ON f.accession = s.accession
 LEFT JOIN schedule13_person p ON p.accession = s.accession
 WHERE s.schedule = 'G' AND s.issuer_cik = ANY($1)
 GROUP BY s.issuer_cik, s.accession, f.accepted_at, f.filer_cik";
+
+/// A Rule 10b5-1 arrangement a report tagged as adopted, for
+/// `insider.plan_terminated@2`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredAdoption {
+    pub registrant_cik: u64,
+    pub person: String,
+    /// `YYYY-MM-DD`, as tagged.
+    pub adoption_date: Option<String>,
+    pub accession: String,
+    /// `YYYY-MM-DD`, the US Eastern date the report was accepted.
+    pub known_on: String,
+}
+
+const ADOPTION_HISTORY: &str = "
+SELECT t.registrant_cik, t.person, t.adoption_date::text, t.accession,
+       (f.accepted_at AT TIME ZONE 'America/New_York')::date::text
+FROM trading_arrangement t
+JOIN filing f ON f.accession = t.accession
+WHERE t.registrant_cik = ANY($1) AND t.rule_10b5_1_adopted AND t.person IS NOT NULL";
+
+/// Every adopted Rule 10b5-1 arrangement with a named person the ledger holds
+/// for these companies.
+pub fn adoption_history(
+    client: &mut Client,
+    registrants: &[u64],
+) -> Result<Vec<StoredAdoption>, StoreError> {
+    check_schema(client)?;
+    let ids: Vec<i64> = registrants.iter().map(|&c| c as i64).collect();
+    Ok(client
+        .query(ADOPTION_HISTORY, &[&ids])?
+        .iter()
+        .map(|r| StoredAdoption {
+            registrant_cik: r.get::<_, i64>(0) as u64,
+            person: r.get(1),
+            adoption_date: r.get(2),
+            accession: r.get(3),
+            known_on: r.get(4),
+        })
+        .collect())
+}
+
+/// An original Form 144 notice in the ledger, for `insider.planned_sale@2`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredNotice {
+    pub issuer_cik: u64,
+    pub seller_name: String,
+    pub accession: String,
+    /// `YYYY-MM-DD`, the US Eastern date of acceptance.
+    pub known_on: String,
+}
+
+const FORM144_HISTORY: &str = "
+SELECT n.issuer_cik, n.seller_name, n.accession,
+       (f.accepted_at AT TIME ZONE 'America/New_York')::date::text
+FROM form144_notice n
+JOIN filing f ON f.accession = n.accession
+WHERE n.issuer_cik = ANY($1) AND f.form_type = '144'
+  AND f.accepted_at >= ($2::text::date)::timestamp AT TIME ZONE 'America/New_York'";
+
+/// Every original Form 144 (not 144/A) about these issuers accepted on or
+/// after `since` (`YYYY-MM-DD`, US Eastern).
+pub fn form144_history(
+    client: &mut Client,
+    issuers: &[u64],
+    since: &str,
+) -> Result<Vec<StoredNotice>, StoreError> {
+    check_schema(client)?;
+    let ids: Vec<i64> = issuers.iter().map(|&c| c as i64).collect();
+    Ok(client
+        .query(FORM144_HISTORY, &[&ids, &since])?
+        .iter()
+        .map(|r| StoredNotice {
+            issuer_cik: r.get::<_, i64>(0) as u64,
+            seller_name: r.get(1),
+            accession: r.get(2),
+            known_on: r.get(3),
+        })
+        .collect())
+}
+
+/// A contested-solicitation filing in the ledger, for `activist.proxy_contest@2`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredContest {
+    pub accession: String,
+    pub form: String,
+    /// `YYYY-MM-DD`, the US Eastern date of acceptance.
+    pub known_on: String,
+    pub subject: Party,
+    pub filed_by: Vec<Party>,
+}
+
+const CONTEST_HISTORY: &str = "
+SELECT c.accession, c.form, (f.accepted_at AT TIME ZONE 'America/New_York')::date::text,
+       c.subject_cik, c.subject_name,
+       coalesce(array_agg(cf.cik ORDER BY cf.position) FILTER (WHERE cf.cik IS NOT NULL), '{}'),
+       coalesce(array_agg(cf.name ORDER BY cf.position) FILTER (WHERE cf.cik IS NOT NULL), '{}')
+FROM contest_filing c
+JOIN filing f ON f.accession = c.accession
+LEFT JOIN contest_filer cf ON cf.accession = c.accession
+WHERE c.subject_cik = ANY($1)
+GROUP BY c.accession, c.form, f.accepted_at, c.subject_cik, c.subject_name";
+
+/// Every contested-solicitation filing the ledger holds about these companies.
+pub fn contest_history(
+    client: &mut Client,
+    subjects: &[u64],
+) -> Result<Vec<StoredContest>, StoreError> {
+    check_schema(client)?;
+    let ids: Vec<i64> = subjects.iter().map(|&c| c as i64).collect();
+    Ok(client
+        .query(CONTEST_HISTORY, &[&ids])?
+        .iter()
+        .map(|r| {
+            let ciks: Vec<i64> = r.get(5);
+            let names: Vec<String> = r.get(6);
+            StoredContest {
+                accession: r.get(0),
+                form: r.get(1),
+                known_on: r.get(2),
+                subject: Party {
+                    cik: Cik(r.get::<_, i64>(3) as u64),
+                    name: r.get(4),
+                },
+                filed_by: ciks
+                    .into_iter()
+                    .zip(names)
+                    .map(|(cik, name)| Party {
+                        cik: Cik(cik as u64),
+                        name,
+                    })
+                    .collect(),
+            }
+        })
+        .collect())
+}
 
 /// Every Schedule 13G and 13G/A the ledger holds for these issuers.
 pub fn schedule13g_history(

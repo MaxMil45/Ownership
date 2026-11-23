@@ -24,6 +24,10 @@ pub struct Sources {
     pub sched13: Option<PathBuf>,
     pub proxy: Option<PathBuf>,
     pub periodic: Option<PathBuf>,
+    /// When set, only these files are read (and the folders are not walked):
+    /// `oe follow --alert` passes the filings of the last days, so an alert
+    /// pass does not reread every filing ever downloaded.
+    pub only: Option<std::sync::Arc<std::collections::BTreeSet<PathBuf>>>,
 }
 
 impl Sources {
@@ -36,6 +40,7 @@ impl Sources {
             sched13: existing("data/sched13"),
             proxy: existing("data/proxy"),
             periodic: existing("data/periodic"),
+            only: None,
         }
     }
 }
@@ -125,8 +130,9 @@ pub fn build_alerts(
 ) -> Result<(Vec<Alert>, Vec<String>), String> {
     let mut alerts = Vec::new();
     let mut summary = Vec::new();
+    let only = sources.only.as_deref();
     if let Some(dir) = &sources.form4 {
-        let trades = load::insider_trades(dir)?;
+        let trades = load::insider_trades(dir, only)?;
         let params = oe_events::ClusterBuyParams::default();
         let mut history = trades.items.clone();
         let mut from_db = 0usize;
@@ -149,20 +155,33 @@ pub fn build_alerts(
         alerts.extend(events.iter().map(convert::cluster_buy));
     }
     if let Some(dir) = &sources.form144 {
-        let loaded = load::form144(dir)?;
-        let events = oe_events::detect_planned_sales(
-            &loaded.items,
-            &oe_events::PlannedSaleParams::default(),
-        );
+        let loaded = load::form144(dir, only)?;
+        let params = oe_events::PlannedSaleParams::default();
+        let (events, note) = if db_history {
+            let earlier = ledger_notices(&loaded.items)?;
+            let note = format!(
+                " (planned_sale@2 saw {} earlier notice(s) from the database)",
+                earlier.len()
+            );
+            (
+                oe_events::detect_planned_sales_with_ledger(&loaded.items, &params, &earlier),
+                note,
+            )
+        } else {
+            (
+                oe_events::detect_planned_sales(&loaded.items, &params),
+                String::new(),
+            )
+        };
         summary.push(format!(
-            "Form 144: {} file(s), {} planned sale(s)",
+            "Form 144: {} file(s), {} planned sale(s){note}",
             loaded.files,
             events.len()
         ));
         alerts.extend(events.iter().map(convert::planned_sale));
     }
     if let Some(dir) = &sources.sched13 {
-        let loaded = load::schedule13(dir)?;
+        let loaded = load::schedule13(dir, only)?;
         let params = oe_events::ActivistParams::default();
         let (events, note) = if db_history {
             let earlier = ledger_13gs(&loaded.items)?;
@@ -188,19 +207,44 @@ pub fn build_alerts(
         alerts.extend(events.iter().map(convert::activist));
     }
     if let Some(dir) = &sources.proxy {
-        let loaded = load::contest_filings(dir)?;
-        let events = oe_events::detect_proxy_contests(&loaded.items);
+        let loaded = load::contest_filings(dir, only)?;
+        let (events, note) = if db_history {
+            let earlier = ledger_contests(&loaded.items)?;
+            let note = format!(
+                " (proxy_contest@2 saw {} contest filing(s) from the database)",
+                earlier.len()
+            );
+            (
+                oe_events::detect_proxy_contests_with_ledger(&loaded.items, &earlier),
+                note,
+            )
+        } else {
+            (
+                oe_events::detect_proxy_contests(&loaded.items),
+                String::new(),
+            )
+        };
         summary.push(format!(
-            "proxy: {} header(s), {} contest(s)",
+            "proxy: {} header(s), {} contest(s){note}",
             loaded.files,
             events.len()
         ));
         alerts.extend(events.iter().map(convert::proxy_contest));
     }
     if let Some(dir) = &sources.periodic {
-        let (loaded, _) = load::plan_termination_events(dir)?;
+        let (loaded, _) = load::plan_termination_events(dir, db_history)?;
+        let note = if db_history {
+            let known = loaded
+                .items
+                .iter()
+                .filter(|e| e.plan_life.is_some())
+                .count();
+            format!(" (plan_terminated@2 knows the adoption of {known})")
+        } else {
+            String::new()
+        };
         summary.push(format!(
-            "10-Q/10-K: {} report(s), {} plan termination(s)",
+            "10-Q/10-K: {} report(s), {} plan termination(s){note}",
             loaded.files,
             loaded.items.len()
         ));
@@ -285,6 +329,109 @@ pub(crate) fn ledger_13gs(
             })
         })
         .collect())
+}
+
+/// The ledger's original Form 144s about the companies in `filings`, from a
+/// year before the oldest of them.
+#[cfg(feature = "db")]
+pub(crate) fn ledger_notices(
+    filings: &[(oe_form144::Form144, oe_core::FilingMeta)],
+) -> Result<Vec<oe_events::EarlierNotice>, String> {
+    let mut issuers: Vec<u64> = filings.iter().map(|(f, _)| f.issuer_cik.0).collect();
+    issuers.sort_unstable();
+    issuers.dedup();
+    let Some(oldest) = filings.iter().filter_map(|(_, m)| m.known_on).min() else {
+        return Ok(Vec::new());
+    };
+    let since = oldest.add_days(-oe_events::planned_sale::HISTORY_DAYS);
+    let url = std::env::var("DATABASE_URL")
+        .map_err(|_| "--db needs DATABASE_URL (see `oe db-status`)".to_string())?;
+    let mut client = oe_store::connect(&url).map_err(|e| e.to_string())?;
+    let rows = oe_store::form144_history(&mut client, &issuers, &since.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(oe_events::EarlierNotice {
+                issuer: oe_core::Cik(r.issuer_cik),
+                seller: r.seller_name,
+                accession: r.accession,
+                known_on: r.known_on.parse().ok()?,
+            })
+        })
+        .collect())
+}
+
+#[cfg(not(feature = "db"))]
+pub(crate) fn ledger_notices(
+    _filings: &[(oe_form144::Form144, oe_core::FilingMeta)],
+) -> Result<Vec<oe_events::EarlierNotice>, String> {
+    Err("this build has no database support; leave out --db".into())
+}
+
+/// The ledger's adopted Rule 10b5-1 arrangements at these companies.
+#[cfg(feature = "db")]
+pub(crate) fn ledger_adoptions(issuers: &[u64]) -> Result<Vec<oe_events::EarlierAdoption>, String> {
+    if issuers.is_empty() {
+        return Ok(Vec::new());
+    }
+    let url = std::env::var("DATABASE_URL")
+        .map_err(|_| "--db needs DATABASE_URL (see `oe db-status`)".to_string())?;
+    let mut client = oe_store::connect(&url).map_err(|e| e.to_string())?;
+    let rows = oe_store::adoption_history(&mut client, issuers).map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(oe_events::EarlierAdoption {
+                issuer: oe_core::Cik(r.registrant_cik),
+                person: r.person,
+                adoption_date: r.adoption_date.and_then(|d| d.parse().ok()),
+                accession: r.accession,
+                known_on: r.known_on.parse().ok()?,
+            })
+        })
+        .collect())
+}
+
+#[cfg(not(feature = "db"))]
+pub(crate) fn ledger_adoptions(
+    _issuers: &[u64],
+) -> Result<Vec<oe_events::EarlierAdoption>, String> {
+    Err("this build has no database support; leave out --db".into())
+}
+
+/// The ledger's contest filings about the companies in `filings`.
+#[cfg(feature = "db")]
+pub(crate) fn ledger_contests(
+    filings: &[oe_events::ContestFiling],
+) -> Result<Vec<oe_events::ContestFiling>, String> {
+    let mut subjects: Vec<u64> = filings.iter().map(|f| f.subject.cik.0).collect();
+    subjects.sort_unstable();
+    subjects.dedup();
+    if subjects.is_empty() {
+        return Ok(Vec::new());
+    }
+    let url = std::env::var("DATABASE_URL")
+        .map_err(|_| "--db needs DATABASE_URL (see `oe db-status`)".to_string())?;
+    let mut client = oe_store::connect(&url).map_err(|e| e.to_string())?;
+    let rows = oe_store::contest_history(&mut client, &subjects).map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|r| oe_events::ContestFiling {
+            form: r.form,
+            accession: r.accession,
+            known_on: r.known_on.parse().ok(),
+            subject: r.subject,
+            filed_by: r.filed_by,
+        })
+        .collect())
+}
+
+#[cfg(not(feature = "db"))]
+pub(crate) fn ledger_contests(
+    _filings: &[oe_events::ContestFiling],
+) -> Result<Vec<oe_events::ContestFiling>, String> {
+    Err("this build has no database support; leave out --db".into())
 }
 
 #[cfg(not(feature = "db"))]
@@ -383,7 +530,9 @@ pub fn run(args: &AlertArgs) -> Result<RunReport, String> {
                 }
                 match sender.send(to, a) {
                     Ok(()) => {
-                        log.record(to.name(), &a.key, &utc_timestamp(now_unix()))?;
+                        let now = now_unix();
+                        log.record(to.name(), &a.key, &utc_timestamp(now))?;
+                        super::delays::record(&args.state, now, to.name(), a)?;
                         report.delivered += 1;
                         println!("  sent: {}", a.headline);
                     }
@@ -426,7 +575,9 @@ fn deliver_to_console(
     for a in chosen {
         println!("\n{}", render::text(a).trim_end());
         if !args.dry_run {
-            log.record("console", &a.key, &utc_timestamp(now_unix()))?;
+            let now = now_unix();
+            log.record("console", &a.key, &utc_timestamp(now))?;
+            super::delays::record(&args.state, now, "console", a)?;
         }
         report.delivered += 1;
     }

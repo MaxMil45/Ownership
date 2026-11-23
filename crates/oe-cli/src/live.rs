@@ -258,6 +258,8 @@ pub struct FollowArgs {
     pub interval_secs: u64,
     /// `None` polls until stopped (Ctrl-C).
     pub polls: Option<u32>,
+    /// Stop after the poll that ends at or after this time (seconds since 1970, UTC).
+    pub until: Option<i64>,
     /// Which feeds to poll, in this order.
     pub kinds: Vec<LiveKind>,
     /// Data root; each kind saves under `<root>/<kind folder>`.
@@ -291,6 +293,7 @@ pub fn parse_follow_args(args: &[String]) -> Result<FollowArgs, String> {
     let mut parsed = FollowArgs {
         interval_secs: 30,
         polls: None,
+        until: None,
         kinds: LiveKind::ALL.to_vec(),
         root: PathBuf::from("data"),
         out: None,
@@ -336,6 +339,14 @@ pub fn parse_follow_args(args: &[String]) -> Result<FollowArgs, String> {
                 )?
             }
             "--polls" => parsed.polls = Some(args::positive(&mut it, "--polls")?),
+            "--until" => {
+                let t = it
+                    .next()
+                    .ok_or("--until needs a UTC time such as 2026-11-23T23:00:00Z")?;
+                parsed.until = Some(oe_core::utc_to_unix(t).ok_or(format!(
+                    "--until: {t:?} is not a UTC time such as 2026-11-23T23:00:00Z"
+                ))?);
+            }
             "--out" => parsed.out = Some(args::folder(&mut it, "--out")?),
             "--include-amendments" => parsed.include_amendments = true,
             other => return Err(format!("unexpected argument {other:?}")),
@@ -737,9 +748,78 @@ fn save_proxy_header(
 // ---------------------------------------------------------------------------
 // oe follow
 
+/// Days of filings an alert pass reads: the cluster-buy window (10 days) and
+/// the alert freshness (3 days) with room to spare. Older history, where a
+/// rule needs it, comes from the ledger (`--db`).
+const RECENT_DAYS: i32 = 14;
+
+/// Each saved filing's acceptance date, built once when `follow --alert`
+/// starts and kept up to date, so an alert pass reads only recent filings.
+/// Measured with the full history on disk (2026-11-23): one pass over all of
+/// `data/form144` took 90 s, `data/sched13` 47 s, `data/form4` 15 s.
+#[derive(Debug, Default)]
+struct RecentIndex {
+    known_on: std::collections::BTreeMap<PathBuf, Date>,
+}
+
+impl RecentIndex {
+    fn build(args: &FollowArgs) -> RecentIndex {
+        let mut index = RecentIndex::default();
+        for kind in &args.kinds {
+            let folder = args.folder(*kind);
+            let found = match kind {
+                LiveKind::Proxy => crate::find_files(&folder, "sgml"),
+                _ => crate::find_xml_files(&folder),
+            };
+            index.add(&found.unwrap_or_default());
+        }
+        index
+    }
+
+    fn add(&mut self, files: &[PathBuf]) {
+        for path in files {
+            if let Some(day) = known_on_of(path) {
+                self.known_on.insert(path.clone(), day);
+            }
+        }
+    }
+
+    /// The filings accepted on or after `today - days`.
+    fn recent(&self, today: Date, days: i32) -> std::collections::BTreeSet<PathBuf> {
+        let from = today.add_days(-days);
+        self.known_on
+            .iter()
+            .filter(|(_, d)| **d >= from)
+            .map(|(p, _)| p.clone())
+            .collect()
+    }
+}
+
+/// A saved filing's US Eastern acceptance date: from its `.meta.txt`, or for
+/// a contest filing from its SGML header.
+fn known_on_of(path: &Path) -> Option<Date> {
+    if path.to_string_lossy().ends_with(".hdr.sgml") {
+        let text = std::fs::read_to_string(path).ok()?;
+        return oe_edgar::parse_header_sgml(&text).ok()?.known_on();
+    }
+    crate::read_meta(path).known_on
+}
+
 pub fn follow(args: &[String]) -> Result<(), String> {
     let args = parse_follow_args(args)?;
     let client = client()?;
+    let mut recent = if args.alert {
+        let started = std::time::Instant::now();
+        let index = RecentIndex::build(&args);
+        println!(
+            "indexed {} saved filing(s) in {} s; each alert pass reads those of the last {RECENT_DAYS} days",
+            index.known_on.len(),
+            started.elapsed().as_secs()
+        );
+        Some(index)
+    } else {
+        None
+    };
     let mut known: Vec<HashSet<String>> = args
         .kinds
         .iter()
@@ -787,10 +867,23 @@ pub fn follow(args: &[String]) -> Result<(), String> {
         if args.db_history && !saved_files.is_empty() {
             load_into_ledger(&saved_files);
         }
-        if args.alert && !changed.is_empty() {
-            alert_pass(&args, &changed);
+        if let Some(index) = recent.as_mut() {
+            index.add(&saved_files);
+            if !changed.is_empty() {
+                let today =
+                    oe_alerts::select::eastern_date_from_unix(oe_alerts::select::now_unix());
+                let only = std::sync::Arc::new(index.recent(today, RECENT_DAYS));
+                alert_pass(&args, &changed, only);
+            }
         }
         if args.polls.is_some_and(|max| poll >= max) {
+            return Ok(());
+        }
+        if args
+            .until
+            .is_some_and(|t| oe_alerts::select::now_unix() as i64 >= t)
+        {
+            println!("stopped: --until reached");
             return Ok(());
         }
         std::thread::sleep(Duration::from_secs(args.interval_secs));
@@ -822,9 +915,16 @@ fn load_into_ledger(_files: &[PathBuf]) {
 
 /// `oe alerts` over the folders that got new filings in this poll. A failure
 /// is reported, never fatal: following the feeds matters more than one run.
-fn alert_pass(args: &FollowArgs, changed: &[LiveKind]) {
+fn alert_pass(
+    args: &FollowArgs,
+    changed: &[LiveKind],
+    only: std::sync::Arc<std::collections::BTreeSet<PathBuf>>,
+) {
     let started = std::time::Instant::now();
-    let mut sources = crate::alerts::Sources::default();
+    let mut sources = crate::alerts::Sources {
+        only: Some(only),
+        ..crate::alerts::Sources::default()
+    };
     for kind in changed {
         let dir = Some(args.folder(*kind));
         match kind {
@@ -1053,6 +1153,10 @@ mod tests {
         assert!(parse_follow_args(&args(&["--interval", "5"])).is_err());
         assert!(parse_follow_args(&args(&["--polls", "0"])).is_err());
         assert!(parse_follow_args(&args(&["--nope"])).is_err());
+        let a = parse_follow_args(&args(&["--until", "2026-11-23T23:00:00Z"])).unwrap();
+        assert_eq!(a.until, oe_core::utc_to_unix("2026-11-23T23:00:00Z"));
+        assert!(parse_follow_args(&args(&["--until", "6pm"])).is_err());
+        assert!(parse_follow_args(&args(&["--until"])).is_err());
         assert!(!parse_follow_args(&[]).unwrap().alert);
         assert!(parse_follow_args(&args(&["--alert"])).unwrap().alert);
         let a = parse_follow_args(&args(&["--watchlist", "w.txt"])).unwrap();
@@ -1131,6 +1235,46 @@ mod tests {
         assert!(found.contains("0000000002-26-000009"));
         assert!(!found.contains("0000000002-26-000008"));
         assert!(saved_accessions(Path::new("definitely/not/here")).is_empty());
+    }
+
+    #[test]
+    fn the_recent_index_keeps_only_the_last_days_and_takes_new_files() {
+        let root = std::env::temp_dir().join(format!("oe-recent-{}", std::process::id()));
+        let dir = root.join("form4").join("0000000001");
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = |acc: &str, known_on: &str| {
+            let xml = dir.join(format!("{acc}.xml"));
+            std::fs::write(&xml, "x").unwrap();
+            std::fs::write(
+                meta_path(&xml),
+                format!("accession={acc}\nknown_on={known_on}\n"),
+            )
+            .unwrap();
+            xml
+        };
+        let old = file("0000000001-26-000001", "2026-11-01");
+        let edge = file("0000000001-26-000002", "2026-11-09");
+        let new = file("0000000001-26-000003", "2026-11-20");
+        let args = FollowArgs {
+            kinds: vec![LiveKind::Form4],
+            root: root.clone(),
+            ..parse_follow_args(&[]).unwrap()
+        };
+        let mut index = RecentIndex::build(&args);
+        assert_eq!(index.known_on.len(), 3);
+        let today = Date::from_ymd(2026, 11, 23).unwrap();
+        let recent = index.recent(today, RECENT_DAYS);
+        assert_eq!(recent.iter().collect::<Vec<_>>(), [&edge, &new]);
+        assert!(!recent.contains(&old));
+        // A filing saved by a later poll joins.
+        let later = file("0000000001-26-000004", "2026-11-23");
+        index.add(std::slice::from_ref(&later));
+        assert!(index.recent(today, RECENT_DAYS).contains(&later));
+        // The loaders read only the files given, without walking the folder.
+        let only: std::collections::BTreeSet<PathBuf> = [new.clone()].into();
+        let loaded = crate::load::insider_trades(&root.join("form4"), Some(&only)).unwrap();
+        assert_eq!(loaded.files, 1);
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

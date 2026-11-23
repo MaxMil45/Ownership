@@ -72,19 +72,52 @@ pub struct Item408Doc {
     pub company_flags: CompanyFlags,
 }
 
+/// The facts [`extract`] reads.
+fn wanted(n: &str) -> bool {
+    n.starts_with("ecd:")
+        || matches!(
+            n,
+            "dei:DocumentType"
+                | "dei:EntityRegistrantName"
+                | "dei:EntityCentralIndexKey"
+                | "dei:DocumentPeriodEndDate"
+        )
+}
+
+/// The part of a report that [`extract`] reads: every `dei` and `ecd` fact it
+/// uses, as written, and the contexts those facts point to. A 2 MB report
+/// becomes a few kilobytes, and `extract(&excerpt(html)) == extract(html)`.
+pub fn excerpt(html: &str) -> String {
+    let spans = ixbrl::fact_spans(html, wanted);
+    let contexts = ixbrl::context_spans(html);
+    // Every wanted fact's context, nested ones included (ACADIA tags its whole
+    // plan inside the terms text block).
+    let mut ids: Vec<String> = facts(html, wanted)
+        .into_iter()
+        .map(|f| f.context_ref)
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    let mut out = String::from(
+        "<!-- Excerpt of an SEC 10-Q/10-K: its dei and ecd Inline XBRL facts and their contexts, as filed. The full report is at the url in the .meta.txt beside this file. -->\n<html><body>\n",
+    );
+    for id in &ids {
+        if let Some(&(a, b)) = contexts.get(id) {
+            out.push_str(&html[a..b]);
+            out.push('\n');
+        }
+    }
+    for (a, b, _) in &spans {
+        out.push_str(&html[*a..*b]);
+        out.push('\n');
+    }
+    out.push_str("</body></html>\n");
+    out
+}
+
 /// Reads one iXBRL report. Never fails: a document with no `ecd` facts gives
 /// an empty result with `uses_ecd_tags == false`.
 pub fn extract(html: &str) -> Item408Doc {
-    let wanted = |n: &str| {
-        n.starts_with("ecd:")
-            || matches!(
-                n,
-                "dei:DocumentType"
-                    | "dei:EntityRegistrantName"
-                    | "dei:EntityCentralIndexKey"
-                    | "dei:DocumentPeriodEndDate"
-            )
-    };
     let all = facts(html, wanted);
     let ctx = contexts(html);
 
@@ -230,13 +263,31 @@ fn fill_from_same_person(arrangements: &mut [TradingArrangement]) {
 /// terminated" statement prints `false`. Only `true` counts. It looks at the
 /// Rule 10b5-1 label, not `Non-Rule 10b5-1 Arrangement Terminated`.
 pub fn report_page_shows_termination(html: &str) -> bool {
-    const LABEL: &str = "Rule 10b5-1 Arrangement Terminated";
+    page_shows_true(&ixbrl::text_of(html), "Rule 10b5-1 Arrangement Terminated")
+}
+
+/// Whether the rendered page shows a Rule 10b5-1 arrangement as adopted
+/// (`Rule 10b5-1 Arrangement Adopted | true`), like
+/// [`report_page_shows_termination`].
+pub fn report_page_shows_adoption(html: &str) -> bool {
+    page_shows_true(&ixbrl::text_of(html), "Rule 10b5-1 Arrangement Adopted")
+}
+
+/// What the page check found: (shows a termination, shows an adoption).
+pub fn report_page_flags(html: &str) -> (bool, bool) {
     let text = ixbrl::text_of(html);
-    text.match_indices(LABEL).any(|(at, _)| {
-        // Skip "Non-Rule 10b5-1 Arrangement Terminated".
+    (
+        page_shows_true(&text, "Rule 10b5-1 Arrangement Terminated"),
+        page_shows_true(&text, "Rule 10b5-1 Arrangement Adopted"),
+    )
+}
+
+fn page_shows_true(text: &str, label: &str) -> bool {
+    text.match_indices(label).any(|(at, _)| {
+        // Skip "Non-Rule 10b5-1 Arrangement ...".
         let before = &text[..at];
         !before.ends_with("Non-")
-            && text[at + LABEL.len()..]
+            && text[at + label.len()..]
                 .trim_start()
                 .to_ascii_lowercase()
                 .starts_with("true")
@@ -323,6 +374,14 @@ mod tests {
         assert!(!report_page_shows_termination(
             "<p>Rule 10b5-1 Arrangement Terminated</p>"
         ));
+        // Adoptions, the same way.
+        assert!(report_page_shows_adoption(yes));
+        let adopted_only = "<tr><td>Rule 10b5-1 Arrangement Adopted</td><td>true</td></tr>\
+                            <tr><td>Rule 10b5-1 Arrangement Terminated</td><td>false</td></tr>";
+        assert_eq!(report_page_flags(adopted_only), (false, true));
+        assert_eq!(report_page_flags(yes), (true, true));
+        let non = "<tr><td>Non-Rule 10b5-1 Arrangement Adopted</td><td>true</td></tr>";
+        assert!(!report_page_shows_adoption(non));
     }
     #[test]
     fn parses_the_date_styles_companies_use() {

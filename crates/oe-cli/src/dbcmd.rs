@@ -181,9 +181,13 @@ fn prepare_any(path: &Path) -> Result<Loadable, Skip> {
             .accepted_at()
             .ok_or(Skip::Rejected(PrepareError::NoAcceptanceTime))?;
         let url = side.url.clone().unwrap_or(default_url);
-        oe_store::prepare_other(doc, &accession, accepted, url, &bytes)
-            .map(Loadable::Other)
-            .map_err(Skip::Rejected)
+        let mut prepared = oe_store::prepare_other(doc, &accession, accepted, url, &bytes)
+            .map_err(Skip::Rejected)?;
+        // An excerpt: the receipt keeps the full original's fingerprint.
+        if let Some(original) = &side.original_sha256 {
+            prepared.filing.raw_sha256 = original.clone();
+        }
+        Ok(Loadable::Other(prepared))
     };
     if name.ends_with(".hdr.sgml") {
         // Contest headers carry their own acceptance time; no sidecar.
@@ -472,6 +476,34 @@ mod loadable_tests {
             Some("ownershipDocument")
         );
         assert_eq!(root_element("no xml here"), None);
+    }
+
+    #[test]
+    fn an_excerpt_keeps_the_fingerprint_of_its_full_original() {
+        let src = &fixtures("item408")[0];
+        let dir = std::env::temp_dir().join(format!("oe-excerpt-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(src.file_name().unwrap());
+        std::fs::copy(src, &file).unwrap();
+        let meta = std::fs::read_to_string(super::super::meta_path(src)).unwrap();
+        let prepared = |meta: &str| {
+            std::fs::write(super::super::meta_path(&file), meta).unwrap();
+            match prepare_any(&file) {
+                Ok(Loadable::Other(o)) => o.filing.raw_sha256,
+                Ok(_) => panic!("not read as a 10-Q/10-K"),
+                Err(e) => panic!("{e:?}"),
+            }
+        };
+        let own = oe_core::sha256_hex(&std::fs::read(&file).unwrap());
+        assert_eq!(prepared(&meta), own, "no original named: the file's own");
+        let original = "ab".repeat(32);
+        assert_eq!(
+            prepared(&format!("{meta}original_sha256={original}\n")),
+            original
+        );
+        // Not a SHA-256: ignored.
+        assert_eq!(prepared(&format!("{meta}original_sha256=xyz\n")), own);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

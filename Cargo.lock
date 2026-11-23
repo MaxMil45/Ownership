@@ -483,6 +483,7 @@ dependencies = [
  "oe-core",
  "oe-edgar",
  "oe-events",
+ "oe-form144",
  "ureq",
 ]
 

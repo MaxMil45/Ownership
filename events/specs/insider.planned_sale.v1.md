@@ -49,7 +49,8 @@ Changing a default, or the insider test, is a new version (`@2`), not an edit to
 - **No ticker.** Form 144 has no trading symbol; events carry the issuer's CIK and name.
 - The value is the filer's own `aggregateMarketValue` (a price the filer chose, as of the notice), not an independent price.
 - `percent_of_outstanding` uses the first block's `noOfUnitsOutstanding`. A notice covering several share classes would be misleading, so it is left empty when blocks name different classes.
-- A seller may file several notices for one planned selling programme; each fires separately.
+- A seller may file several notices for one planned selling programme; each fires separately. `insider.planned_sale@2` (with `--db`) says how many the seller filed in the year before and flags routine sellers.
+- The value is taken as filed, typos included: 12 notices in the ledger claim $2 billion to $32 billion at impossible prices per share. `@2` leaves them out.
 - The notice says a sale is planned, not that it happened. Matching to the later Form 4 is a separate question (not in v1).
 - Filings before the XML era are not covered.
 

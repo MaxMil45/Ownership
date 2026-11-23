@@ -51,6 +51,7 @@ None in v1.
 - A report is read as the company tagged it. Palantir's filing, for example, tags a plan that was terminated on 14 August 2026 with an expiration date of 31 March 2026; the event shows what was tagged and does not repair it.
 - Companies often name the person only as "Mr. Smith" in one arrangement; the full name comes from the arrangement that has it.
 - Disclosure comes at the next report: weeks to months after the plan ended.
+- It does not say when the plan was adopted. `insider.plan_terminated@2` (with `--db`) adds the adoption and the plan's length, and flags plans ended within the 90-day cooling-off.
 
 ## How this was checked
 

@@ -15,17 +15,22 @@ The first public version: insider and activist events from SEC filings, each wit
 ### Events (versioned rules, specs in `events/specs/`)
 - `insider.cluster_buy@1`, `insider.planned_sale@1`, `insider.plan_terminated@1`, `activist.new_13d@1`, `activist.passive_to_active@1`, `activist.proxy_contest@1`.
 - `activist.passive_to_active@2` (with `--db`): also fires when the ledger holds the holder's earlier 13G for the company, even if the filer left the box unticked; the alert links that 13G as a second receipt.
+- `activist.proxy_contest@2` (with `--db`): one alert per contest instead of per batch, saying when the contest started and whether it is new.
+- `insider.planned_sale@2` (with `--db`): says whether a planned sale is the seller's first Form 144 for the company in a year or part of a routine, links the previous notice, and leaves out notices whose amounts are impossible as filed.
+- `insider.plan_terminated@2` (with `--db`): says when the ended plan was adopted and how long it lasted, and flags plans ended within the 90-day cooling-off, before any sale under them was possible.
 
 ### Ledger
 - Point-in-time PostgreSQL ledger: every fact has the date it was true and the time the public could know it; nothing is updated or deleted (ADR 0002, 0004).
 - Amendments are linked to the report they amend by evidence, and only restatements replace rows (ADR 0005, revised in ADR 0008). Joint filings keep every owner.
 - Form 144, Schedule 13D/G, contested-proxy and 10-Q/10-K insider-plan filings are stored too, without street addresses or CUSIPs (ADR 0009), with their history: Form 144 since 2023, 13D/G since December 2024, contests since 2015, insider plans since late 2023.
 - Day ranges (`--to`) retry the SEC's temporary errors and carry on past a failed day, listing it at the end.
+- `daily-periodic` also keeps 10-Q/10-Ks that disclose only plan adoptions, and saves an excerpt (a few KB) instead of the 2 MB report, with the full report's fingerprint in the ledger; `oe periodic-excerpt` shrinks older folders; `--recheck-none` rechecks reports checked before adoptions were kept. The GitHub workflow `recheck-periodic.yml` runs that recheck on GitHub's machines; `scripts/import-periodic-recheck.ps1` loads its result.
 - History since 2015 from the quarterly data sets: 2.4 million filings in 31 minutes, checked against the filings' own XML (ADR 0008).
 
 ### Alerts and dashboard
 - `oe alerts` and `oe follow --alert`: each event once per destination, with links to its SEC filings, to Discord or any JSON webhook, filtered by a watchlist (ADR 0006). Measured: alerts about 1 to 1.5 minutes after SEC acceptance.
 - `oe dashboard`: one offline HTML page with charts, filters, search and every event (ADR 0007); `--db` adds insider buying and selling over the whole ledger.
+- `oe alert-delays` reports how long after SEC acceptance filings were saved and alerts delivered (every delivery is logged in `data/alerts/delivered.tsv`); `scripts/measure-trading-day.ps1` measures a whole trading day. `oe follow --alert` reads only the last 14 days of filings in each pass, and `--until` stops it at a time.
 
 ### Known limits
 - No email delivery yet; not yet tried with a real Discord channel.

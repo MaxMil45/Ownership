@@ -16,7 +16,7 @@
 //!   amendment amends and the amendment restates it (see [`crate::amend`] and
 //!   ADR 0005).
 
-use crate::sha256::sha256_hex;
+use oe_core::sha256_hex;
 use oe_core::{AcquiredDisposed, OwnershipDocument, OwnershipNature};
 
 /// The fields of a `.meta.txt` sidecar that the loader uses.
@@ -30,19 +30,32 @@ pub struct Sidecar {
     /// e.g. `2026-10-05T18:42:45`.
     pub accepted_eastern: Option<String>,
     pub url: Option<String>,
+    /// SHA-256 of the full document as downloaded, when the file beside the
+    /// sidecar is an excerpt of it (10-Q/10-K reports, ADR 0009). The ledger's
+    /// fingerprint is then the original's, so the receipt still names the
+    /// SEC's file. Only a 64-character lowercase hex value is kept.
+    pub original_sha256: Option<String>,
 }
 
 impl Sidecar {
     pub fn parse(text: &str) -> Sidecar {
         let mut s = Sidecar::default();
         for (key, value) in oe_core::text::key_values(text) {
-            let value = Some(value.to_string());
+            let owned = Some(value.to_string());
             match key {
-                "accession" => s.accession = value,
-                "form" => s.form = value,
-                "accepted" => s.accepted_utc = value,
-                "accepted_eastern" => s.accepted_eastern = value,
-                "url" => s.url = value,
+                "accession" => s.accession = owned,
+                "form" => s.form = owned,
+                "accepted" => s.accepted_utc = owned,
+                "accepted_eastern" => s.accepted_eastern = owned,
+                "url" => s.url = owned,
+                "original_sha256"
+                    if value.len() == 64
+                        && value
+                            .bytes()
+                            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) =>
+                {
+                    s.original_sha256 = owned
+                }
                 _ => {}
             }
         }
