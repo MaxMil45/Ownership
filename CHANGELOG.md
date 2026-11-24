@@ -32,6 +32,9 @@ The first public version: insider and activist events from SEC filings, each wit
 - `oe dashboard`: one offline HTML page with charts, filters, search and every event (ADR 0007); `--db` adds insider buying and selling over the whole ledger.
 - `oe alert-delays` reports how long after SEC acceptance filings were saved and alerts delivered (every delivery is logged in `data/alerts/delivered.tsv`); `scripts/measure-trading-day.ps1` measures a whole trading day. `oe follow --alert` reads only the last 14 days of filings in each pass, and `--until` stops it at a time.
 
+### Public officials (first step, ADR 0010)
+- Crate `oe-officials`: reads the House Clerk's yearly disclosure index. `oe house-ptr` downloads House members' periodic transaction reports (PDFs, not yet read), one request a second, only after the user acknowledges the legal limits on their use (`OE_OFFICIALS_ACK=1`). The GitHub workflow `officials-house.yml` does the same and encrypts its result; `scripts/import-officials-house.ps1` opens it.
+
 ### Known limits
 - No email delivery yet; not yet tried with a real Discord channel.
 - Alert delay measured on a few filings only, not over a full trading day.

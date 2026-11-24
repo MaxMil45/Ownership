@@ -27,3 +27,4 @@ oe-edgar.workspace = true
 oe-store = { workspace = true, optional = true }
 oe-alerts.workspace = true
 oe-bulk.workspace = true
+oe-officials.workspace = true

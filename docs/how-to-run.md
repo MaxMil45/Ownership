@@ -112,6 +112,27 @@ writes `data/report/dashboard.html`. Open it in your browser (double-click it in
 
 The search box matches companies, tickers and people. Run the command again after downloading more to refresh the page. It works offline and sends nothing anywhere.
 
+## 3d. Public officials: House members' trade reports (first step)
+
+Members of the House report their trades in periodic transaction reports (PTRs), published by the House Clerk as PDFs. `oe house-ptr` downloads the Clerk's yearly index and every PTR it lists into `data/officials/house/<year>/`, each PDF with a `.meta.txt` (who, filing date, where from, when first seen, SHA-256). Reading the PDFs comes later (ADR 0010).
+
+**The law limits what you may do with these reports** (Ethics in Government Act, section 105(c)): no commercial use other than news media, no credit ratings, no fundraising. They stay on your machine: never commit, publish or share them. `oe` refuses to download until you set `$env:OE_OFFICIALS_ACK = "1"` yourself after reading the limits it prints.
+
+Locally (one request a second; 2008 to now is about 8,000 reports, a few hours):
+
+```powershell
+$env:OE_OFFICIALS_ACK = "1"
+& $oe house-ptr 2008 --to 2026
+```
+
+Or on GitHub's machines with the workflow *Download House PTRs* (`.github/workflows/officials-house.yml`). Because anyone signed in to GitHub can read a public repository's downloads and logs, the workflow **encrypts** the result with a password only you hold, and its logs show counts only. Once, in the repository's Settings, Secrets and variables, Actions: add the secret `OE_OFFICIALS_KEY` (a long password; keep a copy, without it the download cannot be opened) and, on the Variables tab, the variable `OE_OFFICIALS_ACK` with the value `1`. Then Actions, *Download House PTRs*, Run workflow (`test`: three 2025 reports; `full`: 2008 to this year). Download the `officials-house-encrypted` artifact and open it:
+
+```powershell
+.\scripts\import-officials-house.ps1 -From "$HOME\Downloads\officials-house-encrypted.zip"
+```
+
+It asks for the password and unpacks the reports into `data\officials\house`.
+
 ## 4. The database
 
 ```powershell

@@ -12,6 +12,8 @@ mod excerpt;
 mod live;
 mod load;
 #[cfg(feature = "net")]
+mod officials;
+#[cfg(feature = "net")]
 mod periodic;
 
 use oe_core::FilingMeta;
@@ -71,6 +73,13 @@ USAGE:
         Checks three small files per report and downloads the large one only when needed.
         --audit downloads <n> skipped reports too, to measure how often the cheap check is wrong.
         --recheck-none looks again at reports logged `none` (checked for terminations only).
+
+    oe house-ptr <year> [--to <year>] [--out <folder>] [--limit <n>]
+        Download the House Clerk's yearly disclosure index and every periodic transaction
+        report (PTR, members' trades) it lists, as PDFs, into data/officials/house/<year>/
+        with a .meta.txt each (ADR 0010). One request a second; saved reports are skipped.
+        Use of these reports is limited by law: it refuses until you set OE_OFFICIALS_ACK=1.
+        Never commit or publish them.
 
     oe periodic-excerpt [<folder>] [--dry-run]
         Replace each saved full 10-Q/10-K report (default folder: data/periodic) with its
@@ -210,6 +219,8 @@ fn main() -> ExitCode {
         #[cfg(feature = "net")]
         Some("daily-periodic") => periodic::daily_periodic(&args[1..]),
         #[cfg(feature = "net")]
+        Some("house-ptr") => officials::house_ptr(&args[1..]),
+        #[cfg(feature = "net")]
         Some("daily-form144") => live::daily_form144(&args[1..]),
         #[cfg(feature = "net")]
         Some("follow") => live::follow(&args[1..]),
@@ -217,6 +228,7 @@ fn main() -> ExitCode {
         Some("daily-form4")
         | Some("daily-form144")
         | Some("daily-periodic")
+        | Some("house-ptr")
         | Some("daily-13dg")
         | Some("daily-proxy")
         | Some("follow") => {

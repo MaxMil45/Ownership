@@ -1,0 +1,84 @@
+# Downloads House members' periodic transaction reports (PTRs) on GitHub's
+# machines (ADR 0010): the House Clerk's yearly index and every PTR PDF it
+# lists, from 2008 to this year.
+#
+# These reports may not be used commercially and are never published (ADR
+# 0010, 3.2). A public repository's artifacts and logs can be read by anyone
+# signed in to GitHub, so the result is ENCRYPTED with a password only you
+# hold, and the logs show counts only. Before the first run (Settings >
+# Secrets and variables > Actions):
+#   - secret   OE_OFFICIALS_KEY : a long password of your choice (keep a copy;
+#                                 without it the download cannot be opened);
+#   - variable OE_OFFICIALS_ACK : 1, set by you to confirm you have read the
+#                                 legal limits in `oe_officials::USE_LIMITS`.
+# Then Actions > Download House PTRs > Run workflow. Open the result with
+# scripts/import-officials-house.ps1.
+name: Download House PTRs
+
+on:
+  workflow_dispatch:
+    inputs:
+      range:
+        description: "test = three 2025 reports (a few minutes), full = 2008 to this year (about 3 hours)"
+        type: choice
+        options: [test, full]
+        default: test
+
+concurrency:
+  group: house-downloads
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  download:
+    name: Download and encrypt
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Check the secret and the acknowledgement
+        env:
+          KEY: ${{ secrets.OE_OFFICIALS_KEY }}
+          ACK: ${{ vars.OE_OFFICIALS_ACK }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::error::Set the repository secret OE_OFFICIALS_KEY (a password only you know) first."; exit 1; fi
+          if [ "${#KEY}" -lt 16 ]; then echo "::error::OE_OFFICIALS_KEY is shorter than 16 characters; use a longer password."; exit 1; fi
+          if [ "$ACK" != "1" ]; then echo "::error::Set the repository variable OE_OFFICIALS_ACK to 1 yourself, after reading the legal limits (crates/oe-officials/src/lib.rs, USE_LIMITS)."; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build oe (network only, no database)
+        run: cargo build --release -p oe-cli --no-default-features --features net
+      - name: Download
+        env:
+          OE_OFFICIALS_ACK: ${{ vars.OE_OFFICIALS_ACK }}
+        run: |
+          if [ "${{ inputs.range }}" = "test" ]; then ARGS="2025 --limit 3"; else ARGS="2008 --to $(date -u +%Y)"; fi
+          mkdir -p out
+          set +e
+          ./target/release/oe house-ptr $ARGS --out out/house > out/stdout.txt 2> out/stderr.txt
+          echo "oe exit $?" > out/summary.txt
+          set -e
+          # Counts only (the lines name no one), for the log and the summary.
+          grep -E '^[0-9]{4}: |^all years:' out/stdout.txt >> out/summary.txt || true
+          grep -c . out/stderr.txt | sed 's/^/stderr lines: /' >> out/summary.txt || true
+          cp out/stderr.txt out/house/errors.txt
+          cat out/summary.txt
+          { echo "### House PTR download"; echo '```'; cat out/summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Encrypt
+        env:
+          OE_OFFICIALS_KEY: ${{ secrets.OE_OFFICIALS_KEY }}
+        run: |
+          tar -czf house.tgz -C out house
+          openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in house.tgz -out officials-house.tgz.enc -pass env:OE_OFFICIALS_KEY
+          rm -rf house.tgz out/house
+          mkdir upload
+          mv officials-house.tgz.enc upload/
+          cp out/summary.txt upload/
+          ls -la upload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: officials-house-encrypted
+          path: upload/
+          retention-days: 7

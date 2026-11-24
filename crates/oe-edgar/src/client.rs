@@ -59,6 +59,24 @@ impl EdgarClient {
         })
     }
 
+    /// A client for a public site other than the SEC (the House Clerk's
+    /// disclosures): its own rate limit, and a plain product name as the
+    /// User-Agent, with no personal details (those are for the SEC only).
+    pub fn other_site(requests_per_second: u32) -> Self {
+        let agent = ureq::AgentBuilder::new()
+            .user_agent(concat!(
+                "OwnershipEngine/",
+                env!("CARGO_PKG_VERSION"),
+                " (open-source research tool)"
+            ))
+            .timeout(Duration::from_secs(60))
+            .build();
+        EdgarClient {
+            agent,
+            limiter: RateLimiter::per_second(requests_per_second.max(1)),
+        }
+    }
+
     pub fn from_env() -> Result<Self, EdgarError> {
         let ua = crate::user_agent_from_env().map_err(EdgarError::UserAgent)?;
         Self::new(&ua)
