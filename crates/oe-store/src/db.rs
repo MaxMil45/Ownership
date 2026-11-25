@@ -40,6 +40,22 @@ pub const MIGRATIONS: &[(&str, &str)] = &[
         "0005_other_forms",
         include_str!("../../../migrations/0005_other_forms.sql"),
     ),
+    (
+        "0006_officials",
+        include_str!("../../../migrations/0006_officials.sql"),
+    ),
+    (
+        "0007_people",
+        include_str!("../../../migrations/0007_people.sql"),
+    ),
+    (
+        "0008_event_feed",
+        include_str!("../../../migrations/0008_event_feed.sql"),
+    ),
+    (
+        "0009_lookup_indexes",
+        include_str!("../../../migrations/0009_lookup_indexes.sql"),
+    ),
 ];
 
 #[derive(Debug)]
@@ -133,6 +149,14 @@ CREATE TEMP TABLE stage_owner (
 ) ON COMMIT DROP;
 CREATE TEMP TABLE stage_ownership (
     accession text, issuer_cik bigint, date_of_original_submission date
+) ON COMMIT DROP;
+CREATE TEMP TABLE stage_owner_role (
+    accession text, position integer, owner_cik bigint, owner_name text,
+    is_director boolean, is_officer boolean, is_ten_percent_owner boolean,
+    is_other boolean, officer_title text
+) ON COMMIT DROP;
+CREATE TEMP TABLE stage_issuer (
+    accession text, issuer_cik bigint, issuer_name text, ticker text
 ) ON COMMIT DROP;";
 
 const INSERT_FILING: &str = "
@@ -168,6 +192,24 @@ const INSERT_OWNERSHIP: &str = "
 INSERT INTO ownership_filing (accession, issuer_cik, date_of_original_submission)
 SELECT s.accession, s.issuer_cik, s.date_of_original_submission
 FROM stage_ownership s
+JOIN stage_filing sf ON sf.accession = s.accession
+JOIN filing f ON f.accession = s.accession AND f.raw_sha256 = sf.raw_sha256
+ON CONFLICT DO NOTHING";
+
+const INSERT_OWNER_ROLE: &str = "
+INSERT INTO filing_owner_role (accession, position, owner_cik, owner_name, is_director,
+    is_officer, is_ten_percent_owner, is_other, officer_title)
+SELECT s.accession, s.position, s.owner_cik, s.owner_name, s.is_director,
+       s.is_officer, s.is_ten_percent_owner, s.is_other, s.officer_title
+FROM stage_owner_role s
+JOIN stage_filing sf ON sf.accession = s.accession
+JOIN filing f ON f.accession = s.accession AND f.raw_sha256 = sf.raw_sha256
+ON CONFLICT DO NOTHING";
+
+const INSERT_ISSUER: &str = "
+INSERT INTO ownership_issuer (accession, issuer_cik, issuer_name, ticker)
+SELECT s.accession, s.issuer_cik, s.issuer_name, s.ticker
+FROM stage_issuer s
 JOIN stage_filing sf ON sf.accession = s.accession
 JOIN filing f ON f.accession = s.accession AND f.raw_sha256 = sf.raw_sha256
 ON CONFLICT DO NOTHING";
@@ -375,11 +417,27 @@ pub fn load_batch_with(
         }
         w.finish()?;
     }
+    {
+        let mut w = tx.copy_in("COPY stage_owner_role FROM STDIN")?;
+        for p in batch {
+            w.write_all(p.owner_role_copy_lines().as_bytes())?;
+        }
+        w.finish()?;
+    }
+    {
+        let mut w = tx.copy_in("COPY stage_issuer FROM STDIN")?;
+        for p in batch {
+            w.write_all(p.issuer_copy_line().as_bytes())?;
+        }
+        w.finish()?;
+    }
 
     let filings_new = tx.execute(INSERT_FILING, &[])?;
     let rows_new = tx.execute(INSERT_TX, &[])?;
     tx.execute(INSERT_OWNER, &[])?;
     tx.execute(INSERT_OWNERSHIP, &[])?;
+    tx.execute(INSERT_OWNER_ROLE, &[])?;
+    tx.execute(INSERT_ISSUER, &[])?;
     tx.execute(INSERT_AMEND_TX, &[])?;
     let links = if link {
         link_amendments(&mut tx)?
@@ -660,6 +718,32 @@ pub struct Status {
     pub latest_accepted: Option<String>,
 }
 
+/// What [`maintain`] found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MaintainReport {
+    /// `4072 MB`, as PostgreSQL writes it.
+    pub database_size: String,
+}
+
+/// `VACUUM (ANALYZE)` over every table: fresh statistics for the query
+/// planner and an up-to-date visibility map (index-only scans). The ledger
+/// only grows, so there is little to vacuum, but after a large load, or after
+/// Docker stopped the server abruptly (which resets the counters autovacuum
+/// goes by), the statistics can be days behind. Safe to run at any time;
+/// reads and writes go on while it runs.
+pub fn maintain(client: &mut Client) -> Result<MaintainReport, StoreError> {
+    check_schema(client)?;
+    client.batch_execute("VACUUM (ANALYZE)")?;
+    Ok(MaintainReport {
+        database_size: client
+            .query_one(
+                "SELECT pg_size_pretty(pg_database_size(current_database()))",
+                &[],
+            )?
+            .get(0),
+    })
+}
+
 /// Fails with [`StoreError::NoSchema`] unless every migration's tables exist
 /// (the first and the newest table are checked).
 pub fn check_schema(client: &mut Client) -> Result<(), StoreError> {
@@ -702,7 +786,8 @@ pub fn status(client: &mut Client) -> Result<Status, StoreError> {
     )?;
     let joint_filings = one(
         client,
-        "SELECT count(*) FROM (SELECT 1 FROM filing_owner GROUP BY accession HAVING count(*) > 1) j",
+        // Owners are numbered from 0 with no gaps: a joint filing has a 1.
+        "SELECT count(*) FROM filing_owner WHERE position = 1",
     )?;
     let outcome = |client: &mut Client, o: &str| -> Result<i64, StoreError> {
         Ok(client

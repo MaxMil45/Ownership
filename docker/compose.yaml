@@ -20,6 +20,37 @@ services:
   postgres:
     image: postgres:16
     container_name: oe-postgres
+    # Sized for a laptop with 16 GB (Docker's VM gets about 8 GB) and an SSD,
+    # holding a ~4 GB ledger that is mostly read in large scans. Measured
+    # before/after with docker/bench.sql (ADR 0004, "Tuning").
+    command:
+      - postgres
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - effective_cache_size=4GB
+      - -c
+      - work_mem=64MB
+      - -c
+      - maintenance_work_mem=512MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - max_parallel_workers_per_gather=4
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - checkpoint_timeout=15min
+      # Compiling queries costs more than it saves on these short scans.
+      - -c
+      - jit=off
+    # Parallel queries share memory through /dev/shm (Docker gives 64 MB).
+    shm_size: 1gb
+    # Time to shut down cleanly when Docker stops: an abrupt stop means crash
+    # recovery and lost table statistics counters.
+    stop_grace_period: 60s
     environment:
       POSTGRES_USER: oe
       POSTGRES_PASSWORD: oe_dev_only

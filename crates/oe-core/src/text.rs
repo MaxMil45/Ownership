@@ -101,9 +101,133 @@ pub fn tag_end(s: &str) -> Option<usize> {
     None
 }
 
+/// The base letter of a Latin letter with an accent (`é` -> `e`), so that
+/// "Gutierrez" and "Gutiérrez" meet. Other characters are returned as given.
+pub fn fold_accent(c: char) -> char {
+    match c {
+        'á' | 'à' | 'â' | 'ä' | 'ã' | 'å' | 'Á' | 'À' | 'Â' | 'Ä' | 'Ã' | 'Å' => 'a',
+        'é' | 'è' | 'ê' | 'ë' | 'É' | 'È' | 'Ê' | 'Ë' => 'e',
+        'í' | 'ì' | 'î' | 'ï' | 'Í' | 'Ì' | 'Î' | 'Ï' => 'i',
+        'ó' | 'ò' | 'ô' | 'ö' | 'õ' | 'ø' | 'Ó' | 'Ò' | 'Ô' | 'Ö' | 'Õ' | 'Ø' => 'o',
+        'ú' | 'ù' | 'û' | 'ü' | 'Ú' | 'Ù' | 'Û' | 'Ü' => 'u',
+        'ñ' | 'Ñ' => 'n',
+        'ç' | 'Ç' => 'c',
+        other => other,
+    }
+}
+
+/// Words that say nothing about who someone is: suffixes, honorifics,
+/// degrees, and the legal forms of companies (ADR 0010, 2).
+const NOT_NAME_TOKENS: &[&str] = &[
+    "JR",
+    "SR",
+    "II",
+    "III",
+    "IV",
+    "MR",
+    "MRS",
+    "MS",
+    "DR",
+    "MD",
+    "PHD",
+    "CPA",
+    "ESQ",
+    "INC",
+    "LLC",
+    "LP",
+    "LLP",
+    "LTD",
+    "CORP",
+    "CORPORATION",
+    "CO",
+    "PLC",
+    "NV",
+    "SA",
+    "AG",
+    "THE",
+];
+
+/// A person's or company's name as a set of lookup tokens: upper case,
+/// accents folded, letters and digits only, split on spaces and other
+/// punctuation (dots and apostrophes join: `L.P.` = `LP`, `O'Brien` =
+/// `OBRIEN`), suffixes, honorifics and legal forms dropped, each token once,
+/// in the order first seen. "SMITH JOHN A" (SEC order) and "John A. Smith"
+/// give the same set. A name made only of dropped words keeps them, so
+/// "The Co" still has tokens.
+pub fn name_tokens(name: &str) -> Vec<String> {
+    fn flush(word: &mut String, all: &mut Vec<String>) {
+        if !word.is_empty() && !all.contains(word) {
+            all.push(std::mem::take(word));
+        }
+        word.clear();
+    }
+    let mut all: Vec<String> = Vec::new();
+    let mut word = String::new();
+    for c in name.chars() {
+        let c = fold_accent(c);
+        if c.is_alphanumeric() {
+            word.extend(c.to_uppercase());
+        } else if !matches!(c, '.' | '\'' | '\u{2019}') {
+            flush(&mut word, &mut all);
+        }
+    }
+    flush(&mut word, &mut all);
+    let kept: Vec<String> = all
+        .iter()
+        .filter(|t| !NOT_NAME_TOKENS.contains(&t.as_str()))
+        .cloned()
+        .collect();
+    if kept.is_empty() {
+        all
+    } else {
+        kept
+    }
+}
+
+/// Whether every token of `query` matches a token of `candidate`: equal, or
+/// a one-letter query token (an initial) that starts a candidate token.
+pub fn tokens_match(query: &[String], candidate: &[String]) -> bool {
+    !query.is_empty()
+        && query.iter().all(|q| {
+            candidate
+                .iter()
+                .any(|c| c == q || (q.chars().count() == 1 && c.starts_with(q.as_str())))
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn name_tokens_meet_across_orders_and_punctuation() {
+        let t = name_tokens;
+        assert_eq!(t("SMITH JOHN A"), ["SMITH", "JOHN", "A"]);
+        let mut a = t("John A. Smith, Jr.");
+        let mut b = t("SMITH JOHN A");
+        a.sort();
+        b.sort();
+        assert_eq!(a, b);
+        assert_eq!(t("O'Brien-Gutiérrez"), ["OBRIEN", "GUTIERREZ"]);
+        assert_eq!(t("Elliott Associates, L.P."), ["ELLIOTT", "ASSOCIATES"]);
+        assert_eq!(t("Dr. Mary Jones MD PhD"), ["MARY", "JONES"]);
+        assert_eq!(t("The Co"), ["THE", "CO"], "only dropped words: kept");
+        assert_eq!(t("Smith smith SMITH"), ["SMITH"]);
+        assert!(t("  ,. ").is_empty());
+    }
+
+    #[test]
+    fn query_tokens_match_whole_tokens_or_initials() {
+        let v = name_tokens;
+        assert!(tokens_match(&v("john smith"), &v("SMITH JOHN A")));
+        assert!(tokens_match(&v("J Smith"), &v("SMITH JOHN A")));
+        assert!(
+            !tokens_match(&v("Jo Smith"), &v("SMITH JOHN A")),
+            "only one letter is an initial"
+        );
+        assert!(!tokens_match(&v("john smithers"), &v("SMITH JOHN A")));
+        assert!(!tokens_match(&[], &v("SMITH JOHN")));
+    }
 
     #[test]
     fn flags() {

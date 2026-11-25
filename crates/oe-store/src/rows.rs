@@ -118,6 +118,17 @@ pub struct TransactionRow {
     pub plan_10b5_1: Option<bool>,
 }
 
+/// One reporting owner's name and relationship to the issuer, as filed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OwnerRole {
+    pub name: String,
+    pub is_director: bool,
+    pub is_officer: bool,
+    pub is_ten_percent_owner: bool,
+    pub is_other: bool,
+    pub officer_title: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Prepared {
     pub filing: FilingRow,
@@ -126,6 +137,13 @@ pub struct Prepared {
     pub owners: Vec<u64>,
     /// Amendments only: `dateOfOriginalSubmission`, `YYYY-MM-DD`.
     pub date_of_original_submission: Option<String>,
+    /// Every reporting owner as named in the filing, in the order of `owners`
+    /// (table `filing_owner_role`).
+    pub owner_roles: Vec<OwnerRole>,
+    /// The issuer's name and trading symbol as the filing gives them
+    /// (table `ownership_issuer`).
+    pub issuer_name: String,
+    pub ticker: Option<String>,
     /// All transaction rows. For an amendment they go to
     /// `amendment_transaction` (see module docs).
     pub transactions: Vec<TransactionRow>,
@@ -161,6 +179,41 @@ impl Prepared {
             .enumerate()
             .map(|(i, cik)| format!("{}\t{i}\t{cik}\n", copy_field(&self.filing.accession)))
             .collect()
+    }
+
+    /// `filing_owner_role` COPY lines, one per owner.
+    pub fn owner_role_copy_lines(&self) -> String {
+        let b = |v: bool| if v { "t" } else { "f" };
+        self.owners
+            .iter()
+            .zip(&self.owner_roles)
+            .enumerate()
+            .map(|(i, (cik, r))| {
+                format!(
+                    "{}	{i}	{cik}	{}	{}	{}	{}	{}	{}
+",
+                    copy_field(&self.filing.accession),
+                    copy_field(&r.name),
+                    b(r.is_director),
+                    b(r.is_officer),
+                    b(r.is_ten_percent_owner),
+                    b(r.is_other),
+                    opt_field(r.officer_title.as_deref()),
+                )
+            })
+            .collect()
+    }
+
+    /// The `ownership_issuer` COPY line.
+    pub fn issuer_copy_line(&self) -> String {
+        format!(
+            "{}	{}	{}	{}
+",
+            copy_field(&self.filing.accession),
+            self.issuer_cik,
+            copy_field(&self.issuer_name),
+            opt_field(self.ticker.as_deref())
+        )
     }
 
     /// The `ownership_filing` COPY line.
@@ -275,6 +328,32 @@ fn prepare_document(
         filing,
         issuer_cik: doc.issuer.cik.0,
         owners: doc.owners.iter().map(|o| o.cik.0).collect(),
+        owner_roles: doc
+            .owners
+            .iter()
+            .map(|o| OwnerRole {
+                name: o.name.trim().to_string(),
+                is_director: o.relationship.is_director,
+                is_officer: o.relationship.is_officer,
+                is_ten_percent_owner: o.relationship.is_ten_percent_owner,
+                is_other: o.relationship.is_other,
+                officer_title: o
+                    .relationship
+                    .officer_title
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|t| !t.is_empty())
+                    .map(str::to_string),
+            })
+            .collect(),
+        issuer_name: doc.issuer.name.trim().to_string(),
+        ticker: doc
+            .issuer
+            .ticker
+            .as_deref()
+            .map(str::trim)
+            .filter(|t| !t.is_empty() && !t.eq_ignore_ascii_case("none"))
+            .map(str::to_string),
         date_of_original_submission: doc.date_of_original_submission.map(|d| d.to_string()),
         transactions: transaction_rows(doc, accession),
     })

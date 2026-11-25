@@ -38,7 +38,14 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 
 ## How to run it
 
-See **[docs/how-to-run.md](docs/how-to-run.md)** for the full guide. The short version, once Rust is installed and `.env` holds your SEC contact line:
+**The app, in one command** (needs Docker Desktop, Rust and Node.js 20+):
+
+```powershell
+.\scripts\start.ps1           # database, API and web app; opens your browser, signed in
+.\scripts\start.ps1 -Update   # first catch up on every filing since the last run
+```
+
+See **[docs/how-to-run.md](docs/how-to-run.md)** for the full guide. To try one day from the command line, once Rust is installed and `.env` holds your SEC contact line:
 
 ```powershell
 .\scripts\run-day.ps1 -Date 2026-11-18

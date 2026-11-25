@@ -7,14 +7,22 @@ mod dashboard;
 #[cfg(feature = "db")]
 mod dbcmd;
 mod delays;
+#[cfg(feature = "db")]
+mod events_db;
 mod excerpt;
 #[cfg(feature = "net")]
 mod live;
 mod load;
 #[cfg(feature = "net")]
 mod officials;
+#[cfg(feature = "db")]
+mod officials_db;
+#[cfg(feature = "db")]
+mod people;
 #[cfg(feature = "net")]
 mod periodic;
+#[cfg(feature = "db")]
+mod serve;
 
 use oe_core::FilingMeta;
 use oe_events::{detect_cluster_buys, trades_from_document, ClusterBuyParams, InsiderTrade};
@@ -77,9 +85,39 @@ USAGE:
     oe house-ptr <year> [--to <year>] [--out <folder>] [--limit <n>]
         Download the House Clerk's yearly disclosure index and every periodic transaction
         report (PTR, members' trades) it lists, as PDFs, into data/officials/house/<year>/
-        with a .meta.txt each (ADR 0010). One request a second; saved reports are skipped.
+        with a .meta.txt each (ADR 0010). Two requests a second; saved reports are skipped.
         Use of these reports is limited by law: it refuses until you set OE_OFFICIALS_ACK=1.
         Never commit or publish them.
+
+    oe officials-load [--root data/officials]
+        Load members of Congress (names, terms, committees; from the congress-legislators
+        files in <root>/legislators) and every House PTR in <root>/house into PostgreSQL,
+        each report linked to the member who filed it or held back with the reason.
+
+    oe official <name>
+        A member of Congress by name: terms, committees, and the House periodic
+        transaction reports they filed, with links (DATABASE_URL).
+
+    oe people-index
+        Rebuild the name index from the ledger (Form 3/4/5 owners, 13D/G holders,
+        contested-proxy filers, members of Congress; ADR 0010). Run after loading new
+        filings. The index is derived, not part of the ledger.
+
+    oe lookup <name>
+        Who is this name in the ledger: candidates (never merged), each with its identifier,
+        roles at each company, latest open-market trades, 13D/G holdings, contest filings or
+        House reports, every fact with its SEC link (DATABASE_URL).
+
+    oe events-build [--form4 <dir>] [--form144 <dir>] [--sched13 <dir>] [--proxy <dir>] [--periodic <dir>]
+        Run every rule (their ledger versions, as `oe alerts --db`) over the downloaded
+        folders and store the events in PostgreSQL for `oe serve` (GET /v1/events). Replaces
+        the stored events; about 4 minutes on the full history.
+
+    oe serve [--port 8730] [--allow-origin http://localhost:<port>] [--new-token]
+        The ledger as a JSON API on this computer only (127.0.0.1), for the browser extension
+        and the local app: GET /v1/health, POST /v1/lookup {\"name\": ...}, GET /v1/status,
+        GET /v1/flow, GET /v1/events, GET /v1/events/counts. Every call but health needs the token printed at start (kept in
+        data/serve/token.txt). Web pages cannot use it; looked-up names are never logged.
 
     oe periodic-excerpt [<folder>] [--dry-run]
         Replace each saved full 10-Q/10-K report (default folder: data/periodic) with its
@@ -157,15 +195,20 @@ USAGE:
     oe db-migrate
         Create or update the PostgreSQL ledger tables (migrations/). Needs DATABASE_URL.
 
-    oe db-load <folder> [--batch <n>] [--dry-run]
+    oe db-load <folder> [--batch <n>] [--dry-run] [--changed-within <days>]
         Load downloaded filings (every .xml with its .meta.txt, e.g. data/form4) into
         PostgreSQL. Safe to repeat: filings already stored are left untouched.
+        --changed-within reads only files written in the last <days> days (for updates).
         --dry-run checks and counts everything without a database.
         Amendment (4/A, 5/A) filings are stored, but their transaction rows are
         held back until amendments can be linked to what they replace.
 
     oe db-status
         Counts what the ledger holds. Needs DATABASE_URL.
+
+    oe db-maintain
+        Refresh the database's statistics and visibility maps (VACUUM ANALYZE), so queries
+        stay fast after large loads. Safe at any time; scripts/update.ps1 runs it.
 
     oe fetch <url> <output-file>
         Download one EDGAR document politely.
@@ -240,8 +283,31 @@ fn main() -> ExitCode {
         Some("db-load") => dbcmd::load(&args[1..]),
         #[cfg(feature = "db")]
         Some("db-status") => dbcmd::status(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("db-maintain") => dbcmd::maintain(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("officials-load") => officials_db::officials_load(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("official") => officials_db::official(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("people-index") => people::people_index(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("lookup") => people::lookup(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("serve") => serve::serve(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("events-build") => events_db::events_build(&args[1..]),
         #[cfg(not(feature = "db"))]
-        Some("db-migrate") | Some("db-load") | Some("db-status") => {
+        Some("db-migrate")
+        | Some("db-load")
+        | Some("db-status")
+        | Some("db-maintain")
+        | Some("officials-load")
+        | Some("official")
+        | Some("people-index")
+        | Some("lookup")
+        | Some("serve")
+        | Some("events-build") => {
             Err("this build has no database support; rebuild with the default `db` feature".into())
         }
         Some("help") | Some("--help") | Some("-h") | None => {

@@ -16,6 +16,15 @@
 //! Using these reports is limited by law (5 U.S.C. 13107, formerly section
 //! 105(c) of the Ethics in Government Act): see [`USE_LIMITS`].
 
+pub mod legislators;
+pub mod link;
+
+pub use legislators::{
+    parse_committees, parse_legislators, parse_memberships, Chamber, Committee, Legislator,
+    Membership, Term,
+};
+pub use link::{link_report, Link};
+
 use oe_core::Date;
 
 pub const HOUSE_BASE: &str = "https://disclosures-clerk.house.gov/public_disc";

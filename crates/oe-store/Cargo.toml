@@ -13,6 +13,9 @@ oe-bulk.workspace = true
 oe-form144.workspace = true
 oe-sched13.workspace = true
 oe-item408.workspace = true
+oe-officials.workspace = true
+# Receipt URLs only (no network: the `net` feature stays off).
+oe-edgar.workspace = true
 postgres = "0.19"
 
 [dev-dependencies]

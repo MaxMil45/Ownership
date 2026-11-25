@@ -27,3 +27,14 @@ ADR 0001 keeps the core crates on the standard library. The live ledger needs a 
 - No TLS: use a local or trusted-network server. Add TLS when a remote database is needed.
 - Row counts and the 4/A rule are visible in `oe db-load --dry-run`, which needs no database.
 - Bulk history since 2015 is a download problem, not a loading one (see ROADMAP).
+
+## Tuning (2026-11-25)
+
+Measured with `docker/bench.sql` on the full ledger (4 GB, 2.6 million filings). Most tables showed no autovacuum or analyze since Docker Desktop had last stopped the server abruptly: an unclean stop resets the counters autovacuum goes by. Changes:
+
+- Server settings in `docker/compose.yaml` for a 16 GB laptop with an SSD: `shared_buffers` 1 GB (was 128 MB), `effective_cache_size` 4 GB, `work_mem` 64 MB, `maintenance_work_mem` 512 MB, `random_page_cost` 1.1, `effective_io_concurrency` 200, four parallel workers per query, `max_wal_size` 4 GB, `jit` off; `shm_size` 1 GB for parallel queries and `stop_grace_period` 60 s for a clean shutdown.
+- `oe db-maintain` (`VACUUM (ANALYZE)`), run by `scripts/update.ps1` after each load.
+- Migration `0009_lookup_indexes`: a partial index on `schedule13_person (name) WHERE cik IS NULL` (holder lookup 41 to 0.4 ms) and trigram indexes (`pg_trgm`, installed in `public`) on the event feed's headline and company name (word search 128 to 1.4 ms).
+- `status` counts joint filings as owners at position 1 instead of grouping every filing (4.1 s to 0.06 s).
+
+Left as they are: the event build's two whole-ledger scans (about 1.2 and 2.8 s; run only by `events-build`) and the daily flow (1.3 s; cached ten minutes and worked out when `oe serve` starts).

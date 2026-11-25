@@ -71,3 +71,40 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Check with Rust 1.88
         run: cargo +1.88 check --workspace --all-targets
+
+  # The local web app (web/): types, tests and a production build.
+  web:
+    name: web app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Types, tests and build
+        run: npm run build && npm test
+
+  # Known vulnerabilities in the Rust crates (RustSec) and the web app's npm
+  # packages. Fails the build when one is found.
+  audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: Rust crates
+        run: cargo audit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: npm packages
+        working-directory: web
+        run: npm audit --audit-level=moderate

@@ -118,20 +118,34 @@ Members of the House report their trades in periodic transaction reports (PTRs),
 
 **The law limits what you may do with these reports** (Ethics in Government Act, section 105(c)): no commercial use other than news media, no credit ratings, no fundraising. They stay on your machine: never commit, publish or share them. `oe` refuses to download until you set `$env:OE_OFFICIALS_ACK = "1"` yourself after reading the limits it prints.
 
-Locally (one request a second; 2008 to now is about 8,000 reports, a few hours):
+Locally (two requests a second; 2008 to now is about 9,000 requests, about 1 h 15 min):
 
 ```powershell
 $env:OE_OFFICIALS_ACK = "1"
 & $oe house-ptr 2008 --to 2026
 ```
 
-Or on GitHub's machines with the workflow *Download House PTRs* (`.github/workflows/officials-house.yml`). Because anyone signed in to GitHub can read a public repository's downloads and logs, the workflow **encrypts** the result with a password only you hold, and its logs show counts only. Once, in the repository's Settings, Secrets and variables, Actions: add the secret `OE_OFFICIALS_KEY` (a long password; keep a copy, without it the download cannot be opened) and, on the Variables tab, the variable `OE_OFFICIALS_ACK` with the value `1`. Then Actions, *Download House PTRs*, Run workflow (`test`: three 2025 reports; `full`: 2008 to this year). Download the `officials-house-encrypted` artifact and open it:
+Or on GitHub's machines with the workflow *Download House PTRs* (`.github/workflows/officials-house.yml`). Because anyone signed in to GitHub can read a public repository's downloads and logs, the workflow **encrypts** the result with a password only you hold, and its logs show counts only. Once, in the repository's Settings, Secrets and variables, Actions: add the secret `OE_OFFICIALS_KEY` (a long password; keep a copy, without it the download cannot be opened) and, on the Variables tab, the variable `OE_OFFICIALS_ACK` with the value `1`. Then Actions, *Download House PTRs*, Run workflow (`test`: three 2025 reports; `full`: 2008 to this year, about 1 h 15 min; `update`: last year and this year, about 10 minutes, to keep up afterwards). Download the `officials-house-encrypted` artifact and open it (an update unpacks over the same folder, adding the new reports):
 
 ```powershell
 .\scripts\import-officials-house.ps1 -From "$HOME\Downloads\officials-house-encrypted.zip"
 ```
 
 It asks for the password and unpacks the reports into `data\officials\house`.
+
+**Members and the database.** The members of Congress come from the public-domain [congress-legislators](https://github.com/unitedstates/congress-legislators) data set (about 16 MB; only names, terms and committees are used, never birthdays, addresses or donor ids):
+
+```powershell
+New-Item -ItemType Directory -Force data\officials\legislators | Out-Null
+foreach ($f in "legislators-current.json", "legislators-historical.json", "committees-current.json", "committee-membership-current.json") {
+    Invoke-WebRequest "https://unitedstates.github.io/congress-legislators/$f" -OutFile "data\officials\legislators\$f"
+}
+& $oe db-migrate
+& $oe officials-load        # members, committees, and every downloaded House report, each linked to its member
+& $oe official pelosi       # terms, committees and the reports filed, with links
+```
+
+`officials-load` links each report to the member who filed it by seat (state and district), surname and dates, and holds back with a reason any report it cannot place for certain (on the 2013 to 2026 reports: 8,461 of 8,465 linked to 396 members). Committee membership is the data set's current one, stored with the date of the load, so committee history builds up from the first load. The reports' contents are not read yet (ADR 0010: the text PDFs forbid text extraction).
 
 ## 4. The database
 
@@ -183,7 +197,27 @@ It copies the excerpts into `data\periodic`, adds the run's check log, loads the
 
 Run them one after another, never two at once: each `oe` keeps its own count of SEC requests. Measured here: about 3 h 40 min, 7 h, 2 h 30 min and 9 h 30 min, then 21 minutes to load about 205,000 filings (ADR 0009 has the details; structured data starts at these dates). If one stops (the laptop sleeps, the network drops), run it again from the last day it finished: saved filings are skipped. A day that keeps failing is listed at the end; run that day alone later.
 
-### Keeping it current
+### The web app, in one command
+
+```powershell
+.\scripts\start.ps1
+```
+
+starts Docker Desktop and the database if needed, builds `oe` and the web app when their sources changed (the first run installs the app's packages), applies any new migration, and runs `oe serve --open`: the app opens in your browser at <http://127.0.0.1:8730>, already signed in. Keep the window open while you use it; Ctrl+C stops it. `-Update` first runs `scripts\update.ps1` (every filing since the last run), `-NoBrowser` prints the link instead of opening it.
+
+The app has an overview (headline numbers, events per month and insider buying and selling, over one year, five years or everything), every event with filters and SEC links, a page per company (its insiders and their roles, latest trades, buying and selling per month, its events), and the name lookup. Names and companies link to each other.
+
+Signing in: `oe serve` prints a login link with a code made fresh for each run. Opening it stores the API token in an `HttpOnly`, `SameSite=Strict` cookie, which the page's scripts cannot read and other sites cannot send; the token never appears in a page. The cookie lasts 30 days and works across restarts (until `--new-token`); if the app says it is not signed in, open the latest link. To work on the app itself with live reloading, see `web/README.md`.
+
+### Keeping it current (one command)
+
+```powershell
+.\scripts\update.ps1
+```
+
+catches up from the last time it finished to yesterday (US Eastern): it downloads every Form 3/4/5, Form 144, Schedule 13D/G, contested-proxy filing and 10-Q/10-K since then, loads only the files just written (`db-load --changed-within`), and rebuilds the events and the name index. Run it whenever you like, after a day or after a month; there is nothing to schedule. It remembers the last day it finished in `data\update\last-day.txt` and moves it forward only when every download worked (rerun to retry failed days; saved filings are skipped). The first run starts 3 days before the newest filing in the database. `-ThroughToday` also fetches today (the SEC's index for a day appears in the evening), `-From 2026-11-10` starts from a given day. It refuses to run beside another download or `oe follow` (they share the SEC's request limit). It does not fetch the House reports (those need your own `OE_OFFICIALS_ACK`) or a new quarterly Form 3/4/5 data set (`& $oe bulk-insider` when one appears).
+
+The steps it takes, if you prefer to do them by hand:
 
 The quarterly data sets appear some weeks after each quarter ends. Fill the days since the last one from the daily index, then load them:
 
@@ -194,7 +228,59 @@ The quarterly data sets appear some weeks after each quarter ends. Fill the days
 
 (about 1,000 Forms 3/4/5 a day, downloaded 6 at a time within the SEC limit of 8 requests a second). From then on, `& $oe follow --db` loads each new Form 3/4/5 into the database as it arrives; add `--alert` for alerts too. When the next quarterly data set appears, `& $oe bulk-insider` adds it; filings already loaded from their XML are kept as they are.
 
+### Who is this name? (`oe lookup`)
+
+```powershell
+.\scripts\backfill-people.ps1      # once, after upgrading to migration 0007_people (about 30 minutes)
+& $oe lookup elon musk
+& $oe lookup elliott investment management
+```
+
+`oe lookup` answers what a name is in the ledger (ADR 0010): officer, director or 10% owner of which companies (with the title as filed and the dates), the latest open-market buys and sales, 13D/G holdings, contested-proxy filings, and for members of Congress their terms, committees and House reports, each fact with its SEC link. Every identifier is its own candidate (two people with the same name are listed apart, never merged); a single word with more than 10 candidates asks for a first name or initial. Word order, accents, punctuation, "Jr." and "Inc." do not matter.
+
+It reads a name index built from the ledger by `& $oe people-index` (about a minute on the full history). The index is derived, not part of the ledger: rebuild it after loading new filings. Form 3/4/5 filings loaded before migration `0007_people` have no names until their source is loaded again, which is what `scripts\backfill-people.ps1` does (from `data\bulk` and `data\form4`, no SEC requests; safe to stop and rerun, `-From 2020q1` resumes from a quarter). Not in the index yet: Form 144 sellers and the names 10-Q/10-K reports give for plan adoptions.
+
+### The local API (`oe serve`)
+
+```powershell
+& $oe serve
+```
+
+serves the ledger as JSON on this computer only (`http://127.0.0.1:8730/v1/`), for the browser extension and the local app. It prints a token (kept in `data\serve\token.txt`, the same every time; `--new-token` replaces it). Every call except `GET /v1/health` needs it as `Authorization: Bearer <token>`:
+
+| Call | Answer |
+| --- | --- |
+| `GET /v1/health` | `{"ok":true,...}`, no token needed |
+| `POST /v1/lookup` with `{"name": "elon musk"}` (`Content-Type: application/json`) | what `oe lookup` shows, as JSON: candidates with roles, trades, holdings, contest filings, House reports and every receipt (about 0.05 to 0.1 s) |
+| `GET /v1/status` | what `oe db-status` counts (kept 10 minutes; about 3 s the first time) |
+| `GET /v1/flow` | insider open-market buying and selling per day since 2006, as on the dashboard (kept 10 minutes; about 4 s the first time) |
+| `GET /v1/events` | the events the rules found, newest first, each as the alert JSON (headline, details, people, receipts, amount, percent). Filters, all optional: `since` and `until` (`YYYY-MM-DD`), `rule` (`insider.cluster_buy`, or one version: `insider.cluster_buy@1`), `ticker`, `cik` (the company's), `min_amount` (dollars), `q` (words in the headline or company name), `limit` (1 to 500, default 50), `offset`. The answer has `total` (all matches) and `built_at` |
+| `GET /v1/events/counts` | events per day and rule, for charts |
+| `GET /v1/company?cik=1318605` | one company: name and ticker as filed, its latest 30 insiders with their roles, its latest 20 open-market trades with receipts, and its buying and selling per day |
+| `GET /v1/companies?q=tes` | companies with events whose name starts with the text, or whose ticker is it (for a search box) |
+
+The events come from `& $oe events-build`, which runs every rule (their ledger versions, as `oe alerts --db`) over the downloaded folders and stores the result in the database, replacing what was there (about 4 minutes on the full history). Run it after downloading new filings. Events whose filings name no ticker (Form 144, 13D/G, proxy and 10-Q/10-K events) get the company's latest ticker from its Form 3/4/5 filings, so `ticker=TSLA` finds them too. Cluster buys are found over every open-market purchase in the database since 2015 (about 363,000 purchases; 8,800 with impossible transaction dates, such as the year 0024 or 2033, are left out and counted), with the routine-trader filter reading the database's trades from 2011, so events before 2018 had less than the full three years to look back on. A cluster whose dollar total passes $1 billion is kept without a total, because the prices were typed as totals in the filing ("1,400,000 shares at $1400"). `--form4 <folder>` builds them from those files instead, as `oe alerts` does.
+
+Try it from PowerShell:
+
+```powershell
+$t = (Get-Content data\serve\token.txt).Trim()
+Invoke-RestMethod http://127.0.0.1:8730/v1/lookup -Method Post -Headers @{Authorization = "Bearer $t"} -ContentType application/json -Body '{"name": "elon musk"}'
+```
+
+It refuses requests for any other host name and any web page's origin; browser extensions are allowed, and `--allow-origin http://localhost:5173` allows a local development server. Names are sent in the request body, never in a URL, and the window logs only the method, path, status and time. Ctrl+C stops it.
+
 After upgrading to migration `0002_amendments`, load your folders once more (for example `& $oe db-load data/form4`): filings loaded earlier only then get their co-owners and amendment details. Nothing already stored changes. `docker-compose -f docker/compose.yaml down` stops it and keeps the data.
+
+### Keeping the database fast
+
+`docker/compose.yaml` gives PostgreSQL memory for a 4 GB ledger (1 GB shared buffers, 64 MB per sort, SSD costs, parallel scans, no JIT) and a minute to shut down cleanly; run `docker-compose -f docker/compose.yaml up -d` once after upgrading to apply it (the data stays). `& $oe db-maintain` refreshes the statistics the query planner uses (`VACUUM (ANALYZE)`, about 10 seconds); `scripts\update.ps1` runs it after every load. `docker\bench.sql` times the queries the app uses:
+
+```powershell
+Get-Content docker\bench.sql | docker exec -i oe-postgres psql -U oe -d ownership
+```
+
+Measured 2026-11-25 on the full ledger, before and after: lookups 35-43 ms to 3-4 ms, a 13D/G holder by name 41 to 0.4 ms, event word search 128 to 1.4 ms, the joint-filing count in `/v1/status` 4.1 s to 0.06 s, the daily flow 2.2 to 1.3 s.
 
 ## 5. Checks
 

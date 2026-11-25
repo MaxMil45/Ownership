@@ -33,7 +33,21 @@ The first public version: insider and activist events from SEC filings, each wit
 - `oe alert-delays` reports how long after SEC acceptance filings were saved and alerts delivered (every delivery is logged in `data/alerts/delivered.tsv`); `scripts/measure-trading-day.ps1` measures a whole trading day. `oe follow --alert` reads only the last 14 days of filings in each pass, and `--until` stops it at a time.
 
 ### Public officials (first step, ADR 0010)
-- Crate `oe-officials`: reads the House Clerk's yearly disclosure index. `oe house-ptr` downloads House members' periodic transaction reports (PDFs, not yet read), one request a second, only after the user acknowledges the legal limits on their use (`OE_OFFICIALS_ACK=1`). The GitHub workflow `officials-house.yml` does the same and encrypts its result; `scripts/import-officials-house.ps1` opens it.
+- Crate `oe-officials`: reads the House Clerk's yearly disclosure index. `oe house-ptr` downloads House members' periodic transaction reports (PDFs, not yet read), two requests a second, only after the user acknowledges the legal limits on their use (`OE_OFFICIALS_ACK=1`). The GitHub workflow `officials-house.yml` does the same and encrypts its result; `scripts/import-officials-house.ps1` opens it.
+- Members of Congress (names, terms, committees, from the public-domain congress-legislators data set) and every House report in the ledger (migration `0006_officials`), each report linked to its member or held back with the reason: `oe officials-load`, `oe official <name>`.
+
+### Name lookup (ADR 0010)
+- Forms 3/4/5 now keep each reporting owner's name, director/officer/10%-owner flags and officer title, and the issuer's name and ticker as filed (migration `0007_people`); `scripts/backfill-people.ps1` fills them for the history already loaded.
+- `oe people-index` builds a name index from the ledger (insiders, 13D/G holders, contested-proxy filers, members of Congress); `oe lookup <name>` lists the candidates, never merged, each with roles, latest open-market trades, holdings, contest filings or House reports and their links.
+- `oe serve`: the ledger as a JSON API on 127.0.0.1 only (`/v1/health`, `/v1/lookup`, `/v1/status`, `/v1/flow`), with a token, Host and Origin checks, and no logging of looked-up names; no new dependency.
+- One command: `scripts/start.ps1` starts the database, builds `oe` and the web app when needed, and opens the app signed in. `oe serve` hosts the built app (`--app`, `--open`), signing the browser in with a per-run login link and an `HttpOnly`, `SameSite=Strict` cookie; pages get a strict Content-Security-Policy.
+- Web app: a page per company (insiders, roles, trades, buying and selling, events; `GET /v1/company`, `/v1/companies`), names and companies linked to each other, a 1-year / 5-year / all range on the charts, and connection status in the header.
+- Database: tuned server settings, `oe db-maintain` (run by `update.ps1`), migration `0009_lookup_indexes`, a faster joint-filing count (`docker/bench.sql` and ADR 0004 have the numbers).
+- Security: the web app's test runner updated to Vitest 4.1.12, fixing three advisories in Vitest 3 and tinypool (one moderate, two critical; development only). CI now audits the Rust crates and the npm packages.
+- `web/`: a local web app (TypeScript, React, Vite) over `oe serve`: overview charts, events with filters and receipts, name lookup. CI builds and tests it.
+- `scripts/update.ps1`: one command that catches up from the last finished day to yesterday (downloads, loads only new files with `db-load --changed-within <days>`, rebuilds events and the name index); remembers its place in `data/update/last-day.txt`.
+- `oe events-build` finds cluster buys over the whole ledger since 2015 (13,395 events, 126 since October), not only the Form 4 files on disk.
+- `oe events-build` stores every rule's events in the database (migration `0008_event_feed`, rebuilt whole each time); `oe serve` lists them at `/v1/events` with date, rule, ticker, company, amount and text filters, and per-day counts at `/v1/events/counts`.
 
 ### Known limits
 - No email delivery yet; not yet tried with a real Discord channel.

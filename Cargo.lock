@@ -571,6 +571,7 @@ name = "oe-officials"
 version = "0.1.0-dev"
 dependencies = [
  "oe-core",
+ "oe-edgar",
 ]
 
 [[package]]
@@ -591,6 +592,7 @@ dependencies = [
  "oe-form144",
  "oe-form4",
  "oe-item408",
+ "oe-officials",
  "oe-sched13",
  "postgres",
 ]

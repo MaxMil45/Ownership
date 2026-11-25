@@ -36,6 +36,21 @@ pub fn migrate(_args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+pub fn maintain(args: &[String]) -> Result<(), String> {
+    if let Some(a) = args.first() {
+        return Err(format!("unexpected argument {a:?}"));
+    }
+    let mut client = connect()?;
+    let started = std::time::Instant::now();
+    let r = oe_store::maintain(&mut client).map_err(|e| e.to_string())?;
+    println!(
+        "vacuumed and analyzed every table in {:.0} s; database size {}",
+        started.elapsed().as_secs_f64(),
+        r.database_size
+    );
+    Ok(())
+}
+
 pub fn status(_args: &[String]) -> Result<(), String> {
     let mut client = connect()?;
     let s = oe_store::status(&mut client).map_err(|e| e.to_string())?;
@@ -73,6 +88,8 @@ pub struct LoadArgs {
     pub folder: PathBuf,
     pub batch: usize,
     pub dry_run: bool,
+    /// Only files written to disk in the last this many days.
+    pub changed_within_days: Option<u64>,
 }
 
 pub fn parse_load_args(args: &[String]) -> Result<LoadArgs, String> {
@@ -81,12 +98,17 @@ pub fn parse_load_args(args: &[String]) -> Result<LoadArgs, String> {
         folder: PathBuf::new(),
         batch: DEFAULT_BATCH,
         dry_run: false,
+        changed_within_days: None,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--batch" => parsed.batch = super::args::positive(&mut it, "--batch")?,
             "--dry-run" => parsed.dry_run = true,
+            "--changed-within" => {
+                parsed.changed_within_days =
+                    Some(super::args::positive::<usize>(&mut it, "--changed-within")? as u64)
+            }
             other if folder.is_none() => folder = Some(PathBuf::from(other)),
             other => return Err(format!("unexpected argument {other:?}")),
         }
@@ -308,7 +330,17 @@ pub fn load_paths(paths: &[PathBuf]) -> Result<BothReports, String> {
 
 pub fn load(args: &[String]) -> Result<(), String> {
     let args = parse_load_args(args)?;
-    let files = loadable_files(&args.folder)?;
+    let mut files = loadable_files(&args.folder)?;
+    if let Some(days) = args.changed_within_days {
+        let cutoff = std::time::SystemTime::now()
+            .checked_sub(std::time::Duration::from_secs(days * 86_400))
+            .ok_or("--changed-within is too large")?;
+        files.retain(|f| {
+            std::fs::metadata(f)
+                .and_then(|m| m.modified())
+                .is_ok_and(|t| t >= cutoff)
+        });
+    }
     println!("{} file(s) under {}", files.len(), args.folder.display());
 
     let mut items = Vec::with_capacity(files.len());
@@ -406,6 +438,8 @@ mod tests {
             "--dry-run".into(),
             "--batch".into(),
             "50".into(),
+            "--changed-within".into(),
+            "3".into(),
         ])
         .unwrap();
         assert_eq!(
@@ -413,7 +447,8 @@ mod tests {
             LoadArgs {
                 folder: PathBuf::from("data/form4"),
                 batch: 50,
-                dry_run: true
+                dry_run: true,
+                changed_within_days: Some(3)
             }
         );
         assert!(parse_load_args(&[]).is_err());

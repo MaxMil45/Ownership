@@ -67,7 +67,11 @@ fn migrate_is_idempotent() {
             "0002_amendments",
             "0003_bulk",
             "0004_link_index",
-            "0005_other_forms"
+            "0005_other_forms",
+            "0006_officials",
+            "0007_people",
+            "0008_event_feed",
+            "0009_lookup_indexes"
         ]
     );
     assert!(
@@ -855,5 +859,580 @@ fn other_forms_load_once_and_keep_no_addresses() {
         ),
         (17, 14, 12)
     );
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn officials_and_house_reports_load_once_link_and_are_found_by_name() {
+    let mut s = Scratch::new("officials");
+    migrate(&mut s.client).unwrap();
+    // Invented people (no real members or reports in the repository).
+    let (people, skipped) = oe_officials::parse_legislators(
+        r#"[{"id": {"bioguide": "Z000001", "fec": ["H0ZZ"]},
+             "name": {"first": "Alex", "last": "Gutiérrez", "official_full": "Alex Gutiérrez"},
+             "bio": {"birthday": "1960-01-01"},
+             "terms": [{"type": "rep", "start": "2019-01-03", "end": "2025-01-03", "state": "ZZ", "district": 4, "party": "Independent",
+                        "phone": "000"}]},
+            {"id": {"bioguide": "Z000002"}, "name": {"first": "Sam", "last": "Tester"},
+             "terms": [{"type": "sen", "start": "2021-01-03", "end": "2027-01-03", "state": "ZZ"}]}]"#,
+    )
+    .unwrap();
+    assert_eq!(skipped, 0);
+    let committees = oe_officials::parse_committees(
+        r#"[{"type": "house", "name": "Committee on Examples", "thomas_id": "HSZZ", "subcommittees": []}]"#,
+    )
+    .unwrap();
+    let memberships = oe_officials::parse_memberships(
+        r#"{"HSZZ": [{"bioguide": "Z000001", "rank": 1, "title": "Chair", "party": "majority"},
+                      {"bioguide": "Z999999", "rank": 2, "party": "minority"}]}"#,
+    )
+    .unwrap();
+    let m = oe_store::load_members(
+        &mut s.client,
+        &people,
+        &committees,
+        &memberships,
+        "2026-11-24",
+    )
+    .unwrap();
+    assert_eq!((m.officials_new, m.terms_new, m.committees_new), (2, 2, 1));
+    assert_eq!((m.memberships_new, m.memberships_unknown), (1, 1));
+    let again = oe_store::load_members(
+        &mut s.client,
+        &people,
+        &committees,
+        &memberships,
+        "2026-11-24",
+    )
+    .unwrap();
+    assert_eq!(
+        (again.officials_new, again.terms_new, again.memberships_new),
+        (0, 0, 0)
+    );
+
+    let report =
+        |doc: &str, filed: &str, link: Result<(String, String), String>| oe_store::HouseReportRow {
+            doc_id: doc.into(),
+            year: 2024,
+            filing_type: "P".into(),
+            prefix: "Hon.".into(),
+            last: "Gutierrez".into(),
+            first: "Alex".into(),
+            suffix: String::new(),
+            state_district: "ZZ04".into(),
+            filed_on: Some(filed.into()),
+            scanned: doc.len() < 8,
+            source_url: format!("https://example.invalid/{doc}.pdf"),
+            first_seen_at: Some("2026-11-24T10:30:00Z".into()),
+            pdf_sha256: Some("ab".repeat(32)),
+            link,
+        };
+    let rows = [
+        report(
+            "20000001",
+            "2024-03-01",
+            Ok(("Z000001".into(), "seat and surname".into())),
+        ),
+        report(
+            "8000002",
+            "2024-06-01",
+            Ok(("Z000001".into(), "seat and surname".into())),
+        ),
+        report(
+            "20000003",
+            "2024-07-01",
+            Err("no House member named Nobody served ZZ09".into()),
+        ),
+    ];
+    let w = oe_store::load_house_reports(&mut s.client, &rows).unwrap();
+    assert_eq!((w.reports_new, w.links_new, w.held_back_new), (3, 2, 1));
+    let w = oe_store::load_house_reports(&mut s.client, &rows).unwrap();
+    assert_eq!((w.reports_new, w.links_new, w.held_back_new), (0, 0, 0));
+
+    // Found without the accent, newest report first, with the committee.
+    let found = oe_store::find_officials(&mut s.client, "gutierrez", 10).unwrap();
+    assert_eq!(found.len(), 1);
+    let o = &found[0];
+    assert_eq!(
+        (o.bioguide.as_str(), o.reports, o.scanned_reports),
+        ("Z000001", 2, 1)
+    );
+    assert_eq!(
+        (o.first_filed.as_deref(), o.last_filed.as_deref()),
+        (Some("2024-03-01"), Some("2024-06-01"))
+    );
+    assert_eq!(o.recent[0].1, "8000002");
+    assert_eq!(o.terms, ["rep ZZ-04 2019-01-03..2025-01-03 Independent"]);
+    assert_eq!(
+        o.committees,
+        [(
+            "Committee on Examples".to_string(),
+            Some("Chair".to_string()),
+            "2026-11-24".to_string()
+        )]
+    );
+    assert!(oe_store::find_officials(&mut s.client, "nobody", 10)
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        oe_store::find_officials(&mut s.client, "sam", 10).unwrap()[0].reports,
+        0
+    );
+
+    // Append-only, and nothing personal beyond names and terms.
+    assert!(s
+        .client
+        .batch_execute("UPDATE official SET last_name = 'x'")
+        .is_err());
+    assert!(s
+        .client
+        .batch_execute("DELETE FROM house_report_link")
+        .is_err());
+    let bad: i64 = s
+        .client
+        .query_one(
+            "SELECT count(*) FROM information_schema.columns
+             WHERE table_schema = current_schema()
+               AND table_name IN ('official', 'official_term', 'committee', 'committee_membership', 'house_report', 'house_report_link')
+               AND (column_name ~ '(birth|gender|address|phone|fec|opensecrets|cusip)')",
+            &[],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(bad, 0);
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn names_and_roles_are_stored_and_the_name_index_finds_them() {
+    let mut s = Scratch::new("people");
+    migrate(&mut s.client).unwrap();
+    let batch = real_fixtures();
+    load_batch(&mut s.client, &batch).unwrap();
+    let count = |c: &mut Client, sql: &str| -> i64 { c.query_one(sql, &[]).unwrap().get(0) };
+    let owners = count(&mut s.client, "SELECT count(*) FROM filing_owner");
+    assert_eq!(
+        count(&mut s.client, "SELECT count(*) FROM filing_owner_role"),
+        owners,
+        "one role row per owner row"
+    );
+    assert_eq!(
+        count(&mut s.client, "SELECT count(*) FROM ownership_issuer"),
+        25
+    );
+    assert_eq!(
+        count(
+            &mut s.client,
+            "SELECT count(*) FROM filing_owner_role r JOIN filing_owner o USING (accession, position)
+             WHERE r.owner_cik <> o.owner_cik"
+        ),
+        0
+    );
+    // The joint filing keeps both owners' names and relationships.
+    let joint = s
+        .client
+        .query(
+            "SELECT owner_cik, owner_name, is_ten_percent_owner FROM filing_owner_role
+             WHERE accession = '0001193125-26-445930' ORDER BY position",
+            &[],
+        )
+        .unwrap();
+    assert_eq!(joint.len(), 2);
+    assert!(joint.iter().all(|r| !r.get::<_, &str>(1).is_empty()));
+
+    // A repeat load writes nothing; the tables are append-only.
+    load_batch(&mut s.client, &batch).unwrap();
+    assert_eq!(
+        count(&mut s.client, "SELECT count(*) FROM filing_owner_role"),
+        owners
+    );
+    assert!(s
+        .client
+        .batch_execute("UPDATE filing_owner_role SET owner_name = 'x'")
+        .is_err());
+    assert!(s
+        .client
+        .batch_execute("DELETE FROM ownership_issuer")
+        .is_err());
+    // No address in the new tables (ADR 0009, 0010).
+    assert_eq!(
+        count(
+            &mut s.client,
+            "SELECT count(*) FROM information_schema.columns
+             WHERE table_schema = current_schema()
+               AND table_name IN ('filing_owner_role', 'ownership_issuer', 'people_candidate', 'people_name', 'people_token')
+               AND column_name ~ '(street|city|zip|address|state)'"
+        ),
+        0
+    );
+
+    // An invented member of Congress, to be found next to the insiders.
+    let (people, _) = oe_officials::parse_legislators(
+        r#"[{"id": {"bioguide": "Z000001"},
+             "name": {"first": "Alex", "last": "Gutiérrez", "official_full": "Alex Gutiérrez"},
+             "terms": [{"type": "rep", "start": "2019-01-03", "end": "2025-01-03", "state": "ZZ", "district": 4}]}]"#,
+    )
+    .unwrap();
+    oe_store::load_members(&mut s.client, &people, &[], &[], "2026-11-24").unwrap();
+
+    let first = oe_store::build_people_index(&mut s.client).unwrap();
+    let again = oe_store::build_people_index(&mut s.client).unwrap();
+    assert_eq!(first, again, "a rebuild gives the same index");
+    assert_eq!(first.officials, 1);
+    let distinct_owners = count(
+        &mut s.client,
+        "SELECT count(DISTINCT owner_cik) FROM filing_owner_role",
+    );
+    assert!(first.candidates as i64 > distinct_owners);
+
+    // Each joint owner is found by the name it filed under, in page order.
+    for row in &joint {
+        let cik: i64 = row.get(0);
+        let name: &str = row.get(1);
+        let mut words = oe_core::text::name_tokens(name);
+        words.reverse();
+        let query = words.join(" ");
+        let oe_store::Lookup::Found(cards) = oe_store::lookup(&mut s.client, &query, 10).unwrap()
+        else {
+            panic!("{query:?} should find candidates");
+        };
+        let card = cards
+            .iter()
+            .find(|c| c.key == format!("cik:{cik}"))
+            .unwrap_or_else(|| panic!("{query:?} should find cik:{cik}"));
+        assert!(card.exact);
+        assert!(card.kinds.contains(&"insider".to_string()));
+        assert!(!card.roles.is_empty());
+        assert!(card.roles.iter().all(|r| !r.issuer_name.is_empty()));
+        for t in &card.trades {
+            assert!(t.code == "P" || t.code == "S");
+            assert!(t
+                .receipt
+                .url
+                .starts_with("https://www.sec.gov/Archives/edgar/data/"));
+        }
+    }
+
+    // The member, without the accent; initials alone are not a name.
+    let oe_store::Lookup::Found(cards) =
+        oe_store::lookup(&mut s.client, "alex gutierrez", 10).unwrap()
+    else {
+        panic!("the member should be found");
+    };
+    assert_eq!(cards.len(), 1);
+    assert_eq!(cards[0].key, "bioguide:Z000001");
+    assert_eq!(
+        cards[0].official.as_ref().map(|o| o.name.as_str()),
+        Some("Alex Gutiérrez")
+    );
+    assert_eq!(
+        oe_store::lookup(&mut s.client, "A. G.", 10).unwrap(),
+        oe_store::Lookup::NeedsAName
+    );
+    assert_eq!(
+        oe_store::lookup(&mut s.client, "nobody zzzz", 10).unwrap(),
+        oe_store::Lookup::Found(Vec::new())
+    );
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn the_event_feed_is_replaced_whole_and_filtered() {
+    let mut s = Scratch::new("events");
+    migrate(&mut s.client).unwrap();
+    // Invented events.
+    let ev = |key: &str,
+              rule: &str,
+              day: &str,
+              ticker: Option<&str>,
+              amount: Option<f64>,
+              headline: &str| {
+        oe_store::EventRow {
+            key: key.into(),
+            rule_id: rule.into(),
+            known_on: Some(day.into()),
+            issuer_cik: Some(9_999_901),
+            issuer_name: Some("Example 100% Holdings".into()),
+            ticker: ticker.map(str::to_string),
+            headline: headline.into(),
+            amount_usd: amount,
+            percent: None,
+            body: format!("{{\"key\":\"{key}\"}}"),
+        }
+    };
+    let rows = vec![
+        ev(
+            "a",
+            "insider.cluster_buy@1",
+            "2026-11-02",
+            Some("EXMP"),
+            Some(2e6),
+            "3 insiders bought EXMP",
+        ),
+        ev(
+            "b",
+            "insider.planned_sale@2",
+            "2026-11-03",
+            Some("exmp"),
+            Some(5e5),
+            "planned sale of EXMP",
+        ),
+        ev(
+            "c",
+            "activist.new_13d@1",
+            "2026-10-30",
+            None,
+            None,
+            "New 13D by Zeta_Fund",
+        ),
+        ev(
+            "a",
+            "insider.cluster_buy@1",
+            "2026-11-02",
+            None,
+            None,
+            "duplicate key, dropped",
+        ),
+    ];
+    assert_eq!(
+        oe_store::replace_event_feed(&mut s.client, &rows).unwrap(),
+        3
+    );
+    assert_eq!(
+        oe_store::replace_event_feed(&mut s.client, &rows[..2]).unwrap(),
+        2,
+        "a rebuild replaces the feed"
+    );
+    oe_store::replace_event_feed(&mut s.client, &rows).unwrap();
+
+    let keys = |c: &mut Client, f: oe_store::EventFilter| -> (i64, Vec<String>) {
+        let page = oe_store::query_events(c, &f).unwrap();
+        assert!(page.built_at.is_some());
+        (page.total, page.events)
+    };
+    let all = oe_store::EventFilter {
+        limit: 50,
+        ..Default::default()
+    };
+    assert_eq!(
+        keys(&mut s.client, all.clone()),
+        (
+            3,
+            vec![
+                r#"{"key":"b"}"#.to_string(),
+                r#"{"key":"a"}"#.into(),
+                r#"{"key":"c"}"#.into()
+            ]
+        ),
+        "newest first"
+    );
+    let f = |g: fn(&mut oe_store::EventFilter)| {
+        let mut x = all.clone();
+        g(&mut x);
+        x
+    };
+    assert_eq!(
+        keys(
+            &mut s.client,
+            f(|x| x.rule = Some("insider.cluster_buy".into()))
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        keys(
+            &mut s.client,
+            f(|x| x.rule = Some("insider.cluster_buy@2".into()))
+        )
+        .0,
+        0
+    );
+    assert_eq!(
+        keys(&mut s.client, f(|x| x.ticker = Some("Exmp".into()))).0,
+        2
+    );
+    assert_eq!(keys(&mut s.client, f(|x| x.min_amount = Some(1e6))).0, 1);
+    assert_eq!(
+        keys(&mut s.client, f(|x| x.since = Some("2026-11-01".into()))).0,
+        2
+    );
+    assert_eq!(
+        keys(&mut s.client, f(|x| x.until = Some("2026-10-31".into()))).0,
+        1
+    );
+    assert_eq!(keys(&mut s.client, f(|x| x.issuer_cik = Some(1))).0, 0);
+    // Words in the headline or the company name; % and _ are plain letters.
+    assert_eq!(
+        keys(&mut s.client, f(|x| x.text = Some("zeta_fund 13d".into()))).0,
+        1
+    );
+    assert_eq!(
+        keys(&mut s.client, f(|x| x.text = Some("zeta%fund".into()))).0,
+        0
+    );
+    assert_eq!(
+        keys(&mut s.client, f(|x| x.text = Some("100% planned".into()))).0,
+        1
+    );
+    let page = f(|x| {
+        x.limit = 1;
+        x.offset = 1
+    });
+    assert_eq!(
+        keys(&mut s.client, page),
+        (3, vec![r#"{"key":"a"}"#.to_string()])
+    );
+
+    let counts = oe_store::event_counts(&mut s.client).unwrap();
+    assert_eq!(counts.len(), 3);
+    assert_eq!(
+        counts[0],
+        (
+            "2026-10-30".to_string(),
+            "activist.new_13d@1".to_string(),
+            1
+        )
+    );
+
+    // Tickers for events whose filings name none: the issuer's latest Form 3/4/5.
+    load_batch(&mut s.client, &real_fixtures()).unwrap();
+    let tickers = oe_store::latest_tickers(&mut s.client).unwrap();
+    assert!(!tickers.is_empty());
+    assert!(tickers
+        .values()
+        .all(|t| !t.is_empty() && t.to_uppercase() == *t));
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn ledger_purchases_come_with_names_and_leave_out_impossible_dates() {
+    let mut s = Scratch::new("purchases");
+    migrate(&mut s.client).unwrap();
+    load_batch(&mut s.client, &real_fixtures()).unwrap();
+    let all_p: i64 = s
+        .client
+        .query_one(
+            "SELECT count(*) FROM insider_transaction_as_of(now())
+             WHERE NOT is_derivative AND code = 'P' AND acquired_disposed IS DISTINCT FROM 'D'",
+            &[],
+        )
+        .unwrap()
+        .get(0);
+    let (items, left_out) = oe_store::ledger_purchases(&mut s.client).unwrap();
+    assert_eq!(items.len() as i64 + left_out.implausible_dates, all_p);
+    assert!(
+        !items.is_empty(),
+        "the real fixtures hold open-market purchases"
+    );
+    for p in &items {
+        assert!(
+            p.date.as_str() >= "2015-01-01" && p.date <= p.known_on,
+            "{p:?}"
+        );
+        assert!(!p.accession.is_empty());
+        assert!(!p.owner_name.is_empty(), "names are stored on load: {p:?}");
+    }
+    // A purchase dated years after its filing is a typo as filed: left out.
+    s.client
+        .batch_execute(
+            "ALTER TABLE insider_transaction DISABLE TRIGGER USER;
+             UPDATE insider_transaction SET transaction_date = '2033-01-01'
+              WHERE id = (SELECT id FROM insider_transaction
+                          WHERE NOT is_derivative AND code = 'P' LIMIT 1);
+             ALTER TABLE insider_transaction ENABLE TRIGGER USER;",
+        )
+        .unwrap();
+    let (after, left_after) = oe_store::ledger_purchases(&mut s.client).unwrap();
+    assert_eq!(after.len(), items.len() - 1);
+    assert_eq!(left_after.implausible_dates, left_out.implausible_dates + 1);
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn a_company_shows_its_insiders_trades_and_flow() {
+    let mut s = Scratch::new("company");
+    migrate(&mut s.client).unwrap();
+    load_batch(&mut s.client, &real_fixtures()).unwrap();
+    // The company with the most fixture filings.
+    let cik: i64 = s
+        .client
+        .query_one(
+            "SELECT issuer_cik FROM ownership_issuer GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 1",
+            &[],
+        )
+        .unwrap()
+        .get(0);
+    let c = oe_store::company(&mut s.client, cik)
+        .unwrap()
+        .expect("in the fixtures");
+    assert_eq!(c.cik, cik);
+    assert!(!c.name.is_empty());
+    assert!(c.filings >= 1 && c.first_on <= c.last_on);
+    assert!(!c.insiders.is_empty());
+    assert!(c
+        .insiders
+        .iter()
+        .all(|i| !i.name.is_empty() && i.first_on <= i.last_on));
+    for t in &c.trades {
+        assert!(t.code == "P" || t.code == "S");
+        assert!(t
+            .receipt
+            .url
+            .starts_with("https://www.sec.gov/Archives/edgar/data/"));
+    }
+    assert!(
+        c.flow.windows(2).all(|w| w[0].0 < w[1].0),
+        "one row per day, in order"
+    );
+    assert!(c.flow.iter().all(|d| d.1 >= 0.0 && d.3 >= 0.0));
+    assert_eq!(oe_store::company(&mut s.client, 1).unwrap(), None);
+
+    // The search box reads the event feed.
+    oe_store::replace_event_feed(
+        &mut s.client,
+        &[oe_store::EventRow {
+            key: "k".into(),
+            rule_id: "activist.new_13d@1".into(),
+            known_on: Some("2026-11-02".into()),
+            issuer_cik: Some(9_999_901),
+            issuer_name: Some("Example_Widgets Corp".into()),
+            ticker: Some("EXW".into()),
+            headline: "New 13D".into(),
+            amount_usd: None,
+            percent: None,
+            body: "{}".into(),
+        }],
+    )
+    .unwrap();
+    let found = oe_store::find_companies(&mut s.client, "example_w", 10).unwrap();
+    assert_eq!(
+        found,
+        vec![(
+            9_999_901,
+            "Example_Widgets Corp".to_string(),
+            Some("EXW".to_string())
+        )]
+    );
+    assert_eq!(
+        oe_store::find_companies(&mut s.client, "exw", 10)
+            .unwrap()
+            .len(),
+        1,
+        "by ticker"
+    );
+    assert!(
+        oe_store::find_companies(&mut s.client, "example%", 10)
+            .unwrap()
+            .is_empty(),
+        "% is a letter"
+    );
+    assert!(oe_store::find_companies(&mut s.client, " ", 10)
+        .unwrap()
+        .is_empty());
     s.finish();
 }

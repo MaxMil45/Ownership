@@ -270,8 +270,14 @@ fn ledger_history(
     let mut client = oe_store::connect(&url).map_err(|e| e.to_string())?;
     let rows = oe_store::trade_history(&mut client, &issuers, &since.to_string())
         .map_err(|e| e.to_string())?;
-    Ok(rows
-        .into_iter()
+    Ok(history_trades(rows))
+}
+
+/// The ledger's earlier trades as history-only `InsiderTrade`s (for the
+/// routine-trader filter).
+#[cfg(feature = "db")]
+pub(crate) fn history_trades(rows: Vec<oe_store::HistoryTrade>) -> Vec<oe_events::InsiderTrade> {
+    rows.into_iter()
         .filter_map(|r| {
             Some(oe_events::InsiderTrade {
                 issuer: oe_core::Cik(r.issuer_cik),
@@ -294,7 +300,7 @@ fn ledger_history(
                 accession: None,
             })
         })
-        .collect())
+        .collect()
 }
 
 /// The ledger's Schedule 13Gs for the issuers of these original 13Ds.

@@ -7,7 +7,7 @@
 //! `<year>/<year>FD.txt` (the index as downloaded), `<year>/<DocID>.pdf` and
 //! `<year>/<DocID>.meta.txt` (who, when filed, where from, when first seen,
 //! SHA-256). A PDF counts as saved once its `.meta.txt` exists, so a rerun
-//! fetches only what is missing. One request a second, a plain User-Agent.
+//! fetches only what is missing. Two requests a second, a plain User-Agent.
 //!
 //! Refuses to run until `OE_OFFICIALS_ACK=1` is set by the user: the reports
 //! may not be used commercially and are never committed or published
@@ -19,8 +19,11 @@ use oe_officials::{index_txt_name, index_zip_url, parse_house_index, HouseIndexR
 use std::path::{Path, PathBuf};
 
 const DEFAULT_OUT: &str = "data/officials/house";
-/// The House Clerk is not the SEC: a gentler pace of its own.
-const REQUESTS_PER_SECOND: u32 = 1;
+/// The House Clerk is not the SEC and publishes no limit: a gentle pace of
+/// its own, well under the SEC's 8. At 2 a second the full history (2008 to
+/// 2026, about 9,000 requests) takes about 1 h 15 min; at 1 it took 2 h 23 min
+/// on GitHub (2026-11-24).
+const REQUESTS_PER_SECOND: u32 = 2;
 
 #[derive(Debug, PartialEq)]
 pub struct HousePtrArgs {

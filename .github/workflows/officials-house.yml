@@ -19,9 +19,9 @@ on:
   workflow_dispatch:
     inputs:
       range:
-        description: "test = three 2025 reports (a few minutes), full = 2008 to this year (about 3 hours)"
+        description: "test = three 2025 reports (a few minutes); update = last year and this year (about 10 minutes); full = 2008 to this year (about 1 h 15 min)"
         type: choice
-        options: [test, full]
+        options: [test, update, full]
         default: test
 
 concurrency:
@@ -54,7 +54,14 @@ jobs:
         env:
           OE_OFFICIALS_ACK: ${{ vars.OE_OFFICIALS_ACK }}
         run: |
-          if [ "${{ inputs.range }}" = "test" ]; then ARGS="2025 --limit 3"; else ARGS="2008 --to $(date -u +%Y)"; fi
+          YEAR=$(date -u +%Y)
+          case "${{ inputs.range }}" in
+            test) ARGS="2025 --limit 3" ;;
+            # Each run starts on an empty machine, so a run fetches every year it
+            # names. Last year too: its index keeps growing into January.
+            update) ARGS="$((YEAR - 1)) --to $YEAR" ;;
+            *) ARGS="2008 --to $YEAR" ;;
+          esac
           mkdir -p out
           set +e
           ./target/release/oe house-ptr $ARGS --out out/house > out/stdout.txt 2> out/stderr.txt
