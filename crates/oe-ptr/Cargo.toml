@@ -1,0 +1,13 @@
+[package]
+name = "oe-ptr"
+description = "Reads the transactions in House members' periodic transaction reports (PTR PDFs, ADR 0011). The one crate that depends on a PDF library."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+oe-core.workspace = true
+# PDF objects, decryption (the reports use RC4 with an empty password) and
+# stream decoding. Default features off: no threads, no clock.
+lopdf = { version = "0.47", default-features = false }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { getStatus, loadSettings, SERVED } from "./api";
 import { Company } from "./pages/Company";
+import { Congress } from "./pages/Congress";
 import { Events } from "./pages/Events";
+import { History } from "./pages/History";
 import { Lookup } from "./pages/Lookup";
 import { Overview } from "./pages/Overview";
 import { Settings } from "./pages/Settings";
@@ -12,7 +14,9 @@ const NAV = [
   { path: "/", label: "Overview" },
   { path: "/events", label: "Events" },
   { path: "/company", label: "Companies" },
+  { path: "/congress", label: "Congress" },
   { path: "/lookup", label: "Lookup" },
+  { path: "/history", label: "History" },
   { path: "/settings", label: "Settings" },
 ];
 
@@ -57,7 +61,9 @@ export function App() {
       {path === "/" && <Overview />}
       {path === "/events" && <Events route={route} />}
       {path === "/company" && <Company route={route} />}
+      {path === "/congress" && <Congress route={route} />}
       {path === "/lookup" && <Lookup route={route} />}
+      {path === "/history" && <History />}
       {path === "/settings" && <Settings />}
       {!NAV.some((n) => n.path === path) && <div className="notice">No such page.</div>}
     </div>

@@ -16,7 +16,7 @@
 //! * The built web app (`web/dist`) is served from the same address. Its
 //!   pages hold no secret: the browser signs in by opening the login link
 //!   printed at start (`/login?code=`, a code made fresh for each run), which
-//!   sets the token as an `HttpOnly`, `SameSite=Strict` cookie. The cookie is
+//!   sets an `HttpOnly`, `SameSite=Strict` session cookie, new each run and never the token. The cookie is
 //!   accepted only on requests from the app's own origin, never from another
 //!   site or an extension. Pages get a strict Content-Security-Policy.
 //!
@@ -57,11 +57,14 @@ pub struct Config {
     pub app_dir: Option<PathBuf>,
     /// Opens `/login` for this run (32 hex characters).
     pub login_code: String,
+    /// The cookie value `/login` sets, for this run only (64 hex
+    /// characters). Never the token: browsers send a 127.0.0.1 cookie to
+    /// every port on this computer, so another local web server could see
+    /// it, and it must be worthless once this run of `oe serve` stops.
+    pub session: String,
 }
 
-const COOKIE: &str = "oe_token";
-/// Thirty days; the token itself lasts until `--new-token`.
-const COOKIE_MAX_AGE: u32 = 30 * 86_400;
+const COOKIE: &str = "oe_session";
 const MAX_FILE: u64 = 25 * 1024 * 1024;
 const APP_CSP: &str =
     "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; \
@@ -269,7 +272,7 @@ fn own_origin(origin: &str, cfg: &Config) -> bool {
         || origin == format!("http://localhost:{}", cfg.port)
 }
 
-/// The token from the `oe_token` cookie, if the request sent one.
+/// The session value from the `oe_session` cookie, if the request sent one.
 fn cookie_token(req: &Request) -> Option<&str> {
     req.header("cookie")?
         .split(';')
@@ -331,7 +334,7 @@ pub fn check(req: &Request, cfg: &Config) -> Decision {
         .is_some_and(|t| same(t.trim(), &cfg.token));
     // The cookie counts only for the app's own pages (SameSite=Strict keeps
     // other sites from sending it; this keeps extensions from using it).
-    let cookie_ok = same_origin && cookie_token(req).is_some_and(|t| same(t, &cfg.token));
+    let cookie_ok = same_origin && cookie_token(req).is_some_and(|t| same(t, &cfg.session));
     let token_ok = bearer_ok || cookie_ok;
     if !token_ok {
         return Decision::Reject(401, "missing or wrong token (see `oe serve`)");
@@ -466,8 +469,8 @@ fn app_response(req: &Request, cfg: &Config) -> Response {
             .with(
                 "Set-Cookie",
                 format!(
-                    "{COOKIE}={}; HttpOnly; SameSite=Strict; Path=/; Max-Age={COOKIE_MAX_AGE}",
-                    cfg.token
+                    "{COOKIE}={}; HttpOnly; SameSite=Strict; Path=/",
+                    cfg.session
                 ),
             );
     }
@@ -622,7 +625,7 @@ fn read_request(stream: &mut TcpStream) -> Result<Request, (u16, &'static str)> 
 struct Shared {
     cfg: Config,
     database_url: Option<String>,
-    cache: Mutex<HashMap<&'static str, (Instant, String)>>,
+    cache: Mutex<HashMap<String, (Instant, String)>>,
 }
 
 struct Worker {
@@ -651,7 +654,7 @@ impl Worker {
 
     fn cached(
         &mut self,
-        key: &'static str,
+        key: &str,
         make: impl FnOnce(&mut oe_store::Client) -> Result<String, oe_store::StoreError>,
     ) -> Response {
         if let Some((at, body)) = self.shared.cache.lock().unwrap().get(key) {
@@ -669,7 +672,7 @@ impl Worker {
                     .cache
                     .lock()
                     .unwrap()
-                    .insert(key, (Instant::now(), body.clone()));
+                    .insert(key.to_string(), (Instant::now(), body.clone()));
                 Response::json(200, body)
             }
             Err(e) => self.store_error(e),
@@ -702,6 +705,18 @@ impl Worker {
             ("GET", "/v1/events") => self.events(req),
             ("GET", "/v1/company") => self.company(req),
             ("GET", "/v1/companies") => self.companies(req),
+            ("GET", "/v1/trades") => self.trades(req),
+            ("GET", "/v1/history") => self.cached("history", |c| {
+                let st = oe_store::price_status(c)?;
+                let groups = oe_store::outcome_summary(c)?;
+                Ok(history_json(&st, &groups))
+            }),
+            ("GET", "/v1/history/insiders") => self.history_insiders(req),
+            ("GET", "/v1/history/extremes") => self.history_extremes(req),
+            ("GET", "/v1/history/outcomes") => self.history_outcomes(req),
+            ("GET", "/v1/prices") => self.prices(req),
+            ("GET", "/v1/officials/trades") => self.official_trades(req),
+            ("GET", "/v1/officials/active") => self.officials_active(req),
             ("GET", "/v1/events/counts") => {
                 let client = match self.db() {
                     Ok(c) => c,
@@ -714,8 +729,22 @@ impl Worker {
             }
             (
                 _,
-                "/v1/lookup" | "/v1/status" | "/v1/flow" | "/v1/health" | "/v1/events"
-                | "/v1/events/counts" | "/v1/company" | "/v1/companies",
+                "/v1/lookup"
+                | "/v1/status"
+                | "/v1/flow"
+                | "/v1/health"
+                | "/v1/events"
+                | "/v1/events/counts"
+                | "/v1/company"
+                | "/v1/companies"
+                | "/v1/trades"
+                | "/v1/history"
+                | "/v1/history/insiders"
+                | "/v1/history/extremes"
+                | "/v1/history/outcomes"
+                | "/v1/prices"
+                | "/v1/officials/trades"
+                | "/v1/officials/active",
             ) => Response::error(405, "method not allowed"),
             _ => Response::error(404, "no such endpoint"),
         }
@@ -761,6 +790,230 @@ impl Worker {
         match oe_store::company(client, cik) {
             Ok(Some(c)) => Response::json(200, company_json(&c)),
             Ok(None) => Response::error(404, "no Form 3/4/5 filing names this company"),
+            Err(e) => self.store_error(e),
+        }
+    }
+
+    fn trades(&mut self, req: &Request) -> Response {
+        let params = query_params(&req.query).unwrap_or_default();
+        let num = |k: &str| {
+            params
+                .get(k)
+                .and_then(|v| v.trim().parse::<i64>().ok())
+                .filter(|c| *c > 0)
+        };
+        let of = match (num("cik"), num("owner")) {
+            (Some(c), None) => oe_store::TradesOf::Issuer(c),
+            (None, Some(o)) => oe_store::TradesOf::Owner(o),
+            _ => {
+                return Response::error(400, "expected ?cik=<company CIK> or ?owner=<insider CIK>")
+            }
+        };
+        let client = match self.db() {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match oe_store::trade_marks(client, of) {
+            Ok(marks) => Response::json(200, marks_json(&marks)),
+            Err(e) => self.store_error(e),
+        }
+    }
+
+    fn history_insiders(&mut self, req: &Request) -> Response {
+        let p = query_params(&req.query).unwrap_or_default();
+        let best = p.get("best").map(|v| v != "0").unwrap_or(true);
+        let min = p
+            .get("min")
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(3)
+            .clamp(1, 100);
+        let limit = p
+            .get("limit")
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(25)
+            .clamp(1, 200);
+        let key = format!("insiders|{best}|{min}|{limit}");
+        self.cached(&key, |c| {
+            oe_store::insider_records(c, min, limit, best).map(|r| records_json(&r))
+        })
+    }
+
+    fn history_extremes(&mut self, req: &Request) -> Response {
+        let p = query_params(&req.query).unwrap_or_default();
+        let family = p.get("family").cloned().unwrap_or_default();
+        let ok = !family.is_empty()
+            && family.len() <= 60
+            && family
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b"._".contains(&b));
+        if !ok {
+            return Response::error(
+                400,
+                "expected ?family=insider.cluster_buy (or insider.buy, ...)",
+            );
+        }
+        let best = p.get("best").map(|v| v != "0").unwrap_or(true);
+        let limit = p
+            .get("limit")
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(10)
+            .clamp(1, 100);
+        let client = match self.db() {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        let of = oe_store::OutcomesOf::Extremes {
+            family,
+            best,
+            limit,
+        };
+        match oe_store::outcomes(client, &of) {
+            Ok(rows) => Response::json(200, outcomes_json(&rows)),
+            Err(e) => self.store_error(e),
+        }
+    }
+
+    fn history_outcomes(&mut self, req: &Request) -> Response {
+        let p = query_params(&req.query).unwrap_or_default();
+        let num = |k: &str| {
+            p.get(k)
+                .and_then(|v| v.trim().parse::<i64>().ok())
+                .filter(|c| *c > 0)
+        };
+        let of = match (num("owner"), num("cik")) {
+            (Some(o), None) => oe_store::OutcomesOf::Owner(o),
+            (None, Some(c)) => oe_store::OutcomesOf::Issuer(c),
+            _ => {
+                return Response::error(400, "expected ?owner=<insider CIK> or ?cik=<company CIK>")
+            }
+        };
+        let client = match self.db() {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match oe_store::outcomes(client, &of) {
+            Ok(rows) => Response::json(200, outcomes_json(&rows)),
+            Err(e) => self.store_error(e),
+        }
+    }
+
+    fn official_trades(&mut self, req: &Request) -> Response {
+        let p = query_params(&req.query).unwrap_or_default();
+        let bioguide = p
+            .get("bioguide")
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
+        if bioguide
+            .as_ref()
+            .is_some_and(|b| b.len() > 10 || !b.bytes().all(|c| c.is_ascii_alphanumeric()))
+        {
+            return Response::error(400, "bioguide must look like P000197");
+        }
+        let ticker = p
+            .get("ticker")
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
+        if ticker.as_ref().is_some_and(|t| {
+            t.len() > 12
+                || !t
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || b".-".contains(&c))
+        }) {
+            return Response::error(400, "ticker must be letters, digits, '.' or '-'");
+        }
+        let side = match p.get("side").map(String::as_str) {
+            None | Some("") => None,
+            Some(s @ ("buy" | "sale")) => Some(s.to_string()),
+            Some(_) => return Response::error(400, "side must be buy or sale"),
+        };
+        let since = p
+            .get("since")
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
+        if since
+            .as_ref()
+            .is_some_and(|d| d.parse::<oe_core::Date>().is_err())
+        {
+            return Response::error(400, "since must be a date YYYY-MM-DD");
+        }
+        let f = oe_store::OfficialTradeFilter {
+            bioguide,
+            ticker,
+            issuer_cik: p.get("cik").and_then(|v| v.parse().ok()),
+            side,
+            since,
+            limit: p
+                .get("limit")
+                .and_then(|v| v.parse::<i64>().ok())
+                .unwrap_or(50)
+                .clamp(1, 500),
+            offset: p
+                .get("offset")
+                .and_then(|v| v.parse::<i64>().ok())
+                .unwrap_or(0)
+                .clamp(0, 1_000_000),
+        };
+        let client = match self.db() {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match oe_store::official_trades(client, &f) {
+            Ok((total, rows)) => Response::json(200, official_trades_json(total, &f, &rows)),
+            Err(e) => self.store_error(e),
+        }
+    }
+
+    fn officials_active(&mut self, req: &Request) -> Response {
+        let p = query_params(&req.query).unwrap_or_default();
+        let since = p
+            .get("since")
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
+        if since
+            .as_ref()
+            .is_some_and(|d| d.parse::<oe_core::Date>().is_err())
+        {
+            return Response::error(400, "since must be a date YYYY-MM-DD");
+        }
+        let limit = p
+            .get("limit")
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(25)
+            .clamp(1, 200);
+        let key = format!("active|{}|{limit}", since.as_deref().unwrap_or(""));
+        self.cached(&key, |c| {
+            oe_store::member_activity(c, since.as_deref(), limit).map(|rows| activity_json(&rows))
+        })
+    }
+
+    fn prices(&mut self, req: &Request) -> Response {
+        let cik = query_params(&req.query)
+            .ok()
+            .and_then(|p| p.get("cik").and_then(|v| v.trim().parse::<i64>().ok()))
+            .filter(|c| *c > 0);
+        let Some(cik) = cik else {
+            return Response::error(400, "expected ?cik=<company CIK>");
+        };
+        let client = match self.db() {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match oe_store::prices_for(client, cik) {
+            Ok(Some((symbol, days))) => {
+                let items: Vec<String> = days
+                    .iter()
+                    .map(|(d, c)| format!("[{},{}]", json_string(d), json_number(Some(*c))))
+                    .collect();
+                Response::json(
+                    200,
+                    format!(
+                        "{{\"symbol\":{},\"source\":\"stooq\",\"adjusted\":true,\"days\":[{}]}}",
+                        json_string(&symbol),
+                        items.join(",")
+                    ),
+                )
+            }
+            Ok(None) => Response::json(200, "{\"symbol\":null,\"days\":[]}".into()),
             Err(e) => self.store_error(e),
         }
     }
@@ -960,7 +1213,7 @@ pub fn serve(argv: &[String]) -> Result<(), String> {
     println!("oe serve: http://127.0.0.1:{port}/v1/ (this computer only)");
     match &app_dir {
         Some(d) => println!(
-            "web app ({}): open {login} (signs this browser in; the link works until oe serve stops)",
+            "web app ({}): open {login} (signs this browser in until oe serve stops)",
             d.display()
         ),
         None => println!("no web app found (build it: cd web; npm run build)"),
@@ -970,7 +1223,7 @@ pub fn serve(argv: &[String]) -> Result<(), String> {
         token_file.display()
     );
     println!(
-        "endpoints: GET /v1/health, POST /v1/lookup {{\"name\": ...}}, GET /v1/status, GET /v1/flow, GET /v1/events, GET /v1/events/counts, GET /v1/company?cik=, GET /v1/companies?q="
+        "endpoints: GET /v1/health, POST /v1/lookup {{\"name\": ...}}, GET /v1/status, GET /v1/flow, GET /v1/events, GET /v1/events/counts, GET /v1/company?cik=, GET /v1/companies?q=, GET /v1/trades?cik=|owner=, GET /v1/history, GET /v1/history/insiders, GET /v1/history/extremes?family=, GET /v1/history/outcomes?owner=|cik=, GET /v1/prices?cik=, GET /v1/officials/trades, GET /v1/officials/active"
     );
     println!("Ctrl+C stops it. Looked-up names are never logged.");
     if open && app_dir.is_some() {
@@ -983,6 +1236,7 @@ pub fn serve(argv: &[String]) -> Result<(), String> {
             allowed_origins,
             app_dir,
             login_code,
+            session: new_token(),
         },
         database_url,
         cache: Mutex::new(HashMap::new()),
@@ -1227,6 +1481,185 @@ fn status_json(s: oe_store::Status) -> String {
     )
 }
 
+fn official_trades_json(
+    total: i64,
+    f: &oe_store::OfficialTradeFilter,
+    rows: &[oe_store::OfficialTrade],
+) -> String {
+    let items: Vec<String> = rows
+        .iter()
+        .map(|t| {
+            format!(
+                "{{\"bioguide\":{},\"member\":{},\"doc_id\":{},\"line_no\":{},\"filed_on\":{},\"report_url\":{},\"owner\":{},\"asset\":{},\"ticker\":{},\"asset_type\":{},\"tx_type\":{},\"tx_date\":{},\"amount\":{},\"amount_min\":{},\"amount_max\":{},\"description\":{},\"issuer_cik\":{}}}",
+                opt_str(t.bioguide.as_deref()),
+                json_string(&t.member),
+                json_string(&t.doc_id),
+                t.line_no,
+                opt_str(t.filed_on.as_deref()),
+                json_string(&t.report_url),
+                opt_str(t.owner.as_deref()),
+                json_string(&t.asset),
+                opt_str(t.ticker.as_deref()),
+                opt_str(t.asset_type.as_deref()),
+                json_string(&t.tx_type),
+                opt_str(t.tx_date.as_deref()),
+                json_string(&t.amount),
+                t.amount_min.map_or("null".into(), |v| v.to_string()),
+                t.amount_max.map_or("null".into(), |v| v.to_string()),
+                opt_str(t.description.as_deref()),
+                t.issuer_cik.map_or("null".into(), |v| v.to_string())
+            )
+        })
+        .collect();
+    format!(
+        "{{\"total\":{total},\"limit\":{},\"offset\":{},\"trades\":[{}],\"use_limits\":{}}}",
+        f.limit,
+        f.offset,
+        items.join(","),
+        json_string(
+            "House financial disclosure reports may not be used commercially (5 U.S.C. 13107)."
+        )
+    )
+}
+
+fn activity_json(rows: &[oe_store::MemberActivity]) -> String {
+    let items: Vec<String> = rows
+        .iter()
+        .map(|m| {
+            format!(
+                "{{\"bioguide\":{},\"name\":{},\"trades\":{},\"buys\":{},\"sales\":{},\"low_total\":{},\"high_total\":{},\"first_trade\":{},\"last_trade\":{},\"top_tickers\":{}}}",
+                json_string(&m.bioguide),
+                json_string(&m.name),
+                m.trades,
+                m.buys,
+                m.sales,
+                m.low_total,
+                m.high_total,
+                opt_str(m.first_trade.as_deref()),
+                opt_str(m.last_trade.as_deref()),
+                str_array(&m.top_tickers)
+            )
+        })
+        .collect();
+    format!("{{\"members\":[{}]}}", items.join(","))
+}
+
+fn horizon_json(h: &oe_store::HorizonStats) -> String {
+    format!(
+        "{{\"days\":{},\"n\":{},\"median_return\":{},\"median_excess\":{},\"mean_excess\":{},\"share_up\":{},\"share_beat\":{}}}",
+        h.days,
+        h.n,
+        json_number(h.median_return),
+        json_number(h.median_excess),
+        json_number(h.mean_excess),
+        json_number(h.share_up),
+        json_number(h.share_beat)
+    )
+}
+
+fn history_json(st: &oe_store::PriceStatus, groups: &[oe_store::OutcomeSummary]) -> String {
+    let gs: Vec<String> = groups
+        .iter()
+        .map(|g| {
+            let hs: Vec<String> = g.horizons.iter().map(horizon_json).collect();
+            format!(
+                "{{\"kind\":{},\"family\":{},\"count\":{},\"horizons\":[{}]}}",
+                json_string(&g.kind),
+                json_string(&g.family),
+                g.count,
+                hs.join(",")
+            )
+        })
+        .collect();
+    format!(
+        "{{\"prices\":{{\"imported_at\":{},\"source\":{},\"symbols\":{},\"first_day\":{},\"last_day\":{},\"series_ok\":{},\"series_mismatch\":{},\"series_unchecked\":{},\"outcomes\":{},\"benchmark\":{}}},\"groups\":[{}]}}",
+        opt_str(st.imported_at.as_deref()),
+        opt_str(st.source.as_deref().map(|s| s.rsplit(['/', '\\']).next().unwrap_or(s))),
+        st.symbols,
+        opt_str(st.first_day.as_deref()),
+        opt_str(st.last_day.as_deref()),
+        st.series_ok,
+        st.series_mismatch,
+        st.series_unchecked,
+        st.outcomes,
+        st.benchmark,
+        gs.join(",")
+    )
+}
+
+fn records_json(rows: &[oe_store::InsiderRecord]) -> String {
+    let items: Vec<String> = rows
+        .iter()
+        .map(|r| {
+            format!(
+                "{{\"owner_cik\":{},\"name\":{},\"buys\":{},\"measured\":{},\"companies\":{},\"median_return_12m\":{},\"median_excess_12m\":{},\"share_beat_12m\":{},\"last_buy\":{}}}",
+                r.owner_cik,
+                json_string(&r.name),
+                r.buys,
+                r.measured,
+                r.companies,
+                json_number(r.median_return_12m),
+                json_number(r.median_excess_12m),
+                json_number(r.share_beat_12m),
+                opt_str(r.last_buy.as_deref())
+            )
+        })
+        .collect();
+    format!("{{\"insiders\":[{}]}}", items.join(","))
+}
+
+fn outcomes_json(rows: &[oe_store::OutcomeRow]) -> String {
+    let items: Vec<String> = rows
+        .iter()
+        .map(|o| {
+            let r: Vec<String> = o.returns.iter().map(|v| json_number(*v)).collect();
+            format!(
+                "{{\"kind\":{},\"ref\":{},\"family\":{},\"issuer_cik\":{},\"issuer_name\":{},\"ticker\":{},\"owner_cik\":{},\"traded_on\":{},\"known_on\":{},\"value\":{},\"entry_day\":{},\"r\":[{}],\"x\":[{}]}}",
+                json_string(&o.kind),
+                json_string(&o.reference),
+                json_string(&o.family),
+                o.issuer_cik,
+                json_string(&o.issuer_name),
+                opt_str(o.ticker.as_deref()),
+                o.owner_cik.map_or("null".to_string(), |c| c.to_string()),
+                opt_str(o.traded_on.as_deref()),
+                json_string(&o.known_on),
+                json_number(o.value),
+                json_string(&o.entry_day),
+                r[..4].join(","),
+                r[4..].join(",")
+            )
+        })
+        .collect();
+    format!("{{\"outcomes\":[{}]}}", items.join(","))
+}
+
+fn marks_json(marks: &[oe_store::TradeMark]) -> String {
+    let items: Vec<String> = marks
+        .iter()
+        .map(|m| {
+            format!(
+                "{{\"day\":{},\"issuer_cik\":{},\"issuer_name\":{},\"ticker\":{},\"owner_cik\":{},\"owner_name\":{},\"code\":{},\"trades\":{},\"shares\":{},\"value\":{},\"priced_shares\":{},\"plan_trades\":{},\"plan_known\":{},\"receipt\":{}}}",
+                json_string(&m.day),
+                m.issuer_cik,
+                json_string(&m.issuer_name),
+                opt_str(m.ticker.as_deref()),
+                m.owner_cik,
+                json_string(&m.owner_name),
+                json_string(&m.code),
+                m.trades,
+                json_number(Some(m.shares)),
+                json_number(Some(m.value)),
+                json_number(Some(m.priced_shares)),
+                m.plan_trades,
+                m.plan_known,
+                receipt_json(&m.receipt)
+            )
+        })
+        .collect();
+    format!("{{\"marks\":[{}]}}", items.join(","))
+}
+
 fn company_json(c: &oe_store::Company) -> String {
     let insiders: Vec<String> = c
         .insiders
@@ -1340,6 +1773,7 @@ mod tests {
             allowed_origins: vec!["http://localhost:5173".into()],
             app_dir: None,
             login_code: "b".repeat(32),
+            session: "f".repeat(64),
         }
     }
 
@@ -1499,6 +1933,7 @@ mod tests {
                 allowed_origins: Vec::new(),
                 app_dir: Some(app.clone()),
                 login_code: "d".repeat(32),
+                session: "9".repeat(64),
             },
             database_url: None,
             cache: Mutex::new(HashMap::new()),
@@ -1586,13 +2021,13 @@ mod tests {
         ));
         assert!(login.starts_with("HTTP/1.1 303"), "{login}");
         assert!(login.contains(&format!(
-            "Set-Cookie: oe_token={}; HttpOnly; SameSite=Strict; Path=/",
-            "c".repeat(64)
+            "Set-Cookie: oe_session={}; HttpOnly; SameSite=Strict; Path=/",
+            "9".repeat(64)
         )));
         assert!(login.contains("Location: /"));
 
         // With the cookie, the app's own requests work; from elsewhere they do not.
-        let cookie = format!("Cookie: theme=x; oe_token={}", "c".repeat(64));
+        let cookie = format!("Cookie: theme=x; oe_session={}", "9".repeat(64));
         let own = ask(format!(
             "POST /v1/lookup HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nOrigin: http://127.0.0.1:{port}\r\n{cookie}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
             body.len()
@@ -1622,8 +2057,8 @@ mod tests {
                 format!("\r\nOrigin: {origin}")
             };
             req(&format!(
-                "GET /v1/status HTTP/1.1\r\nHost: 127.0.0.1:8730{o}\r\nCookie: oe_token={}",
-                "a".repeat(64)
+                "GET /v1/status HTTP/1.1\r\nHost: 127.0.0.1:8730{o}\r\nCookie: oe_session={}",
+                "f".repeat(64)
             ))
         };
         assert_eq!(check(&with(""), &c), Decision::Handle(None));
@@ -1647,7 +2082,7 @@ mod tests {
             check(&with("https://evil.example"), &c),
             Decision::Reject(403, _)
         ));
-        let wrong = req("GET /v1/status HTTP/1.1\r\nHost: 127.0.0.1:8730\r\nCookie: oe_token=zz");
+        let wrong = req("GET /v1/status HTTP/1.1\r\nHost: 127.0.0.1:8730\r\nCookie: oe_session=zz");
         assert!(matches!(check(&wrong, &c), Decision::Reject(401, _)));
     }
 
@@ -1700,5 +2135,37 @@ mod tests {
             assert!(app_file(&root, bad).is_none(), "{bad}");
         }
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn the_session_cookie_is_not_the_token_and_the_token_is_not_a_session() {
+        let c = cfg();
+        let login = app_response(
+            &req(&format!(
+                "GET /login?code={} HTTP/1.1\r\nHost: 127.0.0.1:8730",
+                "b".repeat(32)
+            )),
+            &c,
+        );
+        assert_eq!(login.status, 303);
+        let cookie = login
+            .headers
+            .iter()
+            .find(|(n, _)| *n == "Set-Cookie")
+            .map(|(_, v)| v.clone())
+            .unwrap();
+        assert!(
+            cookie.contains(&c.session) && !cookie.contains(&c.token),
+            "{cookie}"
+        );
+        assert!(!cookie.contains("Max-Age"), "a browser-session cookie");
+        let token_as_cookie = req(&format!(
+            "GET /v1/status HTTP/1.1\r\nHost: 127.0.0.1:8730\r\nCookie: oe_session={}",
+            c.token
+        ));
+        assert!(matches!(
+            check(&token_as_cookie, &c),
+            Decision::Reject(401, _)
+        ));
     }
 }

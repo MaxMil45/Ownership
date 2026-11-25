@@ -361,3 +361,166 @@ button.primary {
 .events .body a {
   color: var(--text-primary);
 }
+.trade-chart .mark-label {
+  fill: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface-1);
+  stroke-width: 3px;
+}
+.trade-chart a:focus-visible path {
+  stroke: var(--text-primary);
+  stroke-width: 2;
+}
+.tip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 8px));
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+ul.insights {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+ul.insights li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 4px 0;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  display: inline-block;
+  transform: translateY(-1px);
+}
+.dot.buy {
+  background: var(--buy);
+}
+.dot.sell {
+  background: var(--sell);
+}
+.dot.note {
+  background: var(--axis);
+}
+.explain-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 10px;
+}
+details.explain > summary {
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+details.explain p {
+  max-width: 70ch;
+  color: var(--text-secondary);
+  margin: 4px 0 8px;
+}
+.pattern {
+  margin: 8px 0 4px;
+}
+.picker {
+  margin-top: 12px;
+  border-top: 1px solid var(--grid);
+  padding-top: 10px;
+}
+.picker-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.picker-head button,
+.picker-head input {
+  padding: 3px 10px;
+  font-size: 13px;
+}
+.picker-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  columns: 2 320px;
+  column-gap: 24px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.picker-list li {
+  break-inside: avoid;
+  margin: 2px 0;
+  font-size: 13px;
+}
+.picker-list label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  cursor: pointer;
+}
+.picker-list .name {
+  font-weight: 600;
+}
+.buy-text {
+  color: var(--buy);
+}
+.sell-text {
+  color: var(--sell);
+}
+details.person-chart {
+  margin: 4px 0 12px;
+}
+details.person-chart > summary {
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-decoration: underline;
+}
+.hbar {
+  position: relative;
+  height: 10px;
+  background: var(--wash);
+  border-radius: 2px;
+}
+.hbar-mid {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--axis);
+}
+.hbar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+}
+button.linkish {
+  all: unset;
+  cursor: pointer;
+  text-decoration: underline;
+  color: var(--text-primary);
+}
+.history-table td {
+  vertical-align: middle;
+}
+.history-table tr.yardstick td {
+  background: var(--wash);
+}
+.legend span {
+  white-space: nowrap;
+}

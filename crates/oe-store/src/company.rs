@@ -208,3 +208,129 @@ pub fn find_companies(
         .map(|r| (r.get(0), r.get::<_, Option<String>>(1).unwrap_or_default(), r.get(2)))
         .collect())
 }
+
+/// Whose trades [`trade_marks`] returns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TradesOf {
+    /// Every insider of this company.
+    Issuer(i64),
+    /// This reporting owner, at every company (joint filings included).
+    Owner(i64),
+}
+
+/// One insider's open-market buys (P) or sales (S) of one company on one
+/// day, summed: a point on the price chart and the unit the summaries count.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TradeMark {
+    /// Transaction date, `YYYY-MM-DD`.
+    pub day: String,
+    pub issuer_cik: i64,
+    pub issuer_name: String,
+    pub ticker: Option<String>,
+    pub owner_cik: i64,
+    pub owner_name: String,
+    /// `P` or `S`.
+    pub code: String,
+    pub trades: i64,
+    pub shares: f64,
+    /// Shares × price of the rows whose amounts are plausible (0 if none).
+    pub value: f64,
+    /// Shares behind `value`, so `value / priced_shares` is the average price.
+    pub priced_shares: f64,
+    /// Rows from filings with the Rule 10b5-1 box ticked / with the box at
+    /// all (it exists from April 2023).
+    pub plan_trades: i64,
+    pub plan_known: i64,
+    /// The first filing reporting them.
+    pub receipt: Receipt,
+}
+
+/// Every open-market buy and sale, as the ledger holds them now (amended rows
+/// once), grouped by day, owner and code, oldest first. Transaction dates
+/// after the filing or more than a year before it are typos as filed and
+/// left out, as in [`crate::ledger_purchases`].
+pub fn trade_marks(client: &mut Client, of: TradesOf) -> Result<Vec<TradeMark>, StoreError> {
+    check_schema(client)?;
+    let (join, filter, id) = match of {
+        TradesOf::Issuer(c) => ("", "t.issuer_cik = $1", c),
+        TradesOf::Owner(c) => (
+            "JOIN filing_owner fo ON fo.accession = t.accession AND fo.owner_cik = $1",
+            "true",
+            c,
+        ),
+    };
+    let owner = match of {
+        TradesOf::Issuer(_) => "t.owner_cik",
+        TradesOf::Owner(_) => "$1::bigint",
+    };
+    let sql = format!(
+        "WITH r AS (
+             SELECT t.transaction_date AS day, t.issuer_cik, {owner} AS owner_cik, t.code,
+                    t.shares, t.price_per_share AS price, t.plan_10b5_1,
+                    (t.price_per_share IS NOT NULL AND t.shares IS NOT NULL
+                     AND t.price_per_share > 0
+                     AND t.price_per_share <= $2::float8::numeric
+                     AND t.shares * t.price_per_share <= $3::float8::numeric) AS priced,
+                    f.accession, f.filer_cik, f.source, f.accepted_at,
+                    i.issuer_name, i.ticker, ro.owner_name
+             FROM insider_transaction t
+             {join}
+             JOIN filing f ON f.accession = t.accession
+             LEFT JOIN ownership_issuer i ON i.accession = t.accession
+             LEFT JOIN filing_owner_role ro ON ro.accession = t.accession AND ro.owner_cik = {owner}
+             WHERE {filter} AND NOT t.is_derivative
+               AND ((t.code = 'P' AND t.acquired_disposed IS DISTINCT FROM 'D')
+                    OR (t.code = 'S' AND t.acquired_disposed IS DISTINCT FROM 'A'))
+               AND t.transaction_date <= (f.accepted_at AT TIME ZONE 'America/New_York')::date
+               AND t.transaction_date >= (f.accepted_at AT TIME ZONE 'America/New_York')::date - 365
+               AND NOT EXISTS (SELECT 1 FROM insider_transaction n WHERE n.supersedes_id = t.id)
+         )
+         SELECT day::text, issuer_cik,
+                coalesce((array_agg(issuer_name ORDER BY accepted_at DESC) FILTER (WHERE issuer_name IS NOT NULL))[1], ''),
+                (array_agg(ticker ORDER BY accepted_at DESC) FILTER (WHERE ticker IS NOT NULL))[1],
+                owner_cik,
+                coalesce((array_agg(owner_name ORDER BY accepted_at DESC) FILTER (WHERE owner_name IS NOT NULL))[1], ''),
+                code, count(*),
+                coalesce(sum(shares), 0)::float8,
+                coalesce(sum(shares * price) FILTER (WHERE priced), 0)::float8,
+                coalesce(sum(shares) FILTER (WHERE priced), 0)::float8,
+                count(*) FILTER (WHERE plan_10b5_1), count(*) FILTER (WHERE plan_10b5_1 IS NOT NULL),
+                (array_agg(accession ORDER BY accepted_at, accession))[1],
+                (array_agg(filer_cik ORDER BY accepted_at, accession))[1],
+                (array_agg(source ORDER BY accepted_at, accession))[1],
+                (min(accepted_at) AT TIME ZONE 'America/New_York')::date::text
+         FROM r
+         GROUP BY day, issuer_cik, owner_cik, code
+         ORDER BY day, issuer_cik, owner_cik, code"
+    );
+    Ok(client
+        .query(&sql, &[&id, &MAX_PLAUSIBLE_PRICE, &MAX_PLAUSIBLE_ROW_VALUE])?
+        .into_iter()
+        .map(|r| {
+            let accession: String = r.get(13);
+            let filer: i64 = r.get(14);
+            let source: &str = r.get(15);
+            TradeMark {
+                day: r.get(0),
+                issuer_cik: r.get(1),
+                issuer_name: r.get(2),
+                ticker: r.get(3),
+                owner_cik: r.get(4),
+                owner_name: r.get(5),
+                code: r.get(6),
+                trades: r.get(7),
+                shares: r.get(8),
+                value: r.get(9),
+                priced_shares: r.get(10),
+                plan_trades: r.get(11),
+                plan_known: r.get(12),
+                receipt: Receipt {
+                    url: oe_edgar::filing_folder_url(filer as u64, &accession.replace('-', "")),
+                    accession,
+                    known_on: r.get(16),
+                    filing_date_only: source == "bulk",
+                },
+            }
+        })
+        .collect())
+}

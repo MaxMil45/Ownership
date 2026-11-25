@@ -15,13 +15,18 @@ pub mod amend;
 pub mod company;
 pub mod db;
 pub mod events;
+pub mod house;
 pub mod officials;
 pub mod other;
 pub mod people;
+pub mod prices;
 pub mod rows;
 
 pub use amend::{compare, RowShape, Verdict};
-pub use company::{company, find_companies, Company, CompanyInsider, CompanyTrade};
+pub use company::{
+    company, find_companies, trade_marks, Company, CompanyInsider, CompanyTrade, TradeMark,
+    TradesOf,
+};
 pub use db::{
     check_schema, connect, flow_by_day, link_amendments, link_pass, load_batch, load_batch_with,
     maintain, migrate, status, trade_history, FlowDay, HistoryTrade, LinkReport, LoadReport,
@@ -30,6 +35,10 @@ pub use db::{
 pub use events::{
     event_counts, latest_tickers, ledger_purchases, query_events, replace_event_feed, EventFilter,
     EventPage, EventRow, LedgerPurchase, PurchasesLeftOut,
+};
+pub use house::{
+    house_reports_to_read, member_activity, official_trades, replace_house_transactions,
+    HouseLoadReport, HouseRead, HouseTxRow, MemberActivity, OfficialTrade, OfficialTradeFilter,
 };
 pub use oe_core::sha256_hex;
 pub use officials::{
@@ -44,6 +53,12 @@ pub use other::{
 pub use people::{
     build_people_index, lookup, ContestFiling, Holding, InsiderRole, Lookup, PeopleIndexReport,
     PersonCard, Receipt, Trade,
+};
+pub use prices::{
+    build_outcomes, check_series, import_prices, insider_records, outcome_summary, outcomes,
+    price_status, prices_for, wanted_symbols, CheckReport, HorizonStats, ImportReport,
+    InsiderRecord, OutcomeReport, OutcomeRow, OutcomeSummary, OutcomesOf, PriceSeries, PriceStatus,
+    BENCHMARK, HORIZONS,
 };
 pub use rows::{
     prepare, prepare_bulk, FilingRow, OwnerRole, PrepareError, Prepared, Sidecar, TransactionRow,

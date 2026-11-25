@@ -10,6 +10,8 @@ mod delays;
 #[cfg(feature = "db")]
 mod events_db;
 mod excerpt;
+#[cfg(feature = "db")]
+mod history_db;
 #[cfg(feature = "net")]
 mod live;
 mod load;
@@ -94,6 +96,11 @@ USAGE:
         files in <root>/legislators) and every House PTR in <root>/house into PostgreSQL,
         each report linked to the member who filed it or held back with the reason.
 
+    oe ptr-load [--root data/officials/house]
+        Read the transactions in every typed House report on disk (owner, asset, ticker,
+        buy or sale, date, amount range; ADR 0011) into PostgreSQL, replacing earlier
+        readings. Scanned paper reports are not read. Use limited by 5 U.S.C. 13107.
+
     oe official <name>
         A member of Congress by name: terms, committees, and the House periodic
         transaction reports they filed, with links (DATABASE_URL).
@@ -112,6 +119,16 @@ USAGE:
         Run every rule (their ledger versions, as `oe alerts --db`) over the downloaded
         folders and store the events in PostgreSQL for `oe serve` (GET /v1/events). Replaces
         the stored events; about 4 minutes on the full history.
+
+    oe prices-import <file.zip | folder>
+        Load daily prices from Stooq's US daily ASCII database, which you download yourself
+        from stooq.com (their terms; it stays on this computer, never in the repository).
+        Keeps the series of companies in the ledger and SPY (the market), checks each against
+        the prices its insiders reported, and measures what happened after every event and
+        insider trade (1, 3, 6 and 12 months, against SPY). History, not advice.
+
+    oe outcomes-build
+        Measure the outcomes again (after new filings or events), with the prices imported.
 
     oe serve [--port 8730] [--allow-origin http://localhost:<port>] [--new-token]
         The ledger as a JSON API on this computer only (127.0.0.1), for the browser extension
@@ -290,6 +307,8 @@ fn main() -> ExitCode {
         #[cfg(feature = "db")]
         Some("official") => officials_db::official(&args[1..]),
         #[cfg(feature = "db")]
+        Some("ptr-load") => officials_db::ptr_load(&args[1..]),
+        #[cfg(feature = "db")]
         Some("people-index") => people::people_index(&args[1..]),
         #[cfg(feature = "db")]
         Some("lookup") => people::lookup(&args[1..]),
@@ -297,6 +316,10 @@ fn main() -> ExitCode {
         Some("serve") => serve::serve(&args[1..]),
         #[cfg(feature = "db")]
         Some("events-build") => events_db::events_build(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("prices-import") => history_db::prices_import(&args[1..]),
+        #[cfg(feature = "db")]
+        Some("outcomes-build") => history_db::outcomes_build(&args[1..]),
         #[cfg(not(feature = "db"))]
         Some("db-migrate")
         | Some("db-load")
@@ -304,10 +327,13 @@ fn main() -> ExitCode {
         | Some("db-maintain")
         | Some("officials-load")
         | Some("official")
+        | Some("ptr-load")
         | Some("people-index")
         | Some("lookup")
         | Some("serve")
-        | Some("events-build") => {
+        | Some("events-build")
+        | Some("prices-import")
+        | Some("outcomes-build") => {
             Err("this build has no database support; rebuild with the default `db` feature".into())
         }
         Some("help") | Some("--help") | Some("-h") | None => {

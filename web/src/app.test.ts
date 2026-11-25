@@ -68,8 +68,9 @@ describe("charts", () => {
   it("rounds an axis up to a round number", () => {
     expect(niceMax(0)).toBe(1);
     expect(niceMax(0.9)).toBe(1);
-    expect(niceMax(7)).toBe(10);
-    expect(niceMax(130)).toBe(200);
+    expect(niceMax(7)).toBe(8);
+    expect(niceMax(130)).toBe(150);
+    expect(niceMax(262)).toBe(300);
     expect(niceMax(2_300_000)).toBe(2_500_000);
   });
 

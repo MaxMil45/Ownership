@@ -71,7 +71,9 @@ fn migrate_is_idempotent() {
             "0006_officials",
             "0007_people",
             "0008_event_feed",
-            "0009_lookup_indexes"
+            "0009_lookup_indexes",
+            "0010_prices",
+            "0011_house_transactions"
         ]
     );
     assert!(
@@ -1434,5 +1436,452 @@ fn a_company_shows_its_insiders_trades_and_flow() {
     assert!(oe_store::find_companies(&mut s.client, " ", 10)
         .unwrap()
         .is_empty());
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn trade_marks_group_by_day_owner_and_code_for_a_company_or_a_person() {
+    let mut s = Scratch::new("marks");
+    migrate(&mut s.client).unwrap();
+    load_batch(&mut s.client, &real_fixtures()).unwrap();
+    let (issuer, owner): (i64, i64) = {
+        let r = s
+            .client
+            .query_one(
+                "SELECT t.issuer_cik, t.owner_cik FROM insider_transaction t
+                 WHERE NOT t.is_derivative AND t.code IN ('P', 'S')
+                 GROUP BY 1, 2 ORDER BY count(*) DESC, 1, 2 LIMIT 1",
+                &[],
+            )
+            .unwrap();
+        (r.get(0), r.get(1))
+    };
+    let by_company =
+        oe_store::trade_marks(&mut s.client, oe_store::TradesOf::Issuer(issuer)).unwrap();
+    let by_person = oe_store::trade_marks(&mut s.client, oe_store::TradesOf::Owner(owner)).unwrap();
+    assert!(!by_company.is_empty() && !by_person.is_empty());
+    for m in by_company.iter().chain(&by_person) {
+        assert!(m.code == "P" || m.code == "S");
+        assert!(m.trades >= 1 && m.shares > 0.0);
+        assert!(m.value >= 0.0 && m.priced_shares <= m.shares + 1e-6);
+        assert!(m.plan_trades <= m.plan_known && m.plan_known <= m.trades);
+        assert!(m.day <= m.receipt.known_on, "never dated after its filing");
+        assert!(m
+            .receipt
+            .url
+            .starts_with("https://www.sec.gov/Archives/edgar/data/"));
+    }
+    assert!(by_company.iter().all(|m| m.issuer_cik == issuer));
+    assert!(by_person.iter().all(|m| m.owner_cik == owner));
+    assert!(
+        by_company.windows(2).all(|w| w[0].day <= w[1].day),
+        "oldest first"
+    );
+    // One mark per day, owner and code.
+    let mut keys: Vec<_> = by_company
+        .iter()
+        .map(|m| (&m.day, m.owner_cik, &m.code))
+        .collect();
+    let n = keys.len();
+    keys.dedup();
+    assert_eq!(keys.len(), n);
+    // The person's marks at this company are the company's marks for them.
+    let theirs: i64 = by_company
+        .iter()
+        .filter(|m| m.owner_cik == owner)
+        .map(|m| m.trades)
+        .sum();
+    let here: i64 = by_person
+        .iter()
+        .filter(|m| m.issuer_cik == issuer)
+        .map(|m| m.trades)
+        .sum();
+    assert_eq!(theirs, here);
+    assert!(
+        oe_store::trade_marks(&mut s.client, oe_store::TradesOf::Issuer(1))
+            .unwrap()
+            .is_empty()
+    );
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn prices_are_checked_against_insider_prices_and_outcomes_measured_from_the_public_day() {
+    let mut s = Scratch::new("prices");
+    migrate(&mut s.client).unwrap();
+    load_batch(&mut s.client, &real_fixtures()).unwrap();
+    let wanted = oe_store::wanted_symbols(&mut s.client).unwrap();
+    // Two companies whose insiders reported prices: one gets a series that
+    // agrees with them, the other one ten times too high.
+    let priced: Vec<(i64, String)> = wanted
+        .iter()
+        .filter(|(cik, _)| {
+            s.client
+                .query_one(
+                    "SELECT count(*) FROM insider_transaction WHERE issuer_cik = $1 AND NOT is_derivative
+                     AND code IN ('P','S') AND price_per_share > 0",
+                    &[cik],
+                )
+                .unwrap()
+                .get::<_, i64>(0)
+                >= 1
+        })
+        .cloned()
+        .collect();
+    assert!(
+        priced.len() >= 2,
+        "the fixtures have two companies with priced trades"
+    );
+    let (good, bad) = (priced[0].clone(), priced[1].clone());
+    let reported = |c: &mut Client, cik: i64| -> std::collections::BTreeMap<String, f64> {
+        c.query(
+            "SELECT transaction_date::text, avg(price_per_share)::float8 FROM insider_transaction
+             WHERE issuer_cik = $1 AND NOT is_derivative AND code IN ('P','S') AND price_per_share > 0
+             GROUP BY 1",
+            &[&cik],
+        )
+        .unwrap()
+        .iter()
+        .map(|r| (r.get(0), r.get(1)))
+        .collect()
+    };
+    let good_prices = reported(&mut s.client, good.0);
+    let bad_prices = reported(&mut s.client, bad.0);
+    // Every weekday 2014-2027: the reported price on its days, otherwise the
+    // last one; after the last trade, up 0.1% a day. The market stays flat.
+    let mut days = Vec::new();
+    let mut d: oe_core::Date = "2014-01-01".parse().unwrap();
+    let end: oe_core::Date = "2027-12-31".parse().unwrap();
+    let monday: oe_core::Date = "2014-01-06".parse().unwrap();
+    while d <= end {
+        if monday.days_until(d).rem_euclid(7) < 5 {
+            days.push(d);
+        }
+        d = d.add_days(1);
+    }
+    let series = |reported: &std::collections::BTreeMap<String, f64>,
+                  scale: f64|
+     -> Vec<(oe_core::Date, f64)> {
+        let last_trade = reported.keys().last().unwrap().clone();
+        let mut price = *reported.values().next().unwrap();
+        days.iter()
+            .map(|d| {
+                let k = d.to_string();
+                if let Some(p) = reported.get(&k) {
+                    price = *p;
+                } else if k > last_trade {
+                    price *= 1.001;
+                }
+                (*d, price * scale)
+            })
+            .collect()
+    };
+    let good_series = series(&good_prices, 1.0);
+    let bad_series = series(&bad_prices, 10.0);
+    let flat: Vec<_> = days.iter().map(|d| (*d, 400.0)).collect();
+    let r = oe_store::import_prices(&mut s.client, "invented", |sink| {
+        sink(&good.1, &good_series)?;
+        sink(&bad.1, &bad_series)?;
+        sink(oe_store::BENCHMARK, &flat)?;
+        sink("nobody.us", &[])?;
+        Ok(())
+    })
+    .unwrap()
+    .unwrap();
+    assert_eq!(r.symbols, 3, "an empty series is not stored");
+    assert_eq!(r.days as usize, days.len() * 3);
+    // A failed import keeps nothing.
+    let failed = oe_store::import_prices(&mut s.client, "broken", |sink| {
+        sink("x.us", &flat)?;
+        Err("the file stopped".into())
+    })
+    .unwrap();
+    assert!(failed.is_err());
+    let kept: i64 = s
+        .client
+        .query_one("SELECT count(DISTINCT symbol) FROM price_daily", &[])
+        .unwrap()
+        .get(0);
+    assert_eq!(kept, 3, "the earlier import is still there");
+
+    let check = oe_store::check_series(&mut s.client).unwrap();
+    assert_eq!((check.ok, check.mismatch), (1, 1));
+    let status = |c: &mut Client, cik: i64| -> String {
+        c.query_one(
+            "SELECT status FROM issuer_price_series WHERE issuer_cik = $1",
+            &[&cik],
+        )
+        .unwrap()
+        .get(0)
+    };
+    assert_eq!(status(&mut s.client, good.0), "ok");
+    assert_eq!(status(&mut s.client, bad.0), "mismatch");
+
+    // An event at the good company, public on its last trade day.
+    let last_trade = good_prices.keys().last().unwrap().clone();
+    oe_store::replace_event_feed(
+        &mut s.client,
+        &[oe_store::EventRow {
+            key: "evt".into(),
+            rule_id: "insider.cluster_buy@1".into(),
+            known_on: Some(last_trade.clone()),
+            issuer_cik: Some(good.0 as u64),
+            issuer_name: None,
+            ticker: None,
+            headline: "invented".into(),
+            amount_usd: None,
+            percent: None,
+            body: "{}".into(),
+        }],
+    )
+    .unwrap();
+    let built = oe_store::build_outcomes(&mut s.client).unwrap();
+    assert_eq!(built.events, 1);
+    assert!(
+        built.buys + built.sales >= 1,
+        "the good company's trades are measured"
+    );
+    let ev = oe_store::outcomes(&mut s.client, &oe_store::OutcomesOf::Issuer(good.0)).unwrap();
+    assert_eq!(
+        ev.len(),
+        1,
+        "the company's events, not the yardstick's months"
+    );
+    let months: i64 = s
+        .client
+        .query_one(
+            "SELECT count(*) FROM outcome WHERE family = 'baseline.any_month'",
+            &[],
+        )
+        .unwrap()
+        .get(0);
+    assert!(
+        months > 100,
+        "the yardstick: one start a month since 2015 ({months})"
+    );
+    let e = &ev[0];
+    assert!(
+        e.entry_day > e.known_on,
+        "entered after the public day, never on it"
+    );
+    // 0.1% a day for 21 trading days, and a flat market: return = excess.
+    let r21 = e.returns[0].unwrap();
+    assert!((r21 - (1.001f64.powi(21) - 1.0)).abs() < 1e-9, "{r21}");
+    assert!((e.returns[4].unwrap() - r21).abs() < 1e-12);
+    assert!(e.returns[3].unwrap() > e.returns[2].unwrap());
+    // Nothing at the company whose prices did not agree.
+    let none: i64 = s
+        .client
+        .query_one(
+            "SELECT count(*) FROM outcome WHERE issuer_cik = $1",
+            &[&bad.0],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(none, 0);
+
+    let summary = oe_store::outcome_summary(&mut s.client).unwrap();
+    let cluster = summary
+        .iter()
+        .find(|g| g.family == "insider.cluster_buy")
+        .unwrap();
+    assert_eq!((cluster.kind.as_str(), cluster.count), ("event", 1));
+    assert_eq!(cluster.horizons.len(), 4);
+    assert_eq!(cluster.horizons[0].share_beat, Some(1.0));
+    let best = oe_store::outcomes(
+        &mut s.client,
+        &oe_store::OutcomesOf::Extremes {
+            family: "insider.cluster_buy".into(),
+            best: true,
+            limit: 5,
+        },
+    )
+    .unwrap();
+    assert_eq!(best.len(), 1);
+    assert_eq!(
+        best[0].ticker.as_deref(),
+        Some(good.1.trim_end_matches(".us").to_ascii_uppercase().as_str())
+    );
+    let _ = oe_store::insider_records(&mut s.client, 1, 10, true).unwrap();
+
+    let (sym, closes) = oe_store::prices_for(&mut s.client, good.0)
+        .unwrap()
+        .unwrap();
+    assert_eq!((sym, closes.len()), (good.1.clone(), days.len()));
+    assert!(
+        oe_store::prices_for(&mut s.client, bad.0)
+            .unwrap()
+            .is_none(),
+        "never a mismatched series"
+    );
+    let st = oe_store::price_status(&mut s.client).unwrap();
+    assert_eq!(
+        (st.series_ok, st.series_mismatch, st.benchmark),
+        (1, 1, true)
+    );
+    assert_eq!(st.source.as_deref(), Some("invented"));
+    s.finish();
+}
+
+#[test]
+#[ignore = "needs OE_TEST_DATABASE_URL"]
+fn house_transactions_are_replaced_whole_filtered_and_ranked() {
+    let mut s = Scratch::new("housetx");
+    migrate(&mut s.client).unwrap();
+    // An invented member and two invented reports.
+    let (people, _) = oe_officials::parse_legislators(
+        r#"[{"id": {"bioguide": "Z000001"}, "name": {"first": "Alex", "last": "Example", "official_full": "Alex Example"},
+             "terms": [{"type": "rep", "start": "2019-01-03", "end": "2027-01-03", "state": "ZZ", "district": 4}]}]"#,
+    )
+    .unwrap();
+    oe_store::load_members(&mut s.client, &people, &[], &[], "2026-11-24").unwrap();
+    let report = |doc: &str, filed: &str| oe_store::HouseReportRow {
+        doc_id: doc.into(),
+        year: 2026,
+        filing_type: "P".into(),
+        prefix: "Hon.".into(),
+        last: "Example".into(),
+        first: "Alex".into(),
+        suffix: String::new(),
+        state_district: "ZZ04".into(),
+        filed_on: Some(filed.into()),
+        scanned: false,
+        source_url: format!(
+            "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/{doc}.pdf"
+        ),
+        first_seen_at: None,
+        pdf_sha256: None,
+        link: Ok(("Z000001".into(), "seat and surname".into())),
+    };
+    oe_store::load_house_reports(
+        &mut s.client,
+        &[
+            report("20090001", "2026-06-23"),
+            report("20090002", "2026-08-21"),
+        ],
+    )
+    .unwrap();
+    let tx = |n: i32, t: &str, ticker: &str, day: &str, owner: Option<&str>| oe_store::HouseTxRow {
+        line_no: n,
+        owner: owner.map(str::to_string),
+        asset: format!("Example {ticker} Common Stock ({ticker}) [ST]"),
+        ticker: Some(ticker.into()),
+        asset_type: Some("ST".into()),
+        tx_type: t.into(),
+        tx_date: Some(day.into()),
+        notified_on: Some(day.into()),
+        amount: "$1,001 - $15,000".into(),
+        amount_min: Some(1001),
+        amount_max: Some(15000),
+        issuer_cik: Some(9_999_901),
+        ..Default::default()
+    };
+    let reads = vec![
+        oe_store::HouseRead {
+            doc_id: "20090001".into(),
+            rows: vec![
+                tx(1, "P", "EXA", "2026-05-29", Some("SP")),
+                tx(2, "S (partial)", "EXB", "2026-06-01", None),
+            ],
+            problems: vec![],
+        },
+        oe_store::HouseRead {
+            doc_id: "20090002".into(),
+            rows: vec![tx(1, "P", "EXA", "2026-07-24", Some("SP"))],
+            problems: vec!["one".into()],
+        },
+        oe_store::HouseRead {
+            doc_id: "99999999".into(),
+            rows: vec![tx(1, "P", "EXZ", "2026-07-24", None)],
+            problems: vec![],
+        },
+    ];
+    let r = oe_store::replace_house_transactions(&mut s.client, &reads, "test").unwrap();
+    assert_eq!(
+        (r.reports, r.transactions, r.with_issuer),
+        (2, 3, 3),
+        "an unknown report is skipped"
+    );
+    let again = oe_store::replace_house_transactions(&mut s.client, &reads[..1], "test").unwrap();
+    assert_eq!(again.transactions, 2, "a load replaces the earlier one");
+    oe_store::replace_house_transactions(&mut s.client, &reads, "test").unwrap();
+
+    let all = oe_store::OfficialTradeFilter {
+        limit: 50,
+        ..Default::default()
+    };
+    let (total, rows) = oe_store::official_trades(&mut s.client, &all).unwrap();
+    assert_eq!(total, 3);
+    assert_eq!(
+        rows[0].tx_date.as_deref(),
+        Some("2026-07-24"),
+        "newest first"
+    );
+    assert_eq!(
+        (rows[0].member.as_str(), rows[0].bioguide.as_deref()),
+        ("Alex Example", Some("Z000001"))
+    );
+    assert!(rows[0].report_url.ends_with("20090002.pdf"));
+    let f = |g: fn(&mut oe_store::OfficialTradeFilter)| {
+        let mut x = all.clone();
+        g(&mut x);
+        x
+    };
+    assert_eq!(
+        oe_store::official_trades(&mut s.client, &f(|x| x.ticker = Some("exa".into())))
+            .unwrap()
+            .0,
+        2
+    );
+    assert_eq!(
+        oe_store::official_trades(&mut s.client, &f(|x| x.side = Some("sale".into())))
+            .unwrap()
+            .0,
+        1
+    );
+    assert_eq!(
+        oe_store::official_trades(&mut s.client, &f(|x| x.since = Some("2026-07-01".into())))
+            .unwrap()
+            .0,
+        1
+    );
+    assert_eq!(
+        oe_store::official_trades(&mut s.client, &f(|x| x.bioguide = Some("Z000002".into())))
+            .unwrap()
+            .0,
+        0
+    );
+    assert_eq!(
+        oe_store::official_trades(&mut s.client, &f(|x| x.issuer_cik = Some(9_999_901)))
+            .unwrap()
+            .0,
+        3
+    );
+
+    let active = oe_store::member_activity(&mut s.client, None, 10).unwrap();
+    assert_eq!(active.len(), 1);
+    let a = &active[0];
+    assert_eq!(
+        (a.trades, a.buys, a.sales, a.low_total, a.high_total),
+        (3, 2, 1, 3003, 45000)
+    );
+    assert_eq!(a.top_tickers, vec!["EXA".to_string(), "EXB".to_string()]);
+    assert_eq!(
+        oe_store::member_activity(&mut s.client, Some("2026-07-01"), 10).unwrap()[0].trades,
+        1
+    );
+    // No address or name of a family member is ever stored.
+    let cols: i64 = s
+        .client
+        .query_one(
+            "SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema()
+             AND table_name = 'house_transaction' AND column_name ~ '(location|address|spouse_name|child_name)'",
+            &[],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(cols, 0);
     s.finish();
 }

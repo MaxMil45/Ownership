@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
-import { lookup, type Candidate } from "../api";
-import { count, money, percent } from "../format";
+import { useEffect, useMemo, useState } from "react";
+import { getOfficialTrades, getOutcomes, getPrices, getTrades, lookup, type Candidate } from "../api";
+import { OfficialTradeTable } from "./Congress";
+import { Explain, InsightList } from "../ExplainBlocks";
+import { summarizeOfficial, summarizePerson, trackRecord } from "../insights";
+import { RangeSwitch } from "../RangeSwitch";
+import { TradeChart } from "../TradeChart";
+import { count, money, percent, today } from "../format";
 import { hashFor, navigate, type Route } from "../router";
 import { ExternalLink } from "../ui";
 import { useAsync } from "../useAsync";
@@ -14,7 +19,104 @@ function roleText(r: Candidate["roles"][number]): string {
   return parts.length ? parts.join(", ") : "insider";
 }
 
+/** A member of Congress's trades, read from their House reports. */
+function MemberTrades({ bioguide }: { bioguide: string }) {
+  const t = useAsync((s) => getOfficialTrades({ bioguide, limit: 500 }, s), [bioguide]);
+  if (t.error) return <div className="error">{t.error}</div>;
+  if (!t.data) return <div className="muted">Reading their trades...</div>;
+  if (t.data.total === 0) return <div className="muted">No transactions read from their reports.</div>;
+  return (
+    <>
+      <h2>Their trades</h2>
+      <InsightList lines={summarizeOfficial(t.data.trades)} />
+      <OfficialTradeTable trades={t.data.trades.slice(0, 10)} member={false} />
+      <p>
+        <a href={hashFor("/congress", { bioguide })}>All {count(t.data.total)} trades</a>
+      </p>
+    </>
+  );
+}
+
+/** One person's trades at one company, on the price everyone traded at. */
+function PersonChart({ issuer, owner }: { issuer: number; owner: number }) {
+  const [open, setOpen] = useState(false);
+  const [others, setOthers] = useState(false);
+  const [years, setYears] = useState<number | null>(null);
+  const only = useMemo(() => new Set([owner]), [owner]);
+  // Fetched only once someone opens it: a company's trades can be large.
+  const t = useAsync((s) => (open ? getTrades({ cik: issuer }, s) : Promise.resolve(null)), [open, issuer]);
+  const market = useAsync((s) => (open ? getPrices(issuer, s) : Promise.resolve(null)), [open, issuer]);
+  return (
+    <details className="person-chart" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary>Show on the price chart</summary>
+      {t.error && <div className="error">{t.error}</div>}
+      {open && !t.data && !t.error && <div className="muted">Loading the company's trades…</div>}
+      {t.data && (
+        <>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", margin: "6px 0" }}>
+            <RangeSwitch years={years} set={setYears} />
+            <label className="sub" style={{ display: "inline-flex", gap: 6 }}>
+              <input type="checkbox" checked={others} onChange={(e) => setOthers(e.target.checked)} />
+              Also show the other insiders' trades (faded)
+            </label>
+          </div>
+          <TradeChart
+            marks={t.data.marks}
+            market={market.data?.days ?? null}
+            years={years}
+            selected={only}
+            others={others ? "fade" : "hide"}
+          />
+          <div className="muted">
+            The line is the price all insiders of the company traded at, so you can see what the stock was doing
+            around each of this person's trades.
+          </div>
+        </>
+      )}
+    </details>
+  );
+}
+
+/** An insider's buying and selling pattern at each company. */
+function Patterns({ cik }: { cik: number }) {
+  const t = useAsync((s) => getTrades({ owner: cik }, s), [cik]);
+  // Their record, when prices are imported (an empty list otherwise).
+  const record = useAsync((s) => getOutcomes({ owner: cik }, s), [cik]);
+  if (t.error) return <div className="error">{t.error}</div>;
+  if (!t.data) return <div className="muted">Reading their trades…</div>;
+  const people = summarizePerson(t.data.marks, today());
+  if (people.length === 0) return null;
+  return (
+    <>
+      <h2>Patterns</h2>
+      {people.map((p) => (
+        <div key={p.issuer_cik} className="pattern">
+          <div>
+            <strong>{p.label}</strong> ·{" "}
+            <a href={hashFor("/company", { cik: String(p.issuer_cik), owner: String(cik) })}>
+              see their trades on the chart
+            </a>
+          </div>
+          <InsightList
+            lines={(() => {
+              const r = record.data ? trackRecord(record.data.outcomes, p.issuer_cik) : null;
+              return r ? [...p.lines, r] : p.lines;
+            })()}
+          />
+          <PersonChart issuer={p.issuer_cik} owner={cik} />
+        </div>
+      ))}
+      <div className="muted">From their own filings: what they did, not why.</div>
+      <div className="explain-row">
+        <Explain topic="buy" title="What does a buy mean?" />
+        <Explain topic="sell" title="What does a sale mean?" />
+      </div>
+    </>
+  );
+}
+
 function CandidateCard({ c }: { c: Candidate }) {
+  const insiderCik = c.key.startsWith("cik:") && c.kinds.includes("insider") ? Number(c.key.slice(4)) : null;
   return (
     <div className="card candidate">
       <h3>{c.display_name}</h3>
@@ -47,6 +149,8 @@ function CandidateCard({ c }: { c: Candidate }) {
           </ul>
         </>
       )}
+
+      {insiderCik !== null && <Patterns cik={insiderCik} />}
 
       {c.trades.length > 0 && (
         <>
@@ -108,6 +212,7 @@ function CandidateCard({ c }: { c: Candidate }) {
               Committees: {c.official.committees.map((m) => (m.title ? `${m.name} (${m.title})` : m.name)).join("; ")}
             </div>
           )}
+          <MemberTrades bioguide={c.official.bioguide} />
           {c.official.reports > 0 && (
             <>
               <p className="sub">

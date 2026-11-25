@@ -1,0 +1,11 @@
+[package]
+name = "oe-prices"
+description = "Reads daily stock prices from a file the user downloaded (Stooq's ASCII database, or a plain date,close CSV). No price data ships with the project (ADR 0003)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+oe-core.workspace = true
+oe-bulk.workspace = true

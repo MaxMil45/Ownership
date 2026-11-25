@@ -131,6 +131,100 @@ pub fn officials_load(argv: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+/// Which reader version filled `house_transaction` (bump when it changes).
+const PTR_READER: &str = "oe-ptr 1 (2026-11-25)";
+
+/// `oe ptr-load [--root data/officials/house]`: reads the transactions in
+/// every typed House report on disk (ADR 0011) and replaces the stored ones.
+pub fn ptr_load(argv: &[String]) -> Result<(), String> {
+    let mut root = PathBuf::from(DEFAULT_ROOT).join("house");
+    let mut it = argv.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--root" => root = args::folder(&mut it, "--root")?,
+            other => return Err(format!("unexpected argument {other:?}")),
+        }
+    }
+    let mut client = connect()?;
+    let started = std::time::Instant::now();
+    let wanted = oe_store::house_reports_to_read(&mut client).map_err(|e| e.to_string())?;
+    // A ticker names a company when exactly one company's latest Form 3/4/5
+    // ticker is it.
+    let mut by_ticker: std::collections::HashMap<String, Option<i64>> = Default::default();
+    for (cik, t) in oe_store::latest_tickers(&mut client).map_err(|e| e.to_string())? {
+        by_ticker
+            .entry(t.to_ascii_uppercase())
+            .and_modify(|v| *v = None)
+            .or_insert(Some(cik as i64));
+    }
+    let (mut missing, mut unreadable, mut problems) = (0usize, 0usize, 0usize);
+    let mut reads = Vec::with_capacity(wanted.len());
+    for (doc, year) in &wanted {
+        let path = root.join(year.to_string()).join(format!("{doc}.pdf"));
+        let Ok(bytes) = std::fs::read(&path) else {
+            missing += 1;
+            continue;
+        };
+        let report = match oe_ptr::read_report(&bytes) {
+            Ok(r) => r,
+            Err(e) => {
+                unreadable += 1;
+                reads.push(oe_store::HouseRead {
+                    doc_id: doc.clone(),
+                    rows: Vec::new(),
+                    problems: vec![e],
+                });
+                continue;
+            }
+        };
+        problems += report.problems.len();
+        let rows = report
+            .lines
+            .into_iter()
+            .enumerate()
+            .map(|(i, l)| oe_store::HouseTxRow {
+                line_no: i as i32 + 1,
+                issuer_cik: l
+                    .ticker
+                    .as_ref()
+                    .and_then(|t| by_ticker.get(t).copied().flatten()),
+                owner: l.owner,
+                asset: l.asset,
+                ticker: l.ticker,
+                asset_type: l.asset_type,
+                tx_type: l.tx_type,
+                tx_date: l.tx_date,
+                notified_on: l.notified_on,
+                amount: l.amount,
+                amount_min: l.amount_min,
+                amount_max: l.amount_max,
+                filing_status: l.filing_status,
+                description: l.description,
+                comments: l.comments,
+                subholding_of: l.subholding_of,
+            })
+            .collect();
+        reads.push(oe_store::HouseRead {
+            doc_id: doc.clone(),
+            rows,
+            problems: report.problems,
+        });
+    }
+    let r = oe_store::replace_house_transactions(&mut client, &reads, PTR_READER)
+        .map_err(|e| e.to_string())?;
+    println!(
+        "House reports: {} typed reports in the ledger, {} read in {:.0} s ({missing} not on disk, {unreadable} unreadable); {} transactions, {} of them linked to a company by ticker, {problems} with a field that could not be read",
+        wanted.len(),
+        r.reports,
+        started.elapsed().as_secs_f64(),
+        r.transactions,
+        r.with_issuer
+    );
+    println!("Scanned paper reports are not read (no OCR); they stay listed with their links.");
+    println!("{}", oe_officials::USE_LIMITS.lines().next().unwrap_or(""));
+    Ok(())
+}
+
 pub fn official(argv: &[String]) -> Result<(), String> {
     let query = argv.join(" ");
     if query.trim().is_empty() {

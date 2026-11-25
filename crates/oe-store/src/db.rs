@@ -56,6 +56,14 @@ pub const MIGRATIONS: &[(&str, &str)] = &[
         "0009_lookup_indexes",
         include_str!("../../../migrations/0009_lookup_indexes.sql"),
     ),
+    (
+        "0010_prices",
+        include_str!("../../../migrations/0010_prices.sql"),
+    ),
+    (
+        "0011_house_transactions",
+        include_str!("../../../migrations/0011_house_transactions.sql"),
+    ),
 ];
 
 #[derive(Debug)]

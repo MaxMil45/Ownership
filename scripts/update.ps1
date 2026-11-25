@@ -114,6 +114,14 @@ try {
 
     Say "rebuilding the events (about 4 minutes)"
     & $oe events-build | Select-Object -Last 1
+    if (Test-Path "data\officials\house") {
+        Say "reading the House members' reports"
+        & $oe ptr-load
+    }
+
+    Say "measuring what happened after events and trades (when prices are imported)"
+    & $oe outcomes-build
+
     Say "rebuilding the name index"
     & $oe people-index
 

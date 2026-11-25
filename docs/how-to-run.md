@@ -145,6 +145,14 @@ foreach ($f in "legislators-current.json", "legislators-historical.json", "commi
 & $oe official pelosi       # terms, committees and the reports filed, with links
 ```
 
+Then read what they traded (ADR 0011; about 15 seconds for all of them):
+
+```powershell
+& $oe ptr-load
+```
+
+It reads the transactions in every typed report (owner: the member, spouse, joint or dependent child; asset and ticker; buy, sale, partial sale or exchange; dates; the amount range) and links each ticker to its company. On the 2013 to 2026 reports: 57,806 transactions from 6,003 reports, 38,037 linked to a company, 2 without a readable amount. Scanned paper reports (2,462) are not read. The app's Congress page lists every member's trades (most active traders, filters by ticker and buy or sale, a link to each report), Lookup shows a member's trades with a summary, and company pages list the members who traded the stock and mark their trades on the chart. `scripts\update.ps1` runs `ptr-load` again each time. The reports may not be used commercially (5 U.S.C. 13107).
+
 `officials-load` links each report to the member who filed it by seat (state and district), surname and dates, and holds back with a reason any report it cannot place for certain (on the 2013 to 2026 reports: 8,461 of 8,465 linked to 396 members). Committee membership is the data set's current one, stored with the date of the load, so committee history builds up from the first load. The reports' contents are not read yet (ADR 0010: the text PDFs forbid text extraction).
 
 ## 4. The database
@@ -207,7 +215,28 @@ starts Docker Desktop and the database if needed, builds `oe` and the web app wh
 
 The app has an overview (headline numbers, events per month and insider buying and selling, over one year, five years or everything), every event with filters and SEC links, a page per company (its insiders and their roles, latest trades, buying and selling per month, its events), and the name lookup. Names and companies link to each other.
 
-Signing in: `oe serve` prints a login link with a code made fresh for each run. Opening it stores the API token in an `HttpOnly`, `SameSite=Strict` cookie, which the page's scripts cannot read and other sites cannot send; the token never appears in a page. The cookie lasts 30 days and works across restarts (until `--new-token`); if the app says it is not signed in, open the latest link. To work on the app itself with live reloading, see `web/README.md`.
+**What the filings show.** Each company page and each insider in Lookup opens with a few plain sentences worked out from their open-market trades, for example "Mostly a seller: bought $1.12B in 2015, 2017-2020 and 2025; sold $39.96B in 2016 and 2021-2022" or "no insider has bought since (7 years)". Every sentence is counted from the filings: who bought or sold, how much, when, how much of it under pre-arranged 10b5-1 plans. None says why someone traded, because the filings do not say. Folded "What does this mean?" notes beside the charts and on every event explain what a buy, a sale, a plan, a cluster buy or a 13D usually means.
+
+**Trades on the price.** The company page draws the price insiders reported each day they traded, with every buy (▲) and sale (▼) on it, sized by the money involved and the largest labelled. Hover for who, how many shares, the price and the filing date; click to open the SEC filing. Under the chart, "Whose trades to show" lists every insider who traded, with what each bought and sold: tick the ones to see (Everyone, Nobody, or a name search); "Show everyone else's trades faded" keeps the others in view. In Lookup, every company a person traded has "Show on the price chart": that company's price line with only this person's trades, so you can see what the stock was doing around each one, and an option to show the other insiders faded. This is not a market price: there are gaps when no insider traded, and prices are as filed, not adjusted for stock splits (Tesla's 2020 and 2022 splits show as drops). A real daily market price would need a data provider whose terms allow it, a decision left open (ADR 0003).
+
+Signing in: `oe serve` prints a login link with a code made fresh for each run, and `start.ps1` opens it. Opening it sets an `HttpOnly`, `SameSite=Strict` cookie holding a session value that is also new each run and is never the API token (browsers send a 127.0.0.1 cookie to every port on the computer, so another local web server could see it); it stops working when `oe serve` stops. The page's scripts cannot read it and other sites cannot send it. If the app says it is not signed in, open the latest link (or run `start.ps1` again). To work on the app itself with live reloading, see `web/README.md`.
+
+### What happened after? (prices and the History page)
+
+The History page shows what a company's shares did 1, 3, 6 and 12 months after each insider buy or sale and each kind of event became public, against the market (SPY, an S&P 500 fund), and which insiders' buys were followed by the best and worst years. It needs daily market prices, which do not come with the project (ADR 0003):
+
+1. On stooq.com, open Database, choose daily, U.S., ASCII, and save the zip into `data\prices\` (you accept Stooq's terms; the file stays on this computer and is never committed).
+2. Load it (a few minutes; it reads only the companies in the ledger and SPY):
+
+```powershell
+& $oe prices-import data\prices\data     # the folder the zip unzips to, or the zip itself
+```
+
+Each company's series is used only if its closes agree with what its insiders reported paying or receiving on the same days: each of up to 20 recent trades may be off by 20% plus 5 points per year of age (Stooq takes later dividends off old closes), judged on the median. A ticker reused by another company, a wrong match or a reverse split after the trades is left out and counted. On the file of 2026-11-24: 5,701 series read for companies in the ledger, 4,096 companies accepted, 707 mismatched, 1,262 with too few trades to check.
+
+Read the History table against its first row, "any company, any month": every company with prices, from the first trading day of each month since 2015, measured the same way. A typical single stock trails the index in most years (a few very large winners lift it), so the yardstick itself is below zero (median -8.2% against SPY a year later, 40% beating it, on the 2026-11-24 file); each kind of filing is better or worse than that, not than zero. `scripts\update.ps1` measures the outcomes again after each catch-up (`& $oe outcomes-build`); import a fresh Stooq file now and then to extend the prices. With prices, the company and person charts draw the market price (adjusted for splits) instead of insiders' own prices, and each person's patterns in Lookup end with their record ("A year after 6 buys became public, the stock was up after 4 ...").
+
+How it is measured: from the first close **after** the day a filing became public (what a reader of the filing could have done, never the insider's own trade date), to the close 21, 63, 126 and 252 trading days later; "vs market" subtracts SPY's change over the same days. History, not advice: past results say nothing certain about the future, and companies that went bankrupt or were taken over often have no prices in the file, which makes the results look better than they were.
 
 ### Keeping it current (one command)
 
@@ -257,6 +286,14 @@ serves the ledger as JSON on this computer only (`http://127.0.0.1:8730/v1/`), f
 | `GET /v1/events` | the events the rules found, newest first, each as the alert JSON (headline, details, people, receipts, amount, percent). Filters, all optional: `since` and `until` (`YYYY-MM-DD`), `rule` (`insider.cluster_buy`, or one version: `insider.cluster_buy@1`), `ticker`, `cik` (the company's), `min_amount` (dollars), `q` (words in the headline or company name), `limit` (1 to 500, default 50), `offset`. The answer has `total` (all matches) and `built_at` |
 | `GET /v1/events/counts` | events per day and rule, for charts |
 | `GET /v1/company?cik=1318605` | one company: name and ticker as filed, its latest 30 insiders with their roles, its latest 20 open-market trades with receipts, and its buying and selling per day |
+| `GET /v1/trades?cik=1326801` or `?owner=1494730` | every open-market buy and sale of a company (or by one insider, at every company), summed per day, insider and buy/sell, with shares, dollars, how many under a 10b5-1 plan and the first filing's receipt: what the summaries and the price chart are drawn from (0.1 to 0.4 s) |
+| `GET /v1/history` | the imported prices (coverage) and, per kind of event and for insider buys and sales, the median change after 1, 3, 6 and 12 months, against the market, and the share that rose or beat it (kept 10 minutes) |
+| `GET /v1/history/insiders?best=1&min=3` | insiders with at least `min` buys a year old, ranked by the median change against the market a year after their buys (`best=0`: the worst) |
+| `GET /v1/history/extremes?family=insider.cluster_buy&best=1` | the cases of one kind with the biggest rise (or fall) a year later |
+| `GET /v1/history/outcomes?owner=` or `?cik=` | every measured trade of one insider, or every measured event of one company |
+| `GET /v1/officials/trades?bioguide=P000197` | members' trades, newest first; filters `ticker`, `cik` (the company), `side` (`buy`/`sale`), `since`, `limit`, `offset` |
+| `GET /v1/officials/active?since=2025-11-25` | members ranked by number of trades, with buys, sales, the range of reported value and their most traded tickers |
+| `GET /v1/prices?cik=` | the company's daily closes (when its series passed the check) |
 | `GET /v1/companies?q=tes` | companies with events whose name starts with the text, or whose ticker is it (for a search box) |
 
 The events come from `& $oe events-build`, which runs every rule (their ledger versions, as `oe alerts --db`) over the downloaded folders and stores the result in the database, replacing what was there (about 4 minutes on the full history). Run it after downloading new filings. Events whose filings name no ticker (Form 144, 13D/G, proxy and 10-Q/10-K events) get the company's latest ticker from its Form 3/4/5 filings, so `ticker=TSLA` finds them too. Cluster buys are found over every open-market purchase in the database since 2015 (about 363,000 purchases; 8,800 with impossible transaction dates, such as the year 0024 or 2033, are left out and counted), with the routine-trader filter reading the database's trades from 2011, so events before 2018 had less than the full three years to look back on. A cluster whose dollar total passes $1 billion is kept without a total, because the prices were typed as totals in the filing ("1,400,000 shares at $1400"). `--form4 <folder>` builds them from those files instead, as `oe alerts` does.

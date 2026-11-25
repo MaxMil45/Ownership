@@ -10,6 +10,8 @@
 /** True for the built app that `oe serve` hosts. */
 export const SERVED = !import.meta.env.DEV;
 
+import type { Mark } from "./insights";
+
 export interface Settings {
   baseUrl: string;
   token: string;
@@ -285,6 +287,142 @@ export const getCompany = (cik: number, signal?: AbortSignal) =>
   request<CompanyResponse>(`/company?cik=${encodeURIComponent(String(cik))}`, { signal });
 export const findCompanies = (q: string, signal?: AbortSignal) =>
   request<CompaniesResponse>(`/companies?q=${encodeURIComponent(q)}`, { signal });
+export const getTrades = (of: { cik: number } | { owner: number }, signal?: AbortSignal) =>
+  request<{ marks: Mark[] }>(
+    "cik" in of ? `/trades?cik=${of.cik}` : `/trades?owner=${of.owner}`,
+    { signal },
+  );
+export interface Horizon {
+  days: number;
+  n: number;
+  median_return: number | null;
+  median_excess: number | null;
+  mean_excess: number | null;
+  share_up: number | null;
+  share_beat: number | null;
+}
+
+export interface HistoryResponse {
+  prices: {
+    imported_at: string | null;
+    source: string | null;
+    symbols: number;
+    first_day: string | null;
+    last_day: string | null;
+    series_ok: number;
+    series_mismatch: number;
+    series_unchecked: number;
+    outcomes: number;
+    benchmark: boolean;
+  };
+  groups: { kind: string; family: string; count: number; horizons: Horizon[] }[];
+}
+
+export interface InsiderRecord {
+  owner_cik: number;
+  name: string;
+  buys: number;
+  measured: number;
+  companies: number;
+  median_return_12m: number | null;
+  median_excess_12m: number | null;
+  share_beat_12m: number | null;
+  last_buy: string | null;
+}
+
+/** `r` and `x`: returns and returns minus the market at 21, 63, 126, 252 trading days. */
+export interface Outcome {
+  kind: "event" | "buy" | "sale";
+  ref: string;
+  family: string;
+  issuer_cik: number;
+  issuer_name: string;
+  ticker: string | null;
+  owner_cik: number | null;
+  traded_on: string | null;
+  known_on: string;
+  value: number | null;
+  entry_day: string;
+  r: (number | null)[];
+  x: (number | null)[];
+}
+
+export const getHistory = (signal?: AbortSignal) => request<HistoryResponse>("/history", { signal });
+export const getInsiderRecords = (best: boolean, signal?: AbortSignal) =>
+  request<{ insiders: InsiderRecord[] }>(`/history/insiders?best=${best ? 1 : 0}&min=3&limit=20`, { signal });
+export const getExtremes = (family: string, best: boolean, signal?: AbortSignal) =>
+  request<{ outcomes: Outcome[] }>(
+    `/history/extremes?family=${encodeURIComponent(family)}&best=${best ? 1 : 0}&limit=10`,
+    { signal },
+  );
+export const getOutcomes = (of: { owner: number } | { cik: number }, signal?: AbortSignal) =>
+  request<{ outcomes: Outcome[] }>(
+    "owner" in of ? `/history/outcomes?owner=${of.owner}` : `/history/outcomes?cik=${of.cik}`,
+    { signal },
+  );
+/** Daily closes (Stooq, split-adjusted) when the company's series passed its check. */
+export const getPrices = (cik: number, signal?: AbortSignal) =>
+  request<{ symbol: string | null; days: [string, number][] }>(`/prices?cik=${cik}`, { signal });
+export interface OfficialTrade {
+  bioguide: string | null;
+  member: string;
+  doc_id: string;
+  line_no: number;
+  filed_on: string | null;
+  report_url: string;
+  /** SP spouse, JT joint, DC dependent child; null the member. */
+  owner: string | null;
+  asset: string;
+  ticker: string | null;
+  asset_type: string | null;
+  /** P, S, S (partial), E */
+  tx_type: string;
+  tx_date: string | null;
+  amount: string;
+  amount_min: number | null;
+  amount_max: number | null;
+  description: string | null;
+  issuer_cik: number | null;
+}
+
+export interface OfficialTradesResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  trades: OfficialTrade[];
+  use_limits: string;
+}
+
+export interface MemberActivity {
+  bioguide: string;
+  name: string;
+  trades: number;
+  buys: number;
+  sales: number;
+  low_total: number;
+  high_total: number;
+  first_trade: string | null;
+  last_trade: string | null;
+  top_tickers: string[];
+}
+
+export interface OfficialFilter {
+  bioguide?: string;
+  ticker?: string;
+  cik?: string;
+  side?: string;
+  since?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const getOfficialTrades = (f: OfficialFilter, signal?: AbortSignal) =>
+  request<OfficialTradesResponse>(`/officials/trades${eventsQuery(f as EventFilter)}`, { signal });
+export const getActiveMembers = (since: string | null, signal?: AbortSignal) =>
+  request<{ members: MemberActivity[] }>(
+    `/officials/active?limit=25${since ? `&since=${since}` : ""}`,
+    { signal },
+  );
 export const lookup = (name: string, signal?: AbortSignal) =>
   request<LookupResponse>("/lookup", {
     method: "POST",

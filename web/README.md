@@ -43,7 +43,9 @@ Open <http://127.0.0.1:5173>, go to Settings, paste the token `oe serve` printed
 
 - `src/api.ts`: typed client for `/v1/events`, `/v1/events/counts`, `/v1/flow`, `/v1/status`, `/v1/lookup`, `/v1/company`, `/v1/companies`. Built (served by `oe serve`), it uses the same address and the login cookie; in development, the token pasted in Settings (kept in localStorage).
 - `src/pages/`: Overview, Events, Companies, Lookup, Settings. Filters and the looked-up name live in the address (`#/events?ticker=TSLA`), so a view can be bookmarked.
-- `src/charts.tsx`: the two charts, drawn as SVG without a charting library.
+- `src/charts.tsx`: the monthly charts; `src/TradeChart.tsx`: the price insiders traded at with every buy and sale marked. SVG, no charting library.
+- `src/pages/History.tsx`: what happened after each kind of filing, insiders' track records (needs `oe prices-import`).
+- `src/insights.ts`: the plain-English patterns (facts counted from the trades, never why); `src/explain.ts`: what each kind of trade and event usually means.
 - `src/styles.css`: the dashboard's palette (light and dark by system setting).
 
 Text from filings is shown through React (escaped); a link is made only when `safeUrl` accepts it.

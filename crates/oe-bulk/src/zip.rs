@@ -135,12 +135,12 @@ impl<'a> Archive<'a> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod tests {
-    use super::*;
-
-    /// Builds a small archive by hand: one stored entry and one deflated one.
-    pub(crate) fn make_zip(files: &[(&str, &[u8], bool)]) -> Vec<u8> {
+/// For tests in this and other crates: builds a small archive by hand, each
+/// file stored or deflated. Not for real archives (no zip64, no checks).
+#[doc(hidden)]
+pub mod tests_support {
+    /// `(name, bytes, deflate)` per file.
+    pub fn write(files: &[(&str, &[u8], bool)]) -> Vec<u8> {
         let mut out = Vec::new();
         let mut central = Vec::new();
         for (name, data, deflate) in files {
@@ -183,6 +183,15 @@ pub(crate) mod tests {
         out.extend_from_slice(&cd_offset.to_le_bytes());
         out.extend_from_slice(&[0, 0]);
         out
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    pub(crate) fn make_zip(files: &[(&str, &[u8], bool)]) -> Vec<u8> {
+        tests_support::write(files)
     }
 
     #[test]

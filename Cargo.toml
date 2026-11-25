@@ -13,6 +13,8 @@ members = [
     "crates/oe-bulk",
     "crates/oe-alerts",
     "crates/oe-officials",
+    "crates/oe-prices",
+    "crates/oe-ptr",
     "crates/oe-cli",
 ]
 
@@ -37,4 +39,6 @@ oe-store = { path = "crates/oe-store" }
 oe-bulk = { path = "crates/oe-bulk" }
 oe-alerts = { path = "crates/oe-alerts", default-features = false }
 oe-officials = { path = "crates/oe-officials" }
+oe-prices = { path = "crates/oe-prices" }
+oe-ptr = { path = "crates/oe-ptr" }
 oe-edgar = { path = "crates/oe-edgar", default-features = false }

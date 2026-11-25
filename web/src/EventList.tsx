@@ -1,5 +1,6 @@
 import type { EventItem } from "./api";
 import { money, percent, ruleColor, ruleLabel } from "./format";
+import { explainRule } from "./explain";
 import { hashFor } from "./router";
 import { ExternalLink } from "./ui";
 
@@ -25,6 +26,12 @@ export function EventList({ events }: { events: EventItem[] }) {
             {e.details.map((d, i) => (
               <p key={i}>{d}</p>
             ))}
+            {explainRule(e.rule_id) && (
+              <details className="explain">
+                <summary>What does this mean?</summary>
+                <p>{explainRule(e.rule_id)!.text}</p>
+              </details>
+            )}
             {e.people.length > 0 && (
               <p>
                 {e.people.slice(0, 8).map((p, i) => (

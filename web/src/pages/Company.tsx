@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
-import { findCompanies, getCompany, getEvents, type CompanyResponse } from "../api";
+import { findCompanies, getCompany, getEvents, getOfficialTrades, getPrices, getTrades, type CompanyResponse } from "../api";
+import { OfficialTradeTable, ownerLabel, rangeLabel, sideLabel } from "./Congress";
 import { BuySellChart } from "../charts";
+import { InsightList, TradeExplanations } from "../ExplainBlocks";
+import { summarizeCompany } from "../insights";
+import { RangeSwitch } from "../RangeSwitch";
+import { InsiderPicker } from "../InsiderPicker";
+import { TradeChart } from "../TradeChart";
 import { EventList } from "../EventList";
-import { count, money } from "../format";
+import { count, money, today } from "../format";
 import { hashFor, navigate, type Route } from "../router";
 import { ExternalLink, Loaded } from "../ui";
 import { useAsync } from "../useAsync";
@@ -67,6 +73,19 @@ export function Company({ route }: { route: Route }) {
     (s) => (valid ? getEvents({ cik: String(cik), limit: 10 }, s) : Promise.resolve(null)),
     [cik],
   );
+  const trades = useAsync((s) => (valid ? getTrades({ cik }, s) : Promise.resolve(null)), [cik]);
+  // Market closes, if prices were imported and this company's series passed its check.
+  const market = useAsync((s) => (valid ? getPrices(cik, s) : Promise.resolve(null)), [cik]);
+  const members = useAsync(
+    (s) => (valid ? getOfficialTrades({ cik: String(cik), limit: 200 }, s) : Promise.resolve(null)),
+    [cik],
+  );
+  const [years, setYears] = useState<number | null>(5);
+  const owner = Number(route.params.owner ?? "") || null;
+  // Whose trades the chart marks: one person when the address names them.
+  const [selected, setSelected] = useState<ReadonlySet<number> | null>(owner ? new Set([owner]) : null);
+  const [fade, setFade] = useState(false);
+  useEffect(() => setSelected(owner ? new Set([owner]) : null), [cik, owner]);
   if (!valid) return <CompanySearch />;
   return (
     <Loaded state={company}>
@@ -88,9 +107,76 @@ export function Company({ route }: { route: Route }) {
             </div>
 
             <div className="card">
-              <h2>Insider buying and selling</h2>
-              <div className="sub">Open-market purchases and sales of this company's stock, per month.</div>
-              <BuySellChart flow={c.flow} />
+              <h2>What the filings show</h2>
+              <Loaded state={trades}>
+                {(t) => t && <InsightList lines={summarizeCompany(t.marks, today())} />}
+              </Loaded>
+              <div className="muted">
+                Facts from insiders' own filings: what they bought and sold, not why.
+              </div>
+            </div>
+
+            <div className="card">
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <h2>Insider trades on the price</h2>
+                  <div className="sub">
+                    Each ▲ is a buy and each ▼ a sale, at the price the insider reported. Hover for details,
+                    click to open the filing.
+                  </div>
+                </div>
+                <div style={{ marginLeft: "auto" }}>
+                  <RangeSwitch years={years} set={setYears} />
+                </div>
+              </div>
+              <Loaded state={trades}>
+                {(t) =>
+                  t && (
+                    <>
+                      <TradeChart
+                        market={market.data?.days ?? null}
+                        officials={(members.data?.trades ?? [])
+                          .filter((m) => m.tx_date)
+                          .map((m) => ({
+                            day: m.tx_date!,
+                            buy: m.tx_type === "P",
+                            label: `${m.member} (${ownerLabel(m.owner).toLowerCase()}): ${sideLabel(m.tx_type).toLowerCase()} ${rangeLabel(m.amount_min, m.amount_max, m.amount)} on ${m.tx_date}`,
+                            url: m.report_url,
+                          }))}
+                        marks={t.marks}
+                        years={years}
+                        selected={selected}
+                        others={fade ? "fade" : "hide"}
+                      />
+                      {selected !== null && (
+                        <label className="sub" style={{ display: "inline-flex", gap: 6, marginTop: 6 }}>
+                          <input type="checkbox" checked={fade} onChange={(e) => setFade(e.target.checked)} />
+                          Show everyone else's trades faded
+                        </label>
+                      )}
+                      <InsiderPicker marks={t.marks} selected={selected} onChange={setSelected} />
+                    </>
+                  )
+                }
+              </Loaded>
+              <TradeExplanations />
+            </div>
+
+            {members.data && members.data.total > 0 && (
+              <div className="card">
+                <h2>Members of Congress who traded it</h2>
+                <div className="sub">
+                  {count(members.data.total)} trades reported by House members, newest first (amounts are ranges).{" "}
+                  <a href={hashFor("/congress", { ticker: c.ticker ?? undefined })}>All on the Congress page</a>
+                </div>
+                <OfficialTradeTable trades={members.data.trades.slice(0, 15)} />
+              </div>
+            )}
+
+            <div className="card">
+              <h2>Buying and selling per month</h2>
+              <div className="sub">Open-market purchases and sales of this company's stock, in dollars.</div>
+              <BuySellChart flow={c.flow} years={years} />
             </div>
 
             <div className="grid2">
@@ -110,7 +196,14 @@ export function Company({ route }: { route: Route }) {
                     {c.insiders.map((i) => (
                       <tr key={i.owner_cik}>
                         <td>
-                          <a href={hashFor("/lookup", { name: i.name })}>{i.name}</a>
+                          <a href={hashFor("/lookup", { name: i.name })}>{i.name}</a>{" "}
+                          <a
+                            className="muted"
+                            href={hashFor("/company", { cik: String(cik), owner: String(i.owner_cik) })}
+                            title="Show only this insider's trades on the chart"
+                          >
+                            (chart)
+                          </a>
                         </td>
                         <td>{roles(i)}</td>
                         <td>{i.last_on}</td>

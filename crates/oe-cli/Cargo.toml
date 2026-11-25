@@ -14,7 +14,7 @@ path = "src/main.rs"
 default = ["net", "db"]
 net = ["oe-edgar/net", "oe-alerts/net"]
 # PostgreSQL ledger commands (db-migrate, db-load, db-status).
-db = ["dep:oe-store"]
+db = ["dep:oe-store", "dep:oe-ptr"]
 
 [dependencies]
 oe-core.workspace = true
@@ -25,6 +25,9 @@ oe-sched13.workspace = true
 oe-events.workspace = true
 oe-edgar.workspace = true
 oe-store = { workspace = true, optional = true }
+# Reading House reports (PDF): only with the database commands.
+oe-ptr = { workspace = true, optional = true }
 oe-alerts.workspace = true
 oe-bulk.workspace = true
 oe-officials.workspace = true
+oe-prices.workspace = true
