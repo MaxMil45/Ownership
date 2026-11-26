@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ownership Engine options</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page">
+    <header><strong>Ownership Engine</strong> <span class="muted">· options</span></header>
+    <p>
+      The extension asks <b>oe serve</b> on this computer. Start it with <code>scripts\start.ps1</code>, then paste
+      the token from <code>data\serve\token.txt</code> in the repository folder. The token stays in this browser
+      and is only ever sent to 127.0.0.1 or localhost.
+    </p>
+    <form id="form" class="settings">
+      <label>Address of oe serve <input id="base" size="32" spellcheck="false" /></label>
+      <label>Token <input id="token" type="password" size="70" spellcheck="false" autocomplete="off" /></label>
+      <button class="primary" type="submit">Check and save</button>
+    </form>
+    <div id="msg" aria-live="polite"></div>
+    <h2>What it does, and does not do</h2>
+    <ul>
+      <li>Looks up a name or ticker you type, select and right-click, or enter after <b>oe</b> in the address bar.</li>
+      <li>Does not read the pages you visit, and sends nothing anywhere except to oe serve on this computer.</li>
+      <li>“Open profile” opens the full web app, signed in for the current run of oe serve.</li>
+    </ul>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

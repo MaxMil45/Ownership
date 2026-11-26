@@ -213,7 +213,7 @@ Run them one after another, never two at once: each `oe` keeps its own count of 
 
 starts Docker Desktop and the database if needed, builds `oe` and the web app when their sources changed (the first run installs the app's packages), applies any new migration, and runs `oe serve --open`: the app opens in your browser at <http://127.0.0.1:8730>, already signed in. Keep the window open while you use it; Ctrl+C stops it. `-Update` first runs `scripts\update.ps1` (every filing since the last run), `-NoBrowser` prints the link instead of opening it.
 
-The app has an overview (headline numbers, events per month and insider buying and selling, over one year, five years or everything), every event with filters and SEC links, a page per company (its insiders and their roles, latest trades, buying and selling per month, its events), and the name lookup. Names and companies link to each other.
+The app is built around one search box, at the top of every page: type a person, a fund, a company or a ticker (`Elon Musk`, `NVDA`, `Nancy Pelosi`) and the Search page lists companies, members of Congress, and people or funds in SEC filings apart, one line each saying who they are. A profile opens with "In short", a few plain sentences: who they are in the filings, their roles, their latest open-market trade or stake. The home page says what each part of the app answers (insiders, planned sales, big holders, Congress, what happened after), with the latest events and the headline numbers below. Every page starts with a title, a sentence on what it shows and the words to know for it; those words (and others like them, dotted-underlined) explain themselves on hover and link to the Guide page, which has how to use the app, what it can and cannot tell you, and a glossary. Pages: Home, Latest events (filters, SEC links), Companies (insiders and their roles, trades on the price, buying and selling per month, events), Congress, What happened after, Guide. Names and companies link to each other.
 
 **What the filings show.** Each company page and each insider in Lookup opens with a few plain sentences worked out from their open-market trades, for example "Mostly a seller: bought $1.12B in 2015, 2017-2020 and 2025; sold $39.96B in 2016 and 2021-2022" or "no insider has bought since (7 years)". Every sentence is counted from the filings: who bought or sold, how much, when, how much of it under pre-arranged 10b5-1 plans. None says why someone traded, because the filings do not say. Folded "What does this mean?" notes beside the charts and on every event explain what a buy, a sale, a plan, a cluster buy or a 13D usually means.
 
@@ -280,6 +280,7 @@ serves the ledger as JSON on this computer only (`http://127.0.0.1:8730/v1/`), f
 | Call | Answer |
 | --- | --- |
 | `GET /v1/health` | `{"ok":true,...}`, no token needed |
+| `GET /v1/app-link` | `{"login":"/login?code=..."}`: this run's login link, for the browser extension to open the app signed in (404 with `--no-app`) |
 | `POST /v1/lookup` with `{"name": "elon musk"}` (`Content-Type: application/json`) | what `oe lookup` shows, as JSON: candidates with roles, trades, holdings, contest filings, House reports and every receipt (about 0.05 to 0.1 s) |
 | `GET /v1/status` | what `oe db-status` counts (kept 10 minutes; about 3 s the first time) |
 | `GET /v1/flow` | insider open-market buying and selling per day since 2006, as on the dashboard (kept 10 minutes; about 4 s the first time) |
@@ -308,6 +309,14 @@ Invoke-RestMethod http://127.0.0.1:8730/v1/lookup -Method Post -Headers @{Author
 It refuses requests for any other host name and any web page's origin; browser extensions are allowed, and `--allow-origin http://localhost:5173` allows a local development server. Names are sent in the request body, never in a URL, and the window logs only the method, path, status and time. Ctrl+C stops it.
 
 After upgrading to migration `0002_amendments`, load your folders once more (for example `& $oe db-load data/form4`): filings loaded earlier only then get their co-owners and amendment details. Nothing already stored changes. `docker-compose -f docker/compose.yaml down` stops it and keeps the data.
+
+### The browser extension
+
+`extension/` is a Chrome and Edge extension (Manifest V3, TypeScript) that asks `oe serve` on this computer. `scripts\start.ps1` builds it into `extension\dist` when its sources change. Load it once: open `chrome://extensions` (or `edge://extensions`), turn on Developer mode, choose "Load unpacked" and pick the `extension\dist` folder. Then open its options (right-click the toolbar icon, Options) and paste the token from `data\serve\token.txt`; "Check and save" tests it against `oe serve`. After a rebuild, click the reload arrow on its card in the extensions page.
+
+Three ways in: the toolbar popup (type a name or ticker), selecting a name on any page and right-clicking "Look up ... in Ownership Engine", or typing `oe`, a space and a name in the address bar. Results show companies with their latest events, people and funds with who they are and their latest trade, and members of Congress with their latest three trades, each with a link to the source filing. "Open profile", "Open company" and "Search in the app" open the web app at that page, signed in (through `GET /v1/app-link`).
+
+It reads no page you visit (no content scripts; the right-click menu only receives the text you selected), stores the token in the browser's local extension storage (not synced), and sends it only to `127.0.0.1` or `localhost`: other addresses are refused in the options. Firefox is not supported yet (it runs Manifest V3 background scripts differently). See `extension/README.md`.
 
 ### Keeping the database fast
 

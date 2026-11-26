@@ -67,9 +67,10 @@ export const EXPLAIN: Record<string, { title: string; text: string }> = {
   price_line: {
     title: "The price line",
     text:
-      "The average price insiders paid or received each day they traded, as written in their filings. It is not " +
-      "the market price: there are gaps when no insider traded, and prices are not adjusted for stock splits " +
-      "(Tesla's 2020 and 2022 splits show as drops).",
+      "When market prices are loaded (oe prices-import), the line is the stock's daily closing price, adjusted " +
+      "for splits and dividends, and each trade sits on the close of its day; the hover note still shows the " +
+      "price the insider reported. Without market prices, the line is the average price insiders reported each " +
+      "day they traded: it has gaps and is not adjusted for splits.",
   },
   filing_date: {
     title: "Filing date only",

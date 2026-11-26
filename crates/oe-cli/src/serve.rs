@@ -451,6 +451,22 @@ pub fn app_file(root: &Path, path: &str) -> Option<PathBuf> {
     (file.starts_with(&root) && file.is_file()).then_some(file)
 }
 
+/// The login link of this run, for a caller that already holds the token
+/// (the browser extension): it opens the web app signed in. The fragment
+/// the caller adds after it (`#/search?q=...`) survives the redirect.
+fn app_link(cfg: &Config) -> Response {
+    if cfg.app_dir.is_none() {
+        return Response::error(404, "no web app is served");
+    }
+    Response::json(
+        200,
+        format!(
+            "{{\"login\":{}}}",
+            json_string(&format!("/login?code={}", cfg.login_code))
+        ),
+    )
+}
+
 /// A page or file of the web app, or the login link.
 fn app_response(req: &Request, cfg: &Config) -> Response {
     if req.path == "/login" {
@@ -696,6 +712,7 @@ impl Worker {
                 ),
             ),
             ("POST", "/v1/lookup") => self.lookup(req),
+            ("GET", "/v1/app-link") => app_link(&self.shared.cfg),
             ("GET", "/v1/status") => {
                 self.cached("status", |c| oe_store::status(c).map(status_json))
             }
@@ -730,6 +747,7 @@ impl Worker {
             (
                 _,
                 "/v1/lookup"
+                | "/v1/app-link"
                 | "/v1/status"
                 | "/v1/flow"
                 | "/v1/health"
@@ -2005,6 +2023,21 @@ mod tests {
             ));
             assert!(r.starts_with("HTTP/1.1 404"), "{bad}: {r}");
         }
+
+        // The extension, holding the token, gets this run's login link.
+        let link = ask(format!(
+            "GET /v1/app-link HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nOrigin: chrome-extension://abc\r\nAuthorization: Bearer {}\r\n\r\n",
+            "c".repeat(64)
+        ));
+        assert!(link.starts_with("HTTP/1.1 200"), "{link}");
+        assert!(
+            link.ends_with(&format!("{{\"login\":\"/login?code={}\"}}", "d".repeat(32))),
+            "{link}"
+        );
+        let no_link = ask(format!(
+            "GET /v1/app-link HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nOrigin: chrome-extension://abc\r\n\r\n"
+        ));
+        assert!(no_link.starts_with("HTTP/1.1 401"), "{no_link}");
 
         // The login link sets the cookie; a wrong code does not.
         let wrong = ask(format!(

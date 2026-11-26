@@ -10,7 +10,7 @@
 
 .NOTES
   - Needs Docker Desktop, Rust (cargo) and Node.js 20 or later.
-  - Builds `oe` and the web app only when their sources changed.
+  - Builds `oe`, the web app and the browser extension only when their sources changed.
   - The app runs at http://127.0.0.1:8730 on this computer only. Keep this
     window open while you use it; Ctrl+C stops it.
   - -Update needs OE_USER_AGENT (see scripts\run-day.ps1), as every download does.
@@ -77,6 +77,26 @@ try {
         Say "building the web app"
         npm run build --silent
         if ($LASTEXITCODE -ne 0) { Say "the web app build failed"; exit 1 }
+    }
+}
+finally { Pop-Location }
+
+# 4b. The browser extension, the same way (load extension\dist once in the
+#     browser: see extension\README.md; reload it there after a rebuild).
+Push-Location extension
+try {
+    if (-not (Test-Path node_modules)) {
+        Say "installing the extension's packages (once)"
+        npm ci --no-audit --no-fund
+        if ($LASTEXITCODE -ne 0) { Say "npm ci failed (extension)"; exit 1 }
+    }
+    $built = Get-Item dist\manifest.json -ErrorAction SilentlyContinue
+    $newest = Get-ChildItem src, static, package.json, build.mjs -Recurse -File |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $built -or $newest.LastWriteTime -gt $built.LastWriteTime) {
+        Say "building the browser extension (extension\dist)"
+        npm run build --silent | Out-Null
+        if ($LASTEXITCODE -ne 0) { Say "the extension build failed"; exit 1 }
     }
 }
 finally { Pop-Location }

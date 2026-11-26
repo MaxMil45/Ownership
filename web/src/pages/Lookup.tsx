@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { getOfficialTrades, getOutcomes, getPrices, getTrades, lookup, type Candidate } from "../api";
 import { OfficialTradeTable } from "./Congress";
+import { inShort, kindLabel, oneLine } from "../describe";
 import { Explain, InsightList } from "../ExplainBlocks";
 import { summarizeOfficial, summarizePerson, trackRecord } from "../insights";
 import { RangeSwitch } from "../RangeSwitch";
 import { TradeChart } from "../TradeChart";
 import { count, money, percent, today } from "../format";
-import { hashFor, navigate, type Route } from "../router";
+import { hashFor, type Route } from "../router";
 import { ExternalLink } from "../ui";
 import { useAsync } from "../useAsync";
 
@@ -88,7 +89,7 @@ function Patterns({ cik }: { cik: number }) {
   if (people.length === 0) return null;
   return (
     <>
-      <h2>Patterns</h2>
+      <h2>Buying and selling, company by company</h2>
       {people.map((p) => (
         <div key={p.issuer_cik} className="pattern">
           <div>
@@ -122,21 +123,27 @@ function CandidateCard({ c }: { c: Candidate }) {
       <h3>{c.display_name}</h3>
       <div className="sub">
         {c.kinds.map((k) => (
-          <span className="tag" key={k}>
-            {k}
+          <span className={`tag kind-${k}`} key={k}>
+            {kindLabel(k)}
           </span>
         ))}
         {count(c.filings)} filing{c.filings === 1 ? "" : "s"}, {c.first_on ?? "?"} to {c.last_on ?? "?"} ·{" "}
-        <span className="muted">{c.key}</span>
+        <span className="muted">{c.key.startsWith("cik:") ? `SEC CIK ${c.key.slice(4)}` : c.key.startsWith("bioguide:") ? `Bioguide ${c.key.slice(9)}` : "no SEC number (named in 13D/G filings)"}</span>
         {!c.exact && <span className="muted"> · partial name match</span>}
       </div>
       {c.other_names.length > 0 && (
         <div className="muted">Also filed as: {c.other_names.slice(0, 4).join("; ")}</div>
       )}
+      <div className="in-short">
+        <h2>In short</h2>
+        {inShort(c).map((line, i) => (
+          <p key={i}>{line}</p>
+        ))}
+      </div>
 
       {c.roles.length > 0 && (
         <>
-          <h2>Roles</h2>
+          <h2>Roles in companies</h2>
           <ul>
             {c.roles.map((r) => (
               <li key={r.issuer_cik}>
@@ -171,7 +178,7 @@ function CandidateCard({ c }: { c: Candidate }) {
 
       {c.holdings.length > 0 && (
         <>
-          <h2>Schedule 13D/13G</h2>
+          <h2>Stakes over 5% (Schedule 13D/13G)</h2>
           <ul>
             {c.holdings.map((h) => (
               <li key={h.receipt.accession}>
@@ -187,7 +194,7 @@ function CandidateCard({ c }: { c: Candidate }) {
 
       {c.contests.length > 0 && (
         <>
-          <h2>Contested proxies</h2>
+          <h2>Proxy fights (contested proxy filings)</h2>
           <ul>
             {c.contests.map((k) => (
               <li key={k.receipt.accession}>
@@ -239,47 +246,61 @@ function CandidateCard({ c }: { c: Candidate }) {
 
 export function Lookup({ route }: { route: Route }) {
   const name = (route.params.name ?? "").trim();
-  const [draft, setDraft] = useState(name);
-  useEffect(() => setDraft(name), [name]);
+  const key = route.params.key ?? "";
   const state = useAsync((s) => (name ? lookup(name, s) : Promise.resolve(null)), [name]);
+  const all = state.data?.result === "found" ? state.data.candidates : [];
+  const picked = key ? all.filter((c) => c.key === key) : all.length === 1 ? all : [];
 
   return (
     <>
-      <form
-        className="filters"
-        onSubmit={(e) => {
-          e.preventDefault();
-          navigate("/lookup", { name: draft.trim() || undefined });
-        }}
-      >
-        <label>
-          Who is this name?
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            size={36}
-            placeholder="Elon Musk, Elliott Investment Management, Nancy Pelosi"
-            autoFocus
-          />
-        </label>
-        <button className="primary" type="submit">
-          Look up
-        </button>
-      </form>
-
       {!name && (
         <div className="notice">
-          Type a person's or a fund's name. Every match is its own candidate with its filings: two people
-          with the same name are never merged. A name with no match says nothing about the person.
+          Search for a person or a fund with the box at the top. Every match is its own candidate with its own
+          filings: two people with the same name are never merged.
         </div>
       )}
       {state.error && <div className="error">{state.error}</div>}
       {name && state.loading && !state.data && <div className="muted">Looking up…</div>}
       {state.data && state.data.result !== "found" && <div className="notice">{state.data.message}</div>}
-      {state.data && state.data.result === "found" && state.data.candidates.length === 0 && (
+      {state.data && state.data.result === "found" && all.length === 0 && (
         <div className="notice">{state.data.message}</div>
       )}
-      {state.data?.candidates.map((c) => <CandidateCard key={c.key} c={c} />)}
+      {key && state.data && all.length > 0 && picked.length === 0 && (
+        <div className="notice">That match is no longer in the results for “{name}”. Pick one below.</div>
+      )}
+      {picked.length === 0 && all.length > 1 && (
+        <div className="card">
+          <h2>
+            {count(all.length)} matches for “{name}”: pick one
+          </h2>
+          <ul className="result-list">
+            {all.map((c) => (
+              <li className="result" key={c.key}>
+                <a className="result-name" href={hashFor("/lookup", { name, key: c.key })}>
+                  {c.display_name}
+                </a>
+                <span className="result-line">{oneLine(c)}</span>
+                <span className="result-meta">
+                  {c.kinds.map((k) => (
+                    <span className={`tag kind-${k}`} key={k}>
+                      {kindLabel(k)}
+                    </span>
+                  ))}
+                  {count(c.filings)} filings{c.first_on && c.last_on ? `, ${c.first_on.slice(0, 4)}–${c.last_on.slice(0, 4)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {picked.map((c) => (
+        <CandidateCard key={c.key} c={c} />
+      ))}
+      {picked.length === 1 && all.length > 1 && (
+        <p>
+          <a href={hashFor("/lookup", { name })}>← The other {count(all.length - 1)} matches for “{name}”</a>
+        </p>
+      )}
     </>
   );
 }

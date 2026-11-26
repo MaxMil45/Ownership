@@ -90,6 +90,23 @@ jobs:
       - name: Types, tests and build
         run: npm run build && npm test
 
+  extension:
+    name: browser extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
+      - name: Types, tests and build
+        run: npm run build && npm test
+
   # Known vulnerabilities in the Rust crates (RustSec) and the web app's npm
   # packages. Fails the build when one is found.
   audit:
@@ -107,4 +124,7 @@ jobs:
           node-version: 22
       - name: npm packages
         working-directory: web
+        run: npm audit --audit-level=moderate
+      - name: npm packages (extension)
+        working-directory: extension
         run: npm audit --audit-level=moderate

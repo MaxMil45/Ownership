@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ownership Engine</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page">
+    <header><strong>Ownership Engine</strong> <span class="muted">· from the public filings, on this computer</span></header>
+    <form id="form" role="search">
+      <input id="q" type="search" maxlength="200" placeholder="Name or ticker" aria-label="Name or ticker" />
+      <button class="primary" type="submit">Look up</button>
+    </form>
+    <main id="out"></main>
+    <p class="muted small">Facts from filings, not advice. Each “filing” link opens the source on sec.gov or the House Clerk's site.</p>
+    <script type="module" src="results.js"></script>
+  </body>
+</html>

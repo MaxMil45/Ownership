@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ownership Engine</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="popup">
+    <header>
+      <strong>Ownership Engine</strong>
+      <button id="options" type="button" class="link">Options</button>
+    </header>
+    <form id="form" role="search">
+      <input id="q" type="search" maxlength="200" placeholder="Name or ticker: Elon Musk, NVDA…" autofocus aria-label="Name or ticker" />
+      <button class="primary" type="submit">Look up</button>
+    </form>
+    <main id="out">
+      <div class="muted">Tip: select a name on any page, right-click, and choose “Look up”. Or type <b>oe</b> and a space in the address bar.</div>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

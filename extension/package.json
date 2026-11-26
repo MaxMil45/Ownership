@@ -1,0 +1,20 @@
+{
+  "name": "ownership-engine-extension",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser extension for the Ownership Engine: looks names and tickers up in oe serve on this computer.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc && node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "^4.1.12"
+  }
+}

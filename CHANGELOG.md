@@ -7,6 +7,8 @@ All notable changes. Dates are when the change was made; versions follow [Semant
 The first public version: insider and activist events from SEC filings, each with its receipts.
 
 ### Reading filings
+- Browser extension, first version (`extension/`, Chrome and Edge, Manifest V3, TypeScript with no runtime packages): toolbar popup, right-click "Look up" on selected text, `oe <name>` in the address bar; results for companies (latest events), people and funds (who they are, latest trade) and members of Congress (latest trades), with source links; buttons open the web app signed in through the new `GET /v1/app-link`. The token stays in local extension storage and goes only to 127.0.0.1 or localhost. Built by `scripts/start.ps1`; CI job `extension`.
+- Web app redesigned around looking things up: one search box on every page and a Search page (companies, members of Congress, people and funds, listed apart), a home page that says what each part answers, an "In short" summary at the top of every profile, a pick-one list when a name matches several people, a title and plain explanation on every page, hover notes on terms, and a Guide page (how to use it, what it cannot tell you, a glossary).
 - Forms 3/4/5 XML parser with no dependencies, checked on 25 real fixtures (joint filers, amendments, Forms 3 and 5, a filing with no transaction code).
 - Form 144, Schedule 13D/13G, Item 408 (10-Q/10-K Inline XBRL) readers, and contested-proxy SGML headers, each with real fixtures.
 - EDGAR client with the SEC's fair-access rules built in: a named User-Agent and at most 8 requests per second.

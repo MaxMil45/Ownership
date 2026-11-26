@@ -1,0 +1,217 @@
+/* Same palette as the web app (ADR 0007). */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --border: rgba(11, 11, 11, 0.1);
+  --wash: rgba(11, 11, 11, 0.04);
+  --s1: #2a78d6;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --s6: #008300;
+  --error: #b3261e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --text: #f0efec;
+    --text-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --border: rgba(255, 255, 255, 0.1);
+    --wash: rgba(255, 255, 255, 0.05);
+    --s1: #3987e5;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s6: #0ca30c;
+    --error: #f2b8b5;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+body.popup {
+  width: 400px;
+  min-height: 160px;
+  padding: 12px;
+}
+body.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  font-size: 14px;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+body.page header {
+  justify-content: flex-start;
+  font-size: 16px;
+}
+form {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+form.settings {
+  flex-direction: column;
+  align-items: flex-start;
+}
+form.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-2);
+}
+input,
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+input[type="search"] {
+  flex: 1;
+  min-width: 0;
+}
+button {
+  cursor: pointer;
+}
+button.primary {
+  background: var(--text);
+  color: var(--page);
+  border-color: var(--text);
+}
+button.link {
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 0;
+  text-decoration: underline;
+}
+h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 12px 0 4px;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.row {
+  padding: 8px 10px;
+  border-top: 1px solid var(--grid);
+  position: relative;
+}
+.row:first-child {
+  border-top: none;
+}
+.name {
+  font-weight: 600;
+  padding-right: 110px;
+}
+.who,
+.last {
+  color: var(--text-2);
+}
+.meta,
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+.small {
+  font-size: 12px;
+}
+.open {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.footer {
+  margin-top: 10px;
+}
+.footer .open {
+  position: static;
+}
+.events {
+  margin: 2px 0 0;
+  padding-left: 0;
+  list-style: none;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.rule {
+  font-weight: 600;
+  color: var(--text);
+}
+.tag {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 6px;
+  margin-right: 4px;
+  font-size: 11px;
+}
+.kind-insider {
+  color: var(--s1);
+  border-color: var(--s1);
+}
+.kind-holder {
+  color: var(--s4);
+  border-color: var(--s4);
+}
+.kind-official {
+  color: var(--s3);
+  border-color: var(--s3);
+}
+.kind-contest {
+  color: var(--s6);
+  border-color: var(--s6);
+}
+a {
+  color: var(--s1);
+}
+.notice,
+.error {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  color: var(--text-2);
+}
+.error {
+  border-color: var(--error);
+  color: var(--error);
+}
+code {
+  background: var(--wash);
+  padding: 0 4px;
+  border-radius: 4px;
+}
