@@ -259,6 +259,9 @@ The quarterly data sets appear some weeks after each quarter ends. Fill the days
 
 ### Who is this name? (`oe lookup`)
 
+(How names are matched: every word you type must be a word of the filed name, in any order; one letter is an initial; a nickname counts as its first name, so `tim cook` finds COOK TIMOTHY D. If no one has every word, people with the surname are listed instead, those whose other words look like yours first, and the answer says so. A single common word lists the first ten of its matches and how many there are. The web app's company search matches anywhere in a company's name or its exact ticker.)
+
+
 ```powershell
 .\scripts\backfill-people.ps1      # once, after upgrading to migration 0007_people (about 30 minutes)
 & $oe lookup elon musk

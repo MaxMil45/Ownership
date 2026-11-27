@@ -1462,9 +1462,30 @@ pub fn lookup_json(l: &Lookup) -> String {
             "{\"result\":\"needs_a_name\",\"message\":\"give at least one full word of the name\",\"candidates\":[]}"
                 .to_string()
         }
-        Lookup::TooBroad(n) => format!(
-            "{{\"result\":\"too_broad\",\"count\":{n},\"message\":\"add a first name or initial\",\"candidates\":[]}}"
-        ),
+        Lookup::Many { total, cards } => {
+            let items: Vec<String> = cards.iter().map(card_json).collect();
+            let message = format!(
+                "{total} people or funds have this one word in their name; showing the first {}. Add a first name or initial to narrow it down.",
+                cards.len()
+            );
+            format!(
+                "{{\"result\":\"found\",\"count\":{total},\"message\":{},\"candidates\":[{}]}}",
+                json_string(&message),
+                items.join(",")
+            )
+        }
+        Lookup::Related { word, cards } => {
+            let items: Vec<String> = cards.iter().map(card_json).collect();
+            let message = format!(
+                "No one has all of these words in their name; showing people named {word}. Filers are often listed under another first name or spelling, so check each one is the right person."
+            );
+            format!(
+                "{{\"result\":\"found\",\"count\":{},\"message\":{},\"candidates\":[{}]}}",
+                cards.len(),
+                json_string(&message),
+                items.join(",")
+            )
+        }
         Lookup::Found(cards) => {
             let items: Vec<String> = cards.iter().map(card_json).collect();
             let message = if cards.is_empty() {
@@ -1927,7 +1948,17 @@ mod tests {
     #[test]
     fn lookup_json_says_what_kind_of_answer_it_is() {
         assert!(lookup_json(&Lookup::NeedsAName).contains("\"needs_a_name\""));
-        assert!(lookup_json(&Lookup::TooBroad(43)).contains("\"count\":43"));
+        let many = lookup_json(&Lookup::Many {
+            total: 43,
+            cards: Vec::new(),
+        });
+        assert!(many.contains("\"count\":43") && many.contains("\"result\":\"found\""));
+        let related = lookup_json(&Lookup::Related {
+            word: "HUANG".into(),
+            cards: Vec::new(),
+        });
+        assert!(related.contains("people named HUANG"));
+        assert!(oe_edgar::json::parse(&related).is_ok());
         let empty = lookup_json(&Lookup::Found(Vec::new()));
         assert!(empty.contains("\"count\":0") && empty.contains("No public ownership role"));
         let parsed = oe_edgar::json::parse(&empty).unwrap();

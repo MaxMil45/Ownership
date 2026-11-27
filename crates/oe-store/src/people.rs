@@ -17,7 +17,7 @@
 //! Form 144 sellers and Item 408 names are not indexed yet.
 
 use crate::db::StoreError;
-use oe_core::text::{name_tokens, tokens_match};
+use oe_core::text::{name_alternatives, name_tokens, tokens_match_nick};
 use postgres::Client;
 use std::collections::{BTreeSet, HashMap};
 use std::io::Write;
@@ -359,42 +359,58 @@ pub struct PersonCard {
 pub enum Lookup {
     /// The query has no full word (only initials, or nothing).
     NeedsAName,
-    /// A one-word query with too many candidates: how many.
-    TooBroad(usize),
+    /// A one-word query with many candidates: how many in all, and the
+    /// first ones (exact name, then the most recent).
+    Many {
+        total: usize,
+        cards: Vec<PersonCard>,
+    },
+    /// No one matches every word; these people match `word` alone (the
+    /// rarest word of the query: first names are often filed differently,
+    /// "Jensen Huang" is "HUANG JEN HSUN").
+    Related {
+        word: String,
+        cards: Vec<PersonCard>,
+    },
     /// Best first: exact name, then the most recent.
     Found(Vec<PersonCard>),
 }
 
-/// Looks a name up in the index: every word of the query must be a word of
-/// the candidate's names (a single letter matches as an initial). At most
-/// `limit` candidates, each with its details.
-pub fn lookup(client: &mut Client, query: &str, limit: usize) -> Result<Lookup, StoreError> {
-    crate::db::check_schema(client)?;
-    let q = name_tokens(query);
-    let words: Vec<String> = q
-        .iter()
-        .filter(|t| t.chars().count() > 1)
-        .cloned()
-        .collect();
+/// Candidates whose names hold every word of `q` (a nickname counts as its
+/// first name, a single letter as an initial), unsorted and without details.
+fn candidates(client: &mut Client, q: &[String]) -> Result<Vec<PersonCard>, StoreError> {
+    let words: Vec<&String> = q.iter().filter(|t| t.chars().count() > 1).collect();
     if words.is_empty() {
-        return Ok(Lookup::NeedsAName);
+        return Ok(Vec::new());
+    }
+    // Every alternative name of word i carries group i; a candidate needs
+    // one token of each group.
+    let mut tokens: Vec<String> = Vec::new();
+    let mut groups: Vec<i32> = Vec::new();
+    for (i, w) in words.iter().enumerate() {
+        for alt in name_alternatives(w) {
+            tokens.push(alt);
+            groups.push(i as i32);
+        }
     }
     let rows = client.query(
         "SELECT c.candidate_key, c.display_name, c.kinds, c.tokens, c.display_tokens,
                 c.filings, c.first_on::text, c.last_on::text
          FROM people_candidate c
          WHERE c.candidate_key IN (
-             SELECT candidate_key FROM people_token WHERE token = ANY($1)
-             GROUP BY candidate_key HAVING count(*) = $2)",
-        &[&words, &(words.len() as i64)],
+             SELECT t.candidate_key
+             FROM people_token t
+             JOIN unnest($1::text[], $2::int4[]) AS w(token, grp) ON t.token = w.token
+             GROUP BY t.candidate_key HAVING count(DISTINCT w.grp) = $3)",
+        &[&tokens, &groups, &(words.len() as i64)],
     )?;
-    let mut sorted_q = q.clone();
+    let mut sorted_q = q.to_vec();
     sorted_q.sort();
-    let mut found: Vec<PersonCard> = rows
+    Ok(rows
         .iter()
         .filter_map(|r| {
             let tokens: Vec<String> = r.get::<_, &str>(3).split(' ').map(str::to_string).collect();
-            if !tokens_match(&q, &tokens) {
+            if !tokens_match_nick(q, &tokens) {
                 return None;
             }
             let mut shown: Vec<String> =
@@ -416,10 +432,11 @@ pub fn lookup(client: &mut Client, query: &str, limit: usize) -> Result<Lookup, 
                 official: None,
             })
         })
-        .collect();
-    if q.len() == 1 && found.len() > ONE_WORD_LIMIT {
-        return Ok(Lookup::TooBroad(found.len()));
-    }
+        .collect())
+}
+
+/// Exact name first, then the most recent, then the most filings.
+fn rank(found: &mut [PersonCard]) {
     found.sort_by(|a, b| {
         b.exact
             .cmp(&a.exact)
@@ -427,9 +444,105 @@ pub fn lookup(client: &mut Client, query: &str, limit: usize) -> Result<Lookup, 
             .then_with(|| b.filings.cmp(&a.filings))
             .then_with(|| a.key.cmp(&b.key))
     });
+}
+
+/// The word of a query that is most likely the surname: the first word
+/// before a comma ("Huang, Jensen"), else the last ("Jensen Huang").
+fn surname_word(query: &str) -> Option<String> {
+    let comma = query.contains(',');
+    let part = if comma {
+        query.split(',').next().unwrap_or("")
+    } else {
+        query
+    };
+    let words: Vec<String> = name_tokens(part)
+        .into_iter()
+        .filter(|t| t.chars().count() > 1)
+        .collect();
+    words.last().cloned()
+}
+
+/// How many of the query's other words (not `surname`) resemble a word of
+/// `name`: one starts the other, at least three letters long ("JEN" and
+/// "JENSEN"), or they are equal.
+fn resemblance(words: &[String], surname: &str, name: &str) -> usize {
+    let have = name_tokens(name);
+    words
+        .iter()
+        .filter(|w| w.as_str() != surname)
+        .filter(|w| {
+            have.iter().any(|t| {
+                t.as_str() != surname
+                    && (t == *w
+                        || (t.chars().count() >= 3
+                            && w.chars().count() >= 3
+                            && (t.starts_with(w.as_str()) || w.starts_with(t.as_str()))))
+            })
+        })
+        .count()
+}
+
+/// Looks a name up in the index: every word of the query must be a word of
+/// the candidate's names (a single letter matches as an initial, a nickname
+/// as its first name). With no such candidate, people matching the rarest
+/// single word are offered instead. At most `limit` candidates, each with
+/// its details.
+pub fn lookup(client: &mut Client, query: &str, limit: usize) -> Result<Lookup, StoreError> {
+    crate::db::check_schema(client)?;
+    let q = name_tokens(query);
+    let words: Vec<String> = q
+        .iter()
+        .filter(|t| t.chars().count() > 1)
+        .cloned()
+        .collect();
+    if words.is_empty() {
+        return Ok(Lookup::NeedsAName);
+    }
+    let mut found = candidates(client, &q)?;
+    if found.is_empty() && words.len() >= 2 {
+        // Who is probably the surname: the last word ("Jensen Huang"), or
+        // the first when there is a comma ("Huang, Jensen"); else the
+        // rarest word that matches anyone.
+        let surname = surname_word(query);
+        let rows = client.query(
+            "SELECT token, count(*) FROM people_token WHERE token = ANY($1)
+             GROUP BY token ORDER BY count(*), token",
+            &[&words],
+        )?;
+        let word: Option<String> = match surname {
+            Some(w) if rows.iter().any(|r| r.get::<_, String>(0) == w) => Some(w),
+            _ => rows.first().map(|r| r.get(0)),
+        };
+        if let Some(word) = word {
+            let mut related = candidates(client, std::slice::from_ref(&word))?;
+            for c in &mut related {
+                c.exact = false;
+            }
+            rank(&mut related);
+            // Those whose other words look like the ones typed come first
+            // (a stable sort keeps the order above within each score).
+            related.sort_by_key(|c| std::cmp::Reverse(resemblance(&words, &word, &c.display_name)));
+            related.truncate(limit);
+            for card in &mut related {
+                fill(client, card)?;
+            }
+            return Ok(Lookup::Related {
+                word,
+                cards: related,
+            });
+        }
+    }
+    rank(&mut found);
+    let total = found.len();
     found.truncate(limit);
     for card in &mut found {
         fill(client, card)?;
+    }
+    if q.len() == 1 && total > ONE_WORD_LIMIT {
+        return Ok(Lookup::Many {
+            total,
+            cards: found,
+        });
     }
     Ok(Lookup::Found(found))
 }
@@ -590,4 +703,23 @@ fn fill(client: &mut Client, card: &mut PersonCard) -> Result<(), StoreError> {
             .collect();
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn related_names_are_ranked_by_how_much_they_resemble_the_query() {
+        let q = vec!["JENSEN".to_string(), "HUANG".to_string()];
+        assert_eq!(super::resemblance(&q, "HUANG", "Huang Jen Hsun"), 1);
+        assert_eq!(super::resemblance(&q, "HUANG", "Huang Jack Jiajia"), 0);
+        assert_eq!(super::resemblance(&q, "HUANG", "Jensen Huang"), 1);
+        assert_eq!(
+            super::surname_word("Jensen Huang").as_deref(),
+            Some("HUANG")
+        );
+        assert_eq!(
+            super::surname_word("Huang, Jensen").as_deref(),
+            Some("HUANG")
+        );
+    }
 }

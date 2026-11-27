@@ -88,7 +88,9 @@ export function Search({ route }: { route: Route }) {
               Inc”), or its ticker. Having no match says nothing about a person: many people never file.
             </div>
           )}
-          {people.data && people.data.result !== "found" && <div className="notice">{people.data.message}</div>}
+          {people.data && (people.data.result !== "found" || (found.length > 0 && people.data.message)) && (
+            <div className="notice">{people.data.message}</div>
+          )}
 
           {sorted.length > 0 && (
             <section>

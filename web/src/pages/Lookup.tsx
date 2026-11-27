@@ -265,6 +265,9 @@ export function Lookup({ route }: { route: Route }) {
       {state.data && state.data.result === "found" && all.length === 0 && (
         <div className="notice">{state.data.message}</div>
       )}
+      {state.data && all.length > 0 && state.data.message && picked.length !== 1 && (
+        <div className="notice">{state.data.message}</div>
+      )}
       {key && state.data && all.length > 0 && picked.length === 0 && (
         <div className="notice">That match is no longer in the results for “{name}”. Pick one below.</div>
       )}

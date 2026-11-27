@@ -170,7 +170,8 @@ pub fn company(client: &mut Client, cik: i64) -> Result<Option<Company>, StoreEr
     }))
 }
 
-/// Companies whose name or ticker starts with `prefix` (case ignored), most
+/// Companies whose name contains `prefix` (names starting with it first) or whose
+/// ticker is it (case ignored), most
 /// filed-about first: for a company search box. At most `limit`.
 pub fn find_companies(
     client: &mut Client,
@@ -182,30 +183,47 @@ pub fn find_companies(
     if p.is_empty() {
         return Ok(Vec::new());
     }
-    let pattern = format!(
-        "{}%",
-        p.replace('\\', "\\\\")
+    let escape = |t: &str| {
+        t.replace('\\', "\\\\")
             .replace('%', "\\%")
             .replace('_', "\\_")
-    );
+    };
+    let prefix = format!("{}%", escape(p));
+    // Anywhere in the name ("Platforms" finds "Meta Platforms"), once the
+    // text is long enough not to match everything.
+    let inside = if p.chars().count() >= 3 {
+        format!("%{}%", escape(p))
+    } else {
+        prefix.clone()
+    };
     Ok(client
         .query(
             "SELECT issuer_cik, issuer_name, ticker FROM (
-                 SELECT DISTINCT ON (issuer_cik) issuer_cik, issuer_name, ticker, n
+                 SELECT DISTINCT ON (issuer_cik) issuer_cik, issuer_name, ticker, n, rank
                  FROM (
-                     SELECT e.issuer_cik, e.issuer_name, e.ticker, count(*) OVER (PARTITION BY e.issuer_cik) AS n
+                     SELECT e.issuer_cik, e.issuer_name, e.ticker,
+                            count(*) OVER (PARTITION BY e.issuer_cik) AS n,
+                            CASE WHEN upper(e.ticker) = upper($2) THEN 0
+                                 WHEN e.issuer_name ILIKE $1 THEN 1
+                                 ELSE 2 END AS rank
                      FROM event_feed e
                      WHERE e.issuer_cik IS NOT NULL
-                       AND (e.issuer_name ILIKE $1 OR upper(e.ticker) = upper($2))
+                       AND (e.issuer_name ILIKE $4 OR upper(e.ticker) = upper($2))
                  ) x
                  ORDER BY issuer_cik, (ticker IS NULL), n DESC
              ) y
-             ORDER BY n DESC
+             ORDER BY rank, n DESC
              LIMIT $3",
-            &[&pattern, &p, &limit],
+            &[&prefix, &p, &limit, &inside],
         )?
         .iter()
-        .map(|r| (r.get(0), r.get::<_, Option<String>>(1).unwrap_or_default(), r.get(2)))
+        .map(|r| {
+            (
+                r.get(0),
+                r.get::<_, Option<String>>(1).unwrap_or_default(),
+                r.get(2),
+            )
+        })
         .collect())
 }
 

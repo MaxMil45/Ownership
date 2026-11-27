@@ -1137,6 +1137,25 @@ fn names_and_roles_are_stored_and_the_name_index_finds_them() {
         oe_store::lookup(&mut s.client, "nobody zzzz", 10).unwrap(),
         oe_store::Lookup::Found(Vec::new())
     );
+
+    // A long form of the first name finds the member filed as "Alex".
+    let oe_store::Lookup::Found(cards) =
+        oe_store::lookup(&mut s.client, "Alexander Gutierrez", 10).unwrap()
+    else {
+        panic!("a nickname's long form should find the member");
+    };
+    assert_eq!(cards[0].key, "bioguide:Z000001");
+    assert!(!cards[0].exact, "the name typed is not the one filed");
+
+    // A first name nobody filed under: people with the surname are offered.
+    match oe_store::lookup(&mut s.client, "Zzzz Gutierrez", 10).unwrap() {
+        oe_store::Lookup::Related { word, cards } => {
+            assert_eq!(word, "GUTIERREZ");
+            assert!(cards.iter().any(|c| c.key == "bioguide:Z000001"));
+            assert!(cards.iter().all(|c| !c.exact));
+        }
+        other => panic!("expected related names, got {other:?}"),
+    }
     s.finish();
 }
 

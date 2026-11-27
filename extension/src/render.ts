@@ -142,7 +142,7 @@ export async function search(q: string, out: HTMLElement): Promise<void> {
   if (ticker) list = [...list].sort((a, b) => Number(b.ticker === ticker) - Number(a.ticker === ticker));
   const found = people.status === "fulfilled" && people.value.result === "found" ? people.value.candidates : [];
 
-  if (people.status === "fulfilled" && people.value.result !== "found") {
+  if (people.status === "fulfilled" && (people.value.result !== "found" || (found.length > 0 && people.value.message))) {
     parts.push(h("div", { class: "notice" }, people.value.message));
   }
   if (list.length > 0) {

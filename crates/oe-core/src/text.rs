@@ -195,9 +195,126 @@ pub fn tokens_match(query: &[String], candidate: &[String]) -> bool {
         })
 }
 
+/// First names people use for each other: "Tim Cook" files as "COOK TIMOTHY D".
+/// Each row is one name and its short forms; every word of a row stands for
+/// all the others (a name can sit in two rows).
+const NICKNAMES: &[&[&str]] = &[
+    &["WILLIAM", "BILL", "BILLY", "WILL", "WILLIE"],
+    &["ROBERT", "BOB", "BOBBY", "ROB", "ROBBIE"],
+    &["RICHARD", "RICK", "RICKY", "DICK", "RICH"],
+    &["JAMES", "JIM", "JIMMY", "JAMIE"],
+    &["JOHN", "JACK", "JOHNNY"],
+    &["JOSEPH", "JOE", "JOEY"],
+    &["MICHAEL", "MIKE", "MICKEY"],
+    &["THOMAS", "TOM", "TOMMY"],
+    &["TIMOTHY", "TIM", "TIMMY"],
+    &["DANIEL", "DAN", "DANNY"],
+    &["DAVID", "DAVE", "DAVEY"],
+    &["STEVEN", "STEPHEN", "STEVE"],
+    &["CHRISTOPHER", "CHRIS"],
+    &["MATTHEW", "MATT"],
+    &["NICHOLAS", "NICK"],
+    &["ANTHONY", "TONY"],
+    &["ANDREW", "ANDY", "DREW"],
+    &["EDWARD", "ED", "EDDIE", "TED", "NED"],
+    &["THEODORE", "TED", "TEDDY"],
+    &["CHARLES", "CHARLIE", "CHUCK", "CHAS"],
+    &["HENRY", "HANK", "HARRY"],
+    &["GREGORY", "GREG"],
+    &["JEFFREY", "JEFF", "GEOFFREY", "GEOFF"],
+    &["KENNETH", "KEN", "KENNY"],
+    &["LAWRENCE", "LARRY"],
+    &["PATRICK", "PAT"],
+    &["PETER", "PETE"],
+    &["RONALD", "RON", "RONNIE"],
+    &["SAMUEL", "SAM", "SAMMY"],
+    &["BENJAMIN", "BEN", "BENNY"],
+    &["DOUGLAS", "DOUG"],
+    &["GERALD", "JERRY", "GERRY"],
+    &["JOSHUA", "JOSH"],
+    &["PHILIP", "PHILLIP", "PHIL"],
+    &["FREDERICK", "FRED", "FREDDIE"],
+    &["LEONARD", "LEN", "LENNY"],
+    &["WALTER", "WALT"],
+    &["EUGENE", "GENE"],
+    &["RAYMOND", "RAY"],
+    &["ALEXANDER", "ALEX", "AL"],
+    &["ZACHARY", "ZACH", "ZACK"],
+    &["NATHANIEL", "NATHAN", "NATE"],
+    &["ELIZABETH", "LIZ", "BETH", "BETSY", "BETTY", "LIZZIE"],
+    &["MARGARET", "PEGGY", "MEG", "MAGGIE", "MARGE"],
+    &[
+        "KATHERINE",
+        "KATHRYN",
+        "CATHERINE",
+        "KATE",
+        "KATIE",
+        "KATHY",
+        "CATHY",
+    ],
+    &["JENNIFER", "JEN", "JENNY"],
+    &["REBECCA", "BECKY"],
+    &["DEBORAH", "DEBBIE", "DEB"],
+    &["SUSAN", "SUE", "SUSIE"],
+    &["PATRICIA", "PAT", "PATTY", "TRISH"],
+    &["VICTORIA", "VICKI", "VICKY"],
+    &["CHRISTINE", "CHRISTINA", "CHRIS", "TINA"],
+    &["ALBERT", "AL", "BERT"],
+    &["DONALD", "DON", "DONNIE"],
+    &["GEORGE", "GEORGIE"],
+    &["JONATHAN", "JON", "JONNY"],
+    &["MAXIMILIAN", "MAX"],
+    &["RANDALL", "RANDY"],
+    &["TERRENCE", "TERRY"],
+    &["VINCENT", "VINCE", "VINNY"],
+];
+
+/// The query word and every name that stands for the same first name.
+pub fn name_alternatives(token: &str) -> Vec<String> {
+    let mut out = vec![token.to_string()];
+    for row in NICKNAMES {
+        if row.contains(&token) {
+            for n in *row {
+                if !out.iter().any(|o| o == n) {
+                    out.push((*n).to_string());
+                }
+            }
+        }
+    }
+    out
+}
+
+/// [`tokens_match`], but a word may also match a nickname of the same first
+/// name ("TIM" finds "TIMOTHY").
+pub fn tokens_match_nick(query: &[String], candidate: &[String]) -> bool {
+    !query.is_empty()
+        && query.iter().all(|q| {
+            let alt = name_alternatives(q);
+            candidate.iter().any(|c| {
+                alt.iter().any(|a| a == c) || (q.chars().count() == 1 && c.starts_with(q.as_str()))
+            })
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn nicknames_find_the_formal_first_name() {
+        let v = name_tokens;
+        assert!(tokens_match_nick(&v("tim cook"), &v("COOK TIMOTHY D")));
+        assert!(tokens_match_nick(
+            &v("Bill Gates"),
+            &v("GATES WILLIAM H III")
+        ));
+        assert!(tokens_match_nick(&v("William Gates"), &v("GATES BILL")));
+        assert!(!tokens_match_nick(&v("Tom Cook"), &v("COOK TIMOTHY D")));
+        assert!(!tokens_match(&v("tim cook"), &v("COOK TIMOTHY D")));
+        assert_eq!(name_alternatives("ZZZ"), ["ZZZ"]);
+        assert!(name_alternatives("TED").contains(&"THEODORE".to_string()));
+        assert!(name_alternatives("TED").contains(&"EDWARD".to_string()));
+    }
 
     #[test]
     fn name_tokens_meet_across_orders_and_punctuation() {

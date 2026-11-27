@@ -42,10 +42,21 @@ pub fn lookup(argv: &[String]) -> Result<(), String> {
     let mut client = connect()?;
     match oe_store::lookup(&mut client, &query, MAX_CANDIDATES).map_err(|e| e.to_string())? {
         Lookup::NeedsAName => println!("give at least one full word of the name"),
-        Lookup::TooBroad(n) => println!(
-            "{n} candidates for a single word: add a first name or initial (for example \"jane {}\")",
-            query.trim().to_lowercase()
-        ),
+        Lookup::Many { total, cards } => {
+            println!(
+                "{total} candidates for a single word, showing {}: add a first name or initial to narrow it down",
+                cards.len()
+            );
+            for c in &cards {
+                print_card(c);
+            }
+        }
+        Lookup::Related { word, cards } => {
+            println!("No one has all the words of {query:?}; showing people named {word}:");
+            for c in &cards {
+                print_card(c);
+            }
+        }
         Lookup::Found(cards) if cards.is_empty() => println!(
             "No public ownership role found for {query:?}. (This says nothing about the person.)"
         ),
