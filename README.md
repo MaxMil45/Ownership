@@ -38,7 +38,7 @@ Raw SEC data is free, and parsers already exist ([edgartools](https://github.com
 
 ## How to run it
 
-**The app, in one command** (needs Docker Desktop, Rust and Node.js 20+):
+**The app, in one command** (needs Docker Desktop, Rust and Node.js 22.12+):
 
 ```powershell
 .\scripts\start.ps1           # database, API and web app; opens your browser, signed in

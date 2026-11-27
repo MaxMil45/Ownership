@@ -9,7 +9,7 @@
   .\scripts\start.ps1 -NoBrowser # do not open a browser; open the printed link yourself
 
 .NOTES
-  - Needs Docker Desktop, Rust (cargo) and Node.js 20 or later.
+  - Needs Docker Desktop, Rust (cargo) and Node.js 22.12 or later (Vitest 5).
   - Builds `oe`, the web app and the browser extension only when their sources changed.
   - The app runs at http://127.0.0.1:8730 on this computer only. Keep this
     window open while you use it; Ctrl+C stops it.
@@ -28,6 +28,8 @@ function Need([string]$cmd, [string]$what) {
     if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { Say "$what is not installed ($cmd not found)"; exit 1 }
 }
 Need docker "Docker Desktop"; Need cargo "Rust"; Need npm "Node.js"
+$nodeVersion = [version]((node --version) -replace '^v', '')
+if ($nodeVersion -lt [version]'22.12') { Say "Node.js $nodeVersion is too old: install 22.12 or later (https://nodejs.org)"; exit 1 }
 
 # Only one oe serve at a time on the port.
 $serving = Get-CimInstance Win32_Process -Filter "Name = 'oe.exe'" -ErrorAction SilentlyContinue |
